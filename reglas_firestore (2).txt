@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+    match /databases/{database}/documents {
+
+    // Función para identificar si es el Administrador principal
+    function esAdmin() {
+      return request.auth != null && request.auth.uid == 'e8czOfuF82VqPwNUZjMpOSMHUQo2';
+    }
+
+    // Función para identificar si el usuario autenticado es un Delivery
+    function esDelivery() {
+      return request.auth != null && request.auth.token.email.matches('.*delivery.*');
+    }
+
+    // Cambios de estado permitidos en un pedido (solo hacia adelante o cancelar)
+    function estadoPermitido(de, a) {
+      return (de == 'nuevo'       && a in ['preparacion', 'entregado', 'cancelado'])
+          || (de == 'preparacion' && a in ['en_camino', 'entregado', 'cancelado'])
+          || (de == 'en_camino'   && a in ['entregado', 'cancelado'])
+          || (de == 'entregado'   && a in ['cancelado', 'archivado'])
+          || (de == 'cancelado'   && a == 'archivado');
+    }
+
+    match /pedidos/{id} {
+      // Cualquier cliente puede CREAR un pedido
+      allow create: if request.resource.data.keys().hasOnly(
+                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago'])
+                    && (!('pago' in request.resource.data) || request.resource.data.pago in ['efectivo', 'transferencia'])
+                    && request.resource.data.estado == 'nuevo'
+                    && request.resource.data.creado == request.time
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.total < 5000000
+                    && request.resource.data.pizzas is list
+                    && request.resource.data.pizzas.size() <= 30
+                    && request.resource.data.extras is list
+                    && request.resource.data.extras.size() <= 10;
+
+      // El Administrador también puede CARGAR pedidos desde el panel (retiro, local, teléfono)
+      allow create: if esAdmin()
+                    && request.resource.data.estado in ['nuevo', 'preparacion', 'entregado']
+                    && request.resource.data.creado == request.time
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.total < 5000000
+                    && request.resource.data.pizzas is list
+                    && request.resource.data.pizzas.size() <= 30
+                    && request.resource.data.extras is list
+                    && request.resource.data.extras.size() <= 10;
+
+      // LECTURA: Permitida tanto para el Administrador como para el Delivery.
+      allow read: if esAdmin() || esDelivery();
+
+      // MODIFICAR: solo el administrador. El estado solo puede avanzar o cancelarse (no hay vuelta atrás).
+      // 'archivado' lo usa el cierre de caja (desde entregado o cancelado).
+      allow update: if esAdmin()
+                    && (request.resource.data.estado == resource.data.estado
+                        || estadoPermitido(resource.data.estado, request.resource.data.estado));
+
+      // BORRAR: solo el administrador.
+      allow delete: if esAdmin();
+    }
+
+    // Nueva colección para guardar los reportes de los cierres de caja históricos
+    match /cierres/{id} {
+      // Solo el administrador principal puede ver o crear los cierres de caja
+      allow read, write: if esAdmin();
+    }
+
+    // Gastos del día (se anotan en la caja y se archivan al cerrar)
+    match /gastos/{id} {
+      allow read, write: if esAdmin();
+    }
+
+    // Estado del local (abierto/cerrado, horarios y mensaje): lo lee cualquiera (la página de pedidos); solo el administrador lo escribe.
+    // Los demás documentos de config (menú, contador de pedidos) son solo del administrador.
+    match /config/{doc} {
+      allow read: if doc == 'local' || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    // Memoria de clientes frecuentes (solo administrador)
+    match /clientes/{id} {
+      allow read, write: if esAdmin();
+    }
+
+    // Todo lo demás, cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

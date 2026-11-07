@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tema del panel (Configuración > Apariencia). Se guarda en cada equipo y se aplica antes de pintar. -->
+    <script>
+    (function () {
+        var V = ['clasico', 'pro', 'oscuro'];
+        function fuentes() {
+            if (document.getElementById('mb-fuente-panel')) return;
+            var l = document.createElement('link');
+            l.id = 'mb-fuente-panel'; l.rel = 'stylesheet';
+            l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap';
+            document.head.appendChild(l);
+        }
+        function pon(x) {
+            if (V.indexOf(x) < 0) x = 'clasico';
+            var h = document.documentElement;
+            h.setAttribute('data-panel', x);
+            if (x === 'clasico') h.removeAttribute('data-pnuevo');
+            else { h.setAttribute('data-pnuevo', ''); fuentes(); }
+            var m = document.querySelector('meta[name=theme-color]');
+            if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+            m.content = x === 'oscuro' ? '#0a0e1c' : (x === 'pro' ? '#0f172a' : '#b91c1c');
+        }
+        window.aplicarTemaPanel = function (x) {
+            pon(x);
+            try { localStorage.setItem('mb_tema_panel', V.indexOf(x) < 0 ? 'clasico' : x); } catch (e) {}
+        };
+        var c = null;
+        try { c = localStorage.getItem('mb_tema_panel'); } catch (e) {}
+        pon(c || 'clasico');
+    })();
+    </script>
+    <title>TPV - Mi Barrio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- ===== Optimización responsive PC / tablet / móvil ===== -->
+    <style>
+        /* El panel conserva la misma lógica y funciones; estos estilos solo reorganizan la interfaz. */
+        html { scroll-behavior: smooth; }
+        body { min-width: 320px; }
+
+        /* Aprovechar el ancho disponible en escritorio */
+        #header-panel > div,
+        #header-panel > nav,
+        #panel > main {
+            max-width: 1800px !important;
+        }
+
+        #panel > main {
+            width: 100%;
+        }
+
+        /* Los pedidos pasan a ser una grilla en pantallas grandes */
+        #lista {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 14px;
+            align-items: start;
+        }
+
+        #lista > article {
+            min-width: 0;
+            height: fit-content;
+        }
+
+        /* Evita que nombres largos rompan la tarjeta */
+        #lista article [data-accion=toggle] {
+            min-height: 52px;
+        }
+
+        /* Botones táctiles sin hacerlos enormes */
+        button, a {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 700px) {
+            #lista {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 1100px) {
+            #lista {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            #panel > main {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+        }
+
+        @media (min-width: 1500px) {
+            #lista {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        /* Tablet horizontal: botones y cabecera mejor distribuidos */
+        @media (min-width: 700px) and (max-width: 1099px) {
+            #header-panel > div {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+            #header-panel > nav {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+        }
+
+        /* Celular: mantener una sola columna y controles cómodos */
+        @media (max-width: 699px) {
+            #header-panel > div {
+                flex-wrap: wrap;
+            }
+            #header-panel > div > div:last-child {
+                width: 100%;
+                overflow-x: auto;
+                padding-bottom: 2px;
+            }
+            #header-panel > div > div:last-child button {
+                flex-shrink: 0;
+            }
+            #lista {
+                gap: 10px;
+            }
+            #panel > main {
+                padding-top: 12px !important;
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+        }
+
+        /* En escritorio los pedidos pueden mostrar más información sin ocupar toda la pantalla. */
+        @media (min-width: 1100px) {
+            #lista article .text-xl {
+                font-size: 1.15rem;
+            }
+            #lista article .px-4.pb-4.pt-3 {
+                padding: 12px !important;
+            }
+        }
+
+        /* Modales siguen centrados y limitados para no convertirse en formularios gigantes. */
+        #modal-nuevo > div,
+        #modal-caja > div {
+            width: 100%;
+        }
+
+        /* Barra de filtros utilizable con mouse y dedo */
+        #filtros {
+            scrollbar-width: thin;
+        }
+        #filtros::-webkit-scrollbar { height: 5px; }
+
+        /* Login centrado y cómodo en cualquier pantalla */
+        #login form {
+            box-sizing: border-box;
+        }
+    </style>
+    <style id="temas-panel">
+/* ==========================================================================
+   TEMAS DEL PANEL DE CONTROL  ·  Configuración > Apariencia (se guarda por equipo)
+   clasico = diseño actual (sin cambios) | pro = claro y ordenado | oscuro = nocturno
+   Solo actúan cuando <html> tiene data-pnuevo. En celular los botones pasan a
+   una barra inferior fija (más cómodo con el pulgar).
+   ========================================================================== */
+html[data-pnuevo] {
+    --fp: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --bg: #f1f5f9; --card: #ffffff; --card2: #f8fafc; --ink: #0f172a; --muted: #64748b; --muted2: #94a3b8;
+    --line: #e2e8f0; --chip: #eaeff5; --accent: #dc2626; --accent-d: #b91c1c; --accent-t: rgba(220, 38, 38, .10);
+    --head: linear-gradient(135deg, #1e293b, #0f172a); --shadow: 0 12px 28px -20px rgba(15, 23, 42, .55);
+    --dock: rgba(15, 23, 42, .97);
+}
+html[data-panel="oscuro"] {
+    --bg: #0b1020; --card: #151b2e; --card2: #1b2238; --ink: #e8edf7; --muted: #9aa7c0; --muted2: #6f7d99;
+    --line: #27304a; --chip: #222a42; --accent: #ff5a4f; --accent-d: #e0372c; --accent-t: rgba(255, 90, 79, .16);
+    --head: linear-gradient(135deg, #10172b, #0a0e1c); --shadow: 0 14px 30px -20px rgba(0, 0, 0, .95);
+    --dock: rgba(8, 12, 26, .97); color-scheme: dark;
+}
+
+/* ---- Base y colores ---- */
+html[data-pnuevo] body, html[data-pnuevo] body.bg-neutral-100 { background: var(--bg); color: var(--ink); font-family: var(--fp); }
+html[data-pnuevo] .bg-white { background-color: var(--card); }
+html[data-pnuevo] .bg-neutral-50 { background-color: var(--card2); }
+html[data-pnuevo] .bg-neutral-100 { background-color: var(--chip); }
+html[data-pnuevo] .text-neutral-900, html[data-pnuevo] .text-neutral-800, html[data-pnuevo] .text-neutral-700 { color: var(--ink); }
+html[data-pnuevo] .text-neutral-600, html[data-pnuevo] .text-neutral-500 { color: var(--muted); }
+html[data-pnuevo] .text-neutral-400 { color: var(--muted2); }
+html[data-pnuevo] .border-neutral-200, html[data-pnuevo] .border-neutral-300, html[data-pnuevo] .border-neutral-100 { border-color: var(--line); }
+html[data-pnuevo] .text-red-700 { color: var(--accent); }
+html[data-pnuevo] input, html[data-pnuevo] select, html[data-pnuevo] textarea { color: var(--ink); }
+html[data-pnuevo] input::placeholder, html[data-pnuevo] textarea::placeholder { color: var(--muted2); }
+html[data-pnuevo] input:focus, html[data-pnuevo] select:focus, html[data-pnuevo] textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-t); }
+/* Hojas de las ventanas (nuevo pedido, caja, cobro, clientes, agotados, config) */
+html[data-pnuevo] #modal-nuevo > div, html[data-pnuevo] #modal-caja > div, html[data-pnuevo] #modal-cliente > div,
+html[data-pnuevo] #modal-agotados > div, html[data-pnuevo] #modal-cobro > div { background: var(--bg); }
+html[data-pnuevo] #modal-config { background: var(--bg); }
+
+/* ---- Encabezado ---- */
+html[data-pnuevo] #header-panel { background: var(--head); box-shadow: 0 10px 26px -16px rgba(0, 0, 0, .7); }
+html[data-pnuevo] #header-panel h1 { font-size: 1.12rem; letter-spacing: .01em; }
+html[data-pnuevo] #header-panel button { border-radius: 12px; padding: 8px 12px; font-size: 12.5px; transition: filter .15s, transform .1s; }
+html[data-pnuevo] #header-panel button:active { transform: scale(.96); }
+html[data-pnuevo] #btn-nuevo { background: #fff; color: #b91c1c; }
+html[data-pnuevo] #btn-rapida { background: #fcd34d; color: #1c1917; }
+html[data-pnuevo] #filtros { padding-bottom: 12px; gap: 8px; scrollbar-width: none; }
+html[data-pnuevo] #filtros::-webkit-scrollbar { display: none; }
+html[data-pnuevo] #filtros button { padding: 7px 14px; font-size: 12.5px; }
+html[data-pnuevo] #filtros button.text-red-700 { background: #fff; color: #b91c1c; box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .6); }
+
+/* ---- Tarjetas de pedido: franja de color según estado ---- */
+html[data-pnuevo] #lista { gap: 16px; }
+html[data-pnuevo] #lista > article { border-radius: 18px; border-left-width: 6px; border-left-style: solid; transition: transform .15s ease, box-shadow .2s ease; }
+html[data-pnuevo] #lista > article:not(.ring-4) { border-color: var(--line); box-shadow: var(--shadow); }
+html[data-pnuevo] #lista > article[data-estado="nuevo"] { border-left-color: #16a34a; }
+html[data-pnuevo] #lista > article[data-estado="preparacion"] { border-left-color: #f59e0b; }
+html[data-pnuevo] #lista > article[data-estado="en_camino"] { border-left-color: #2563eb; }
+html[data-pnuevo] #lista > article[data-estado="entregado"] { border-left-color: #94a3b8; }
+html[data-pnuevo] #lista > article[data-estado="cancelado"] { border-left-color: #dc2626; }
+@media (hover: hover) {
+    html[data-pnuevo] #lista > article:hover { transform: translateY(-2px); }
+}
+html[data-pnuevo] #lista > article button[data-accion] { border-radius: 12px; }
+
+/* ---- Ingreso ---- */
+html[data-pnuevo] #login { background: radial-gradient(900px 480px at 50% -120px, rgba(220, 38, 38, .22), transparent 70%), var(--bg); }
+html[data-pnuevo] #login form { border-radius: 24px; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 28px; }
+html[data-pnuevo] #login h1 { font-size: 1.4rem; }
+
+/* ---- Escritorio: más aire y barra de herramientas ordenada ---- */
+@media (min-width: 900px) {
+    html[data-pnuevo] #header-panel > div { padding-top: 14px; padding-bottom: 10px; }
+    html[data-pnuevo] #header-panel > div > div:last-child { gap: 8px; }
+    html[data-pnuevo] #header-panel button { padding: 9px 14px; }
+    html[data-pnuevo] #panel > main { padding-top: 22px !important; }
+}
+
+/* ---- Celular y tablet chica: barra de acciones abajo ---- */
+@media (max-width: 899px) {
+    html[data-pnuevo] #header-panel > div { flex-wrap: nowrap; padding-top: 10px; padding-bottom: 4px; }
+    html[data-pnuevo] #header-panel > div > div:last-child {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; width: auto;
+        flex-wrap: nowrap; justify-content: flex-start; align-items: center; gap: 8px;
+        overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+        background: var(--dock); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+        border-top: 1px solid rgba(255, 255, 255, .09);
+    }
+    html[data-pnuevo] #header-panel > div > div:last-child::-webkit-scrollbar { display: none; }
+    html[data-pnuevo] #header-panel > div > div:last-child button { flex-shrink: 0; min-height: 46px; padding: 0 16px; font-size: 13px; border-radius: 14px; white-space: nowrap; }
+    html[data-pnuevo] #btn-rapida { order: 1; } html[data-pnuevo] #btn-nuevo { order: 2; } html[data-pnuevo] #btn-cocina { order: 3; }
+    html[data-pnuevo] #btn-caja { order: 4; } html[data-pnuevo] #btn-local { order: 5; } html[data-pnuevo] #btn-local-auto { order: 6; }
+    html[data-pnuevo] #btn-agotados { order: 7; } html[data-pnuevo] #btn-config { order: 8; } html[data-pnuevo] #btn-autoprint { order: 9; }
+    html[data-pnuevo] #btn-sonido { order: 10; } html[data-pnuevo] #btn-salir { order: 11; }
+    html[data-pnuevo] #panel { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+    html[data-pnuevo] #toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    html[data-pnuevo] #lista > article button[data-accion] { min-height: 44px; }
+    html[data-pnuevo] #nuevo-guardar { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---- Modo oscuro: etiquetas de colores legibles ---- */
+html[data-panel="oscuro"] .bg-green-100 { background-color: rgba(34, 197, 94, .18); }
+html[data-panel="oscuro"] .text-green-800, html[data-panel="oscuro"] .text-green-700 { color: #86efac; }
+html[data-panel="oscuro"] .bg-green-50 { background-color: rgba(34, 197, 94, .10); }
+html[data-panel="oscuro"] .bg-amber-100 { background-color: rgba(245, 158, 11, .18); }
+html[data-panel="oscuro"] .text-amber-800, html[data-panel="oscuro"] .text-amber-900 { color: #fcd34d; }
+html[data-panel="oscuro"] .bg-indigo-100 { background-color: rgba(99, 102, 241, .22); }
+html[data-panel="oscuro"] .text-indigo-800 { color: #c7d2fe; }
+html[data-panel="oscuro"] .bg-blue-100 { background-color: rgba(59, 130, 246, .22); }
+html[data-panel="oscuro"] .text-blue-800 { color: #bfdbfe; }
+html[data-panel="oscuro"] .bg-orange-100 { background-color: rgba(249, 115, 22, .20); }
+html[data-panel="oscuro"] .text-orange-800 { color: #fdba74; }
+html[data-panel="oscuro"] .bg-emerald-100 { background-color: rgba(16, 185, 129, .20); }
+html[data-panel="oscuro"] .text-emerald-800 { color: #6ee7b7; }
+html[data-panel="oscuro"] .bg-red-100, html[data-panel="oscuro"] .bg-red-50 { background-color: var(--accent-t); }
+html[data-panel="oscuro"] .bg-neutral-200 { background-color: var(--line); }
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-pnuevo] *, html[data-pnuevo] *::after { transition: none !important; animation: none !important; }
+}
+    </style>
+</head>
+<body class="bg-neutral-100 text-neutral-800 antialiased">
+
+    <!-- ===== Login ===== -->
+    <section id="login" class="min-h-screen flex items-center justify-center px-4">
+        <form id="form-login" class="w-full max-w-sm bg-white p-6 rounded-2xl shadow border border-neutral-200 space-y-4">
+            <h1 class="text-xl font-extrabold text-red-700 text-center">🍕 TPV Mi Barrio</h1>
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-1">Correo</label>
+                <input id="email" type="email" required autocomplete="username" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-1">Contraseña</label>
+                <input id="clave" type="password" required autocomplete="current-password" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500">
+            </div>
+            <p id="login-error" class="hidden text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2"></p>
+            <button type="submit" class="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded-xl transition">Entrar</button>
+        </form>
+    </section>
+
+    <!-- ===== Panel ===== -->
+    <section id="panel" class="hidden">
+        <header id="header-panel" class="bg-red-700 text-white shadow sticky top-0 z-20">
+            <div class="w-full max-w-[1800px] mx-auto px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                    <h1 id="titulo-panel" class="font-extrabold tracking-wide">🍕 Pedidos entrantes</h1>
+                    <p id="contador" class="text-xs opacity-90">Cargando...</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <button id="btn-local" type="button" class="hidden text-xs font-extrabold px-3 py-1.5 rounded-lg" title="Abrir o cerrar el local">...</button>
+                    <button id="btn-local-auto" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-2 py-1.5 rounded-lg" title="Volver al horario automático">↺ Auto</button>
+                    <button id="btn-autoprint" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Imprimir la comanda sola en este equipo cuando entra un pedido nuevo">🖨️ Auto</button>
+                    <button id="btn-agotados" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Marcar sabores agotados">🚫 Agotados</button>
+                    <button id="btn-config" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">⚙️ Config</button>
+                    <button id="btn-cocina" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">👨‍🍳 Cocina</button>
+                    <button id="btn-rapida" type="button" class="hidden text-xs bg-amber-300 text-neutral-900 hover:bg-amber-200 font-bold px-3 py-1.5 rounded-lg">⚡ Venta rápida</button>
+                    <button id="btn-nuevo" type="button" class="hidden text-xs bg-white text-red-700 hover:bg-red-50 font-bold px-3 py-1.5 rounded-lg">➕ Pedido</button>
+                    <button id="btn-caja" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">📊 Caja</button>
+                    <button id="btn-sonido" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">🔔 Sonido</button>
+                    <button id="btn-salir" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">Salir</button>
+                </div>
+            </div>
+            <!-- Filtros por estado (se ocultan si es delivery) -->
+            <nav id="filtros" class="w-full max-w-[1800px] mx-auto px-4 pb-3 flex gap-2 overflow-x-auto whitespace-nowrap"></nav>
+        </header>
+
+        <main class="w-full max-w-[1800px] mx-auto px-4 py-5 space-y-4">
+            <button id="aviso-sonido" type="button" class="hidden w-full text-sm font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">
+                🔕 Tocá acá para activar el aviso sonoro de pedidos nuevos
+            </button>
+            <p id="aviso-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></p>
+            <div id="lista"></div>
+        </main>
+    </section>
+
+    <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-neutral-900 text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg max-w-[90vw] text-center"></div>
+
+    <!-- ===== Nuevo pedido (mostrador / teléfono) ===== -->
+    <div id="modal-nuevo" class="hidden fixed inset-0 z-40 bg-black/50 overflow-y-auto">
+        <div class="max-w-2xl mx-auto min-h-screen bg-neutral-100">
+            <div class="sticky top-0 z-10 bg-neutral-900 text-white px-4 py-3 flex items-center justify-between">
+                <h2 class="font-extrabold">➕ Nuevo pedido</h2>
+                <button id="nuevo-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Cerrar</button>
+            </div>
+            <div class="px-4 py-5 space-y-4">
+                <p id="nuevo-ok" class="hidden text-sm font-bold text-green-800 bg-green-100 border border-green-300 rounded-xl px-4 py-3"></p>
+                <p id="nuevo-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></p>
+
+                <div id="nuevo-tipo" class="grid grid-cols-3 gap-2"></div>
+
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Cliente</div>
+                    <input id="nuevo-nombre" list="dl-nombres" autocomplete="off" type="text" maxlength="60" placeholder="Nombre (o mesa)" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                    <input id="nuevo-celular" list="dl-cels" autocomplete="off" type="tel" inputmode="tel" maxlength="20" placeholder="Celular (opcional) Ej. 0981 123 456" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                    <input id="nuevo-direccion" type="text" maxlength="500" placeholder="Dirección o link de Google Maps (obligatorio para delivery)" class="hidden w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                    <input id="nuevo-notas" type="text" maxlength="150" placeholder="Notas (opcional)" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                </div>
+
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Pizzas</div>
+                    <div id="nuevo-constructor" class="space-y-3"></div>
+                    <div id="nuevo-pizzas" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Extras</div>
+                    <div id="nuevo-extras" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Pago</div>
+                    <div id="nuevo-pago" class="flex flex-wrap gap-2"></div>
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500 pt-1">Cómo entra</div>
+                    <div id="nuevo-entrada" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div id="nuevo-envio-box" class="hidden bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">🛵 Costo de delivery</div>
+                    <div id="nuevo-envio" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                    <div class="flex items-center justify-between gap-3">
+                        <label for="nuevo-descuento" class="text-sm font-semibold">Descuento (Gs)</label>
+                        <input id="nuevo-descuento" type="number" inputmode="numeric" min="0" placeholder="0" class="w-32 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm text-right">
+                    </div>
+                    <div id="nuevo-total"></div>
+                </div>
+
+                <button id="nuevo-guardar" type="button" class="sticky bottom-3 shadow-lg w-full bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition">💾 Guardar pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Caja / Cierre diario (solo administrador) ===== -->
+    <div id="modal-caja" class="hidden fixed inset-0 z-40 bg-black/50 overflow-y-auto">
+        <div class="max-w-2xl mx-auto min-h-screen bg-neutral-100">
+            <div class="sticky top-0 z-10 bg-neutral-900 text-white">
+                <div class="px-4 py-3 flex items-center justify-between">
+                    <h2 class="font-extrabold">📊 Caja y cierres</h2>
+                    <button id="caja-cerrar-modal" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Volver</button>
+                </div>
+                <div class="px-4 pb-3 flex gap-2">
+                    <button type="button" data-tab="hoy" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Caja actual</button>
+                    <button type="button" data-tab="historial" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Historial de cierres</button>
+                    <button type="button" data-tab="clientes" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Clientes</button>
+                </div>
+            </div>
+            <div id="caja-contenido" class="px-4 py-5 space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- ===== Configuración ===== -->
+    <div id="modal-config" class="hidden fixed inset-0 z-40 bg-neutral-100 overflow-y-auto">
+        <header class="bg-neutral-900 text-white sticky top-0 z-20">
+            <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+                <h2 class="font-extrabold">⚙️ Configuración</h2>
+                <button id="cfg-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Volver al TPV</button>
+            </div>
+            <nav id="cfg-tabs" class="max-w-4xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto whitespace-nowrap"></nav>
+        </header>
+        <main id="cfg-vista" class="max-w-4xl mx-auto px-4 py-5 space-y-4"></main>
+    </div>
+
+    <!-- ===== Editar cliente ===== -->
+    <div id="modal-cliente" class="hidden fixed inset-0 z-50 bg-black/60 overflow-y-auto">
+        <div class="max-w-md mx-auto min-h-screen sm:min-h-0 sm:mt-8 bg-neutral-100 sm:rounded-2xl overflow-hidden">
+            <div class="bg-neutral-900 text-white px-4 py-3 flex items-center justify-between">
+                <h2 id="cli-titulo" class="font-extrabold">✏️ Editar cliente</h2>
+                <button id="cli-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Cerrar</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <p id="cli-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></p>
+                <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Nombre</label>
+                <input id="cli-nombre" type="text" maxlength="60" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
+                <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Celular</label>
+                <input id="cli-celular" type="tel" inputmode="tel" maxlength="20" placeholder="Ej. 0981 123 456" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
+                <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Ubicación (dirección o link de Google Maps)</label>
+                <input id="cli-direccion" type="text" maxlength="500" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
+                <button id="cli-guardar" type="button" class="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded-xl">💾 Guardar cliente</button>
+                <button id="cli-eliminar" type="button" class="hidden w-full bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2.5 rounded-xl text-sm">🗑️ Eliminar cliente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Pantalla de cocina ===== -->
+    <div id="vista-cocina" class="hidden fixed inset-0 z-30 bg-neutral-900 text-white overflow-y-auto">
+        <div class="sticky top-0 z-10 bg-black px-4 py-3 flex items-center justify-between">
+            <div><h2 class="font-extrabold text-lg">👨‍🍳 Cocina</h2><p id="cocina-cont" class="text-xs opacity-80"></p></div>
+            <button id="cocina-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Salir</button>
+        </div>
+        <div id="cocina-lista" class="p-3 grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div>
+    </div>
+
+    <!-- ===== Cobro (efectivo con vuelto, transferencia, POS) ===== -->
+    <div id="modal-agotados" class="hidden fixed inset-0 z-50 bg-black/60 overflow-y-auto">
+        <div class="max-w-lg mx-auto min-h-screen sm:min-h-0 sm:mt-8 bg-neutral-100 sm:rounded-2xl overflow-hidden">
+            <div class="bg-neutral-900 text-white px-4 py-3 flex items-center justify-between">
+                <h2 class="font-extrabold">🚫 Sabores agotados</h2>
+                <button id="agot-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Cerrar</button>
+            </div>
+            <div id="agot-cuerpo" class="p-4 space-y-4"></div>
+        </div>
+    </div>
+
+    <div id="modal-cobro" class="hidden fixed inset-0 z-50 bg-black/60 overflow-y-auto">
+        <div class="max-w-md mx-auto min-h-screen sm:min-h-0 sm:mt-8 bg-neutral-100 sm:rounded-2xl overflow-hidden">
+            <div class="bg-neutral-900 text-white px-4 py-3 flex items-center justify-between">
+                <h2 id="cobro-titulo" class="font-extrabold">💰 Cobrar</h2>
+                <button id="cobro-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Cerrar</button>
+            </div>
+            <div id="cobro-cuerpo" class="p-4 space-y-4"></div>
+        </div>
+    </div>
+
+    <datalist id="dl-nombres"></datalist><datalist id="dl-cels"></datalist>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBczdHiqe4fO6XThYRQky-WBlwgdhWDYCI",
+            authDomain: "mi-barrio-pedidos.firebaseapp.com",
+            projectId: "mi-barrio-pedidos",
+            storageBucket: "mi-barrio-pedidos.firebasestorage.app",
+            messagingSenderId: "495947210483",
+            appId: "1:495947210483:web:949ae24ccf15bd025a6186"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ===== Configuración =====
+        let NOMBRE_LOCAL = 'MI BARRIO';
+        const MIN_ATENCION = 15;   
+        const MIN_URGENTE = 30;    
+
+        const ESTADOS = {
+            nuevo:       { label: 'Nuevo',          badge: 'bg-green-600 text-white', siguiente: 'preparacion', btn: '👨‍🍳 Pasar a En preparación', anterior: null },
+            preparacion: { label: 'En preparación', badge: 'bg-amber-500 text-white', siguiente: 'en_camino',   btn: '🛵 Marcar En camino',        anterior: null },
+            en_camino:   { label: 'En camino',      badge: 'bg-blue-600 text-white',  siguiente: 'entregado',   btn: '✅ Marcar Entregado',         anterior: null },
+            entregado:   { label: 'Entregado',      badge: 'bg-neutral-500 text-white', siguiente: null,        btn: null,                          anterior: null },
+            cancelado:   { label: 'Cancelado',      badge: 'bg-red-600 text-white',   siguiente: null,          btn: null,                          anterior: null }
+        };
+        const ACTIVOS = ['nuevo', 'preparacion', 'en_camino'];
+        // Un pedido solo avanza o se cancela. No hay vuelta atrás y "cancelado" es definitivo.
+        const TRANSICIONES = {
+            nuevo:       ['preparacion', 'cancelado'],
+            preparacion: ['en_camino', 'entregado', 'cancelado'],
+            en_camino:   ['entregado', 'cancelado'],
+            entregado:   ['cancelado'],
+            cancelado:   []
+        };
+        const PAGOS = {
+            efectivo:      { label: 'Efectivo',      icono: '💵' },
+            transferencia: { label: 'Transferencia', icono: '🏦' },
+            pos:           { label: 'POS',           icono: '💳' }
+        };
+        const FILTROS = [
+            ['todos', 'Todos'], ['nuevo', 'Nuevos'], ['preparacion', 'En prep.'],
+            ['en_camino', 'En camino'], ['entregado', 'Entregados'], ['cancelado', 'Cancelados']
+        ];
+
+        const $ = (id) => document.getElementById(id);
+        let cancelarEscucha = null;
+        let pedidos = [];
+        let vistos = null;           
+        let recien = new Set();      
+        let filtro = 'todos';
+        let panelAbierto = false;
+        let esDelivery = false; 
+
+        // ===== Utilidades =====
+        function esc(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function gs(n) { return Number(n || 0).toLocaleString('es-PY') + ' Gs'; }
+        function estadoDe(p) { return ESTADOS[p.estado] ? p.estado : 'nuevo'; }
+        function creadoMs(p) { return p.creado && p.creado.toMillis ? p.creado.toMillis() : Date.now(); }
+        function fechaCorta(ms) {
+            return new Date(ms).toLocaleString('es-PY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+        function numeroCorto(p) { return p.numero ? '#' + p.numero : '#--'; }
+        // Celular -> 595981123456 (acepta 0981..., 981..., 595981..., +595 981...)
+        function waNumero(v) {
+            let d = String(v || '').replace(/\D/g, '');
+            if (d.startsWith('595')) d = d.slice(3);
+            d = d.replace(/^0+/, '');
+            return d ? '595' + d : '';
+        }
+        // Si la dirección trae un link (Google Maps, etc.) lo muestra como botón para abrirlo
+        function direccionHtml(txt) {
+            const t = String(txt || '');
+            const m = t.match(/((?:https?:\/\/|www\.)[^\s]+|(?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.com|google\.com\/maps)[^\s]*)/i);
+            if (!m) return `<div>📍 ${esc(t)}</div>`;
+            let url = m[1].replace(/[.,;)]+$/, '');
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            const resto = t.replace(m[1], '').trim();
+            return (resto ? `<div>📍 ${esc(resto)}</div>` : '') +
+                `<a href="${esc(url)}" target="_blank" rel="noopener" class="inline-block text-xs bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-lg hover:bg-red-200">🗺️ Abrir ubicación</a>`;
+        }
+        function msgCamino(p) {
+            const c = p.cliente || {};
+            let t = '¡Hola ' + (c.nombre || '') + '! Tu pedido ' + numeroCorto(p) + ' de Mi Barrio ya va en camino 🛵.';
+            if (p.pago === 'transferencia') t += ' Pago: transferencia.';
+            else if (p.pago === 'pos') t += ' Pago: POS (llevamos la máquina).';
+            else t += ' Total a abonar: ' + gs(p.total) + '.';
+            return t + ' ¡Gracias!';
+        }
+        function telBonito(v) {
+            const n = waNumero(v);
+            return n.length === 12 ? '+595 ' + n.slice(3, 6) + ' ' + n.slice(6, 9) + ' ' + n.slice(9) : String(v || '');
+        }
+        function mostrarError(msg) {
+            const av = $('aviso-error');
+            av.textContent = msg;
+            av.classList.remove('hidden');
+        }
+        function hace(ms) {
+            const m = Math.floor((Date.now() - ms) / 60000);
+            if (m < 1) return 'Hace menos de 1 min';
+            if (m < 60) return 'Hace ' + m + ' min';
+            const h = Math.floor(m / 60), r = m % 60;
+            if (h < 24) return 'Hace ' + h + ' h' + (r ? ' ' + r + ' min' : '');
+            const d = Math.floor(h / 24);
+            return 'Hace ' + d + (d === 1 ? ' día' : ' días');
+        }
+        function claseTiempo(ms) {
+            const m = (Date.now() - ms) / 60000;
+            if (m >= MIN_URGENTE) return 'bg-red-100 text-red-700';
+            if (m >= MIN_ATENCION) return 'bg-amber-100 text-amber-700';
+            return 'bg-green-100 text-green-700';
+        }
+
+        // ===== Aviso sonoro =====
+        let audioCtx = null;
+        let sonidoActivo = true;
+        try { sonidoActivo = localStorage.getItem('sonidoActivo') !== '0'; } catch (e) {}
+
+        function obtenerAudio() {
+            if (!audioCtx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) {
+                    audioCtx = new AC();
+                    audioCtx.onstatechange = actualizarAvisoSonido;
+                }
+            }
+            return audioCtx;
+        }
+        async function desbloquearAudio() {
+            const ctx = obtenerAudio();
+            if (ctx && ctx.state === 'suspended') {
+                try { await ctx.resume(); } catch (e) {}
+            }
+            actualizarAvisoSonido();
+        }
+        function actualizarAvisoSonido() {
+            const btn = $('btn-sonido');
+            btn.textContent = sonidoActivo ? '🔔 Sonido: sí' : '🔕 Sonido: no';
+            const bloqueado = sonidoActivo && (!audioCtx || audioCtx.state !== 'running');
+            $('aviso-sonido').classList.toggle('hidden', !(bloqueado && panelAbierto));
+        }
+        function tono(ctx, freq, inicio, dur) {
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            g.gain.setValueAtTime(0.0001, inicio);
+            g.gain.exponentialRampToValueAtTime(0.5, inicio + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, inicio + dur);
+            osc.connect(g);
+            g.connect(ctx.destination);
+            osc.start(inicio);
+            osc.stop(inicio + dur + 0.05);
+        }
+        function sonarAlerta(forzar) {
+            if (!sonidoActivo && !forzar) return;
+            const ctx = obtenerAudio();
+            if (!ctx || ctx.state !== 'running') return;
+            const t = ctx.currentTime + 0.05;
+            for (let i = 0; i < 3; i++) {
+                tono(ctx, 880, t + i * 0.9, 0.35);
+                tono(ctx, 1174.66, t + i * 0.9 + 0.4, 0.45);
+            }
+        }
+        document.addEventListener('pointerdown', desbloquearAudio);
+        document.addEventListener('keydown', desbloquearAudio);
+        $('aviso-sonido').addEventListener('click', desbloquearAudio);
+        $('btn-sonido').addEventListener('click', async () => {
+            sonidoActivo = !sonidoActivo;
+            try { localStorage.setItem('sonidoActivo', sonidoActivo ? '1' : '0'); } catch (e) {}
+            await desbloquearAudio();
+            if (sonidoActivo) sonarAlerta(true);
+            actualizarAvisoSonido();
+        });
+
+        let wakeLock = null;
+        async function mantenerPantalla() {
+            try {
+                if ('wakeLock' in navigator && panelAbierto) wakeLock = await navigator.wakeLock.request('screen');
+            } catch (e) {}
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') mantenerPantalla();
+        });
+
+        // ===== Login =====
+        $('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const err = $('login-error');
+            err.classList.add('hidden');
+            desbloquearAudio();
+            try {
+                await signInWithEmailAndPassword(auth, $('email').value.trim(), $('clave').value);
+            } catch (ex) {
+                err.textContent = 'No se pudo entrar. Revisá el correo y la contraseña.';
+                err.classList.remove('hidden');
+            }
+        });
+        $('btn-salir').addEventListener('click', () => signOut(auth));
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                panelAbierto = true;
+                const emailUsuario = user.email.toLowerCase();
+                esDelivery = emailUsuario.includes('delivery');
+                $('btn-caja').classList.toggle('hidden', esDelivery);
+                $('btn-nuevo').classList.toggle('hidden', esDelivery);
+                $('btn-rapida').classList.toggle('hidden', esDelivery);
+                $('btn-cocina').classList.toggle('hidden', esDelivery);
+                $('btn-config').classList.toggle('hidden', esDelivery);
+                $('btn-local').classList.toggle('hidden', esDelivery);
+                $('btn-autoprint').classList.toggle('hidden', esDelivery);
+                $('btn-agotados').classList.toggle('hidden', esDelivery);
+
+                if (esDelivery) {
+                    $('header-panel').className = 'bg-neutral-800 text-white shadow sticky top-0 z-20';
+                    $('titulo-panel').textContent = '🛵 Pedidos En Camino (Delivery)';
+                    $('filtros').classList.add('hidden'); // Ocultar filtros para el repartidor
+                } else {
+                    $('header-panel').className = 'bg-red-700 text-white shadow sticky top-0 z-20';
+                    $('titulo-panel').textContent = '🍕 Pedidos entrantes';
+                    $('filtros').classList.remove('hidden');
+                }
+
+                $('login').classList.add('hidden');
+                $('panel').classList.remove('hidden');
+                actualizarAvisoSonido();
+                mantenerPantalla();
+                escucharPedidos();
+                if (!esDelivery) { escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); pintarAutoprint(); }
+            } else {
+                panelAbierto = false;
+                esDelivery = false;
+                if (cancelarEscucha) { cancelarEscucha(); cancelarEscucha = null; }
+                if (cancelarGastos) { cancelarGastos(); cancelarGastos = null; }
+                if (cancelarClientes) { cancelarClientes(); cancelarClientes = null; }
+                if (cancelarFondo) { cancelarFondo(); cancelarFondo = null; }
+                if (cancelarLocal) { cancelarLocal(); cancelarLocal = null; }
+                colaComanda.clear();
+                fondo = 0; cobro = null; $('modal-cobro').classList.add('hidden'); $('vista-cocina').classList.add('hidden');
+                clientesMem = [];
+                gastos = [];
+                if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+                pedidos = []; vistos = null; recien = new Set(); filtro = 'todos';
+                $('lista').innerHTML = '';
+                $('panel').classList.add('hidden');
+                $('modal-caja').classList.add('hidden');
+                $('modal-nuevo').classList.add('hidden'); $('modal-config').classList.add('hidden');
+                $('login').classList.remove('hidden');
+                $('clave').value = '';
+                document.title = 'Panel de pedidos - Mi Barrio';
+            }
+        });
+
+
+        // ===== Horario del local (la misma lógica la usa la página de pedidos) =====
+        const TZ_LOCAL = 'America/Asuncion';
+        const DIAS_N = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        function pyAhora(ms) {
+            const p = new Intl.DateTimeFormat('en-US', { timeZone: TZ_LOCAL, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date(ms));
+            const g = (t) => (p.find(x => x.type === t) || {}).value;
+            return { dia: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g('weekday')), min: (Number(g('hour')) % 24) * 60 + Number(g('minute')) };
+        }
+        function aMin(t) { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
+        function abiertoHorario(h, dia, min) {
+            for (const t of ((h && h[dia]) || [])) {
+                const a = aMin(t.a), c = aMin(t.c);
+                if (a === null || c === null || a === c) continue;
+                if (a < c ? (min >= a && min < c) : (min >= a)) return true;
+            }
+            for (const t of ((h && h[(dia + 6) % 7]) || [])) {   // turno de ayer que cierra después de medianoche
+                const a = aMin(t.a), c = aMin(t.c);
+                if (a === null || c === null || a === c) continue;
+                if (a > c && min < c) return true;
+            }
+            return false;
+        }
+        function hayHorarios(h) {
+            return !!h && Object.values(h).some(arr => (arr || []).some(t => aMin(t.a) !== null && aMin(t.c) !== null && aMin(t.a) !== aMin(t.c)));
+        }
+        // Próximo momento en que el horario cambia de abierto a cerrado o al revés
+        function proximoCambio(h, desde) {
+            const b = pyAhora(desde), base = Math.floor(desde / 60000) * 60000;
+            const actual = abiertoHorario(h, b.dia, b.min);
+            for (let k = 1; k <= 8 * 1440; k++) {
+                const t = b.min + k;
+                const ab = abiertoHorario(h, (b.dia + Math.floor(t / 1440)) % 7, t % 1440);
+                if (ab !== actual) return { ms: base + k * 60000, abre: ab };
+            }
+            return null;
+        }
+        function normLocal(d) {
+            d = d || {};
+            return {
+                auto: !!d.auto,
+                manual: (d.manual === 'abierto' || d.manual === 'cerrado') ? d.manual : null,
+                manualHasta: Number(d.manualHasta) || null,
+                horarios: d.horarios || {},
+                mensaje: d.mensaje || '',
+                agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
+                tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico'
+            };
+        }
+        // Estado real ahora: el botón manual manda hasta el próximo cambio del horario
+        function estadoLocal(cfg, ahora) {
+            cfg = cfg || {};
+            if (cfg.manual && (!cfg.manualHasta || ahora < cfg.manualHasta)) return { abierto: cfg.manual === 'abierto', modo: 'manual', hasta: cfg.manualHasta || null };
+            if (cfg.auto && hayHorarios(cfg.horarios)) { const b = pyAhora(ahora); return { abierto: abiertoHorario(cfg.horarios, b.dia, b.min), modo: 'auto', hasta: null }; }
+            return { abierto: true, modo: 'libre', hasta: null };
+        }
+        function fmtHora(ms) { return new Intl.DateTimeFormat('es-PY', { timeZone: TZ_LOCAL, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ms)); }
+        function textoApertura(cfg, ahora) {
+            if (!cfg || !cfg.auto || !hayHorarios(cfg.horarios)) return '';
+            let desde = ahora;
+            if (cfg.manual && cfg.manualHasta && cfg.manualHasta > ahora) desde = cfg.manualHasta;
+            let cuando = desde;
+            const b0 = pyAhora(desde);
+            if (!abiertoHorario(cfg.horarios, b0.dia, b0.min)) { const c = proximoCambio(cfg.horarios, desde); if (!c) return ''; cuando = c.ms; }
+            const a = pyAhora(ahora), b = pyAhora(cuando), dif = (b.dia - a.dia + 7) % 7;
+            return 'Abrimos ' + (dif === 0 ? 'hoy' : dif === 1 ? 'mañana' : 'el ' + DIAS_N[b.dia].toLowerCase()) + ' a las ' + fmtHora(cuando);
+        }
+
+        let localCfg = normLocal({});
+        let cancelarLocal = null;
+
+        function pintarLocal() {
+            if (esDelivery || !panelAbierto) return;
+            const e = estadoLocal(localCfg, Date.now());
+            const sub = e.modo === 'manual' ? 'Manual' + (e.hasta ? ' · hasta ' + fmtHora(e.hasta) : '') : (e.modo === 'auto' ? 'Automático' : 'Sin horario');
+            const b = $('btn-local');
+            b.className = 'text-xs font-extrabold px-3 py-1.5 rounded-lg leading-tight text-left text-white ring-2 ring-white/70 ' + (e.abierto ? 'bg-green-600 hover:bg-green-700' : 'bg-neutral-900 hover:bg-black');
+            b.innerHTML = (e.abierto ? '🟢 ABIERTO' : '🔴 CERRADO') + '<span class="block text-[10px] font-semibold opacity-80">' + esc(sub) + '</span>';
+            $('btn-local-auto').classList.toggle('hidden', !(e.modo === 'manual' && localCfg.auto && hayHorarios(localCfg.horarios)));
+            const nAg = localCfg.agotados.length;
+            $('btn-agotados').textContent = '🚫 Agotados' + (nAg ? ' (' + nAg + ')' : '');
+            $('btn-agotados').className = 'text-xs font-bold px-3 py-1.5 rounded-lg ' + (nAg ? 'bg-amber-300 text-neutral-900 hover:bg-amber-200' : 'bg-white/20 hover:bg-white/30');
+            if (!$('modal-agotados').classList.contains('hidden')) pintarAgotados();
+            if (window.refrescarHorarioUI) window.refrescarHorarioUI();
+        }
+        function escucharLocal() {
+            if (cancelarLocal) cancelarLocal();
+            cancelarLocal = onSnapshot(doc(db, 'config', 'local'), (s) => {
+                localCfg = normLocal(s.exists() ? s.data() : {});
+                pintarLocal();
+            }, () => {});
+        }
+        // quiere: 'abierto' | 'cerrado' | null (volver al horario automático)
+        async function ponerLocalManual(quiere) {
+            const ahora = Date.now();
+            let manual = quiere, hasta = null;
+            if (quiere && localCfg.auto && hayHorarios(localCfg.horarios)) {
+                const b = pyAhora(ahora);
+                if ((quiere === 'abierto') === abiertoHorario(localCfg.horarios, b.dia, b.min)) manual = null;   // coincide con el horario: no hace falta forzar nada
+                else { const c = proximoCambio(localCfg.horarios, ahora); hasta = c ? c.ms : null; }
+            }
+            try {
+                await setDoc(doc(db, 'config', 'local'), { manual: manual, manualHasta: hasta, actualizado: serverTimestamp() }, { merge: true });
+                mostrarToast(quiere === null ? '↺ Volvió al horario automático' : (quiere === 'abierto' ? '🟢 Local ABIERTO' : '🔴 Local CERRADO'));
+            } catch (e) {
+                mostrarError('No se pudo cambiar el estado del local: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas nuevas (reglas_firestore.txt).' : e.message));
+            }
+        }
+        $('btn-local').addEventListener('click', () => {
+            if (esDelivery) return;
+            const quiere = estadoLocal(localCfg, Date.now()).abierto ? 'cerrado' : 'abierto';
+            if (quiere === 'cerrado' && !confirm('¿Cerrar el local ahora?\n\nLa página de pedidos le va a mostrar a los clientes que estamos cerrados y no van a poder pedir.')) return;
+            ponerLocalManual(quiere);
+        });
+        $('btn-local-auto').addEventListener('click', () => ponerLocalManual(null));
+        setInterval(pintarLocal, 20000);
+
+        // ===== Sabores agotados (se guardan en config/local y la página de pedidos los bloquea al instante) =====
+        function pintarAgotados() {
+            const cont = $('agot-cuerpo');
+            if (!cont) return;
+            const ag = new Set(localCfg.agotados);
+            const cats = [['gourmet', '⭐ Gourmet'], ['especial', '✨ Especiales'], ['clasico', '🍃 Clásicos']];
+            cont.innerHTML = '<p class="text-sm text-neutral-600">Tocá un sabor para marcarlo como agotado. En la página de pedidos aparece bloqueado y nadie lo puede elegir. Se aplica al instante; volvé a tocarlo para habilitarlo.</p>'
+                + cats.map(([c, n]) => `<div><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">${n}</div><div class="flex flex-wrap gap-2">${((MENU.sabores && MENU.sabores[c]) || []).map(s => `<button type="button" data-agot="${esc(s)}" class="text-sm font-bold px-3 py-2 rounded-xl border ${ag.has(s) ? 'bg-red-600 text-white border-red-700 line-through' : 'bg-white border-neutral-300 hover:bg-neutral-50'}">${ag.has(s) ? '🚫 ' : ''}${esc(s)}</button>`).join('')}</div></div>`).join('')
+                + (ag.size ? '<button type="button" id="agot-limpiar" class="w-full text-sm font-bold bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl">✅ Habilitar todos de nuevo</button>' : '');
+        }
+        async function guardarAgotados(lista) {
+            try { await setDoc(doc(db, 'config', 'local'), { agotados: lista, actualizado: serverTimestamp() }, { merge: true }); }
+            catch (e) { mostrarError('No se pudo guardar los sabores agotados: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas (reglas_firestore.txt).' : e.message)); }
+        }
+        $('btn-agotados').addEventListener('click', () => { if (esDelivery) return; $('modal-agotados').classList.remove('hidden'); pintarAgotados(); });
+        $('agot-cerrar').addEventListener('click', () => $('modal-agotados').classList.add('hidden'));
+        $('modal-agotados').addEventListener('click', (e) => {
+            const b = e.target.closest('button');
+            if (!b) { if (e.target === $('modal-agotados')) $('modal-agotados').classList.add('hidden'); return; }
+            if (b.dataset.agot) {
+                const s = b.dataset.agot, set = new Set(localCfg.agotados);
+                if (set.has(s)) set.delete(s); else set.add(s);
+                guardarAgotados([...set]);
+            } else if (b.id === 'agot-limpiar') guardarAgotados([]);
+        });
+
+        // ===== Comanda de cocina automática =====
+        // Solo se imprime en los equipos que tienen el botón "Auto" en ON (por defecto: solo PC).
+        // Cada pedido se marca como impreso en la base de datos, así que no sale dos veces aunque haya dos pantallas abiertas.
+        const colaComanda = new Map();   // id del pedido -> momento en que llegó
+        let autoImprimir = (() => {
+            try { const v = localStorage.getItem('autoComanda'); if (v === '1') return true; if (v === '0') return false; } catch (e) {}
+            return window.innerWidth >= 1024;
+        })();
+        let procesandoComandas = false;
+        function pintarAutoprint() {
+            const b = $('btn-autoprint');
+            b.textContent = autoImprimir ? '🖨️ Auto: ON' : '🖨️ Auto: OFF';
+            b.className = (esDelivery ? 'hidden ' : '') + 'text-xs font-bold px-3 py-1.5 rounded-lg ' + (autoImprimir ? 'bg-amber-300 text-neutral-900 hover:bg-amber-200' : 'bg-white/20 hover:bg-white/30');
+        }
+        $('btn-autoprint').addEventListener('click', () => {
+            autoImprimir = !autoImprimir;
+            try { localStorage.setItem('autoComanda', autoImprimir ? '1' : '0'); } catch (e) {}
+            if (!autoImprimir) colaComanda.clear();
+            pintarAutoprint();
+            mostrarToast(autoImprimir ? '🖨️ La comanda se imprime sola en este equipo' : '🖨️ Impresión automática apagada en este equipo');
+        });
+        async function procesarColaComandas() {
+            if (!autoImprimir || esDelivery) { colaComanda.clear(); return; }
+            if (procesandoComandas) return;
+            procesandoComandas = true;
+            try {
+                for (const [id, desde] of [...colaComanda]) {
+                    const ped = pedidos.find(x => x.id === id);
+                    if (!ped || ped.comandaImpresa) { colaComanda.delete(id); continue; }
+                    if (!ped.numero && Date.now() - desde < 8000) continue;   // espera a que le asignen el número
+                    colaComanda.delete(id);
+                    let numero = ped.numero;
+                    let ganado = false;
+                    try {
+                        ganado = await runTransaction(db, async (tx) => {
+                            const r = doc(db, 'pedidos', id);
+                            const d = await tx.get(r);
+                            if (!d.exists() || d.data().comandaImpresa) return false;
+                            tx.update(r, { comandaImpresa: true });
+                            numero = d.data().numero || numero;
+                            return true;
+                        });
+                    } catch (e) {
+                        mostrarError('No se pudo imprimir la comanda automática: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas nuevas.' : e.message));
+                    }
+                    if (ganado) imprimirComandaAuto({ ...ped, numero: numero });
+                }
+            } finally { procesandoComandas = false; }
+            if (colaComanda.size) setTimeout(procesarColaComandas, 2000);
+        }
+
+        // ===== Pedidos en vivo =====
+        function escucharPedidos() {
+            const q = query(collection(db, 'pedidos'), orderBy('creado', 'desc'), limit(300));
+            cancelarEscucha = onSnapshot(q, (snap) => {
+                $('aviso-error').classList.add('hidden');
+                pedidos = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })).filter(p => p.estado !== 'archivado');
+
+                if (vistos !== null && !esDelivery) {
+                    pedidos.forEach(x => { if (!vistos.has(x.id) && !x.comandaImpresa && x.estado !== 'cancelado' && x.estado !== 'archivado') colaComanda.set(x.id, Date.now()); });
+                }
+                if (vistos !== null) {
+                    const llegaron = pedidos.filter(p => !vistos.has(p.id) && !propios.has(p.id));
+                    if (llegaron.length) {
+                        llegaron.forEach(p => recien.add(p.id));
+                        sonarAlerta();
+                        setTimeout(() => { recien = new Set(); render(); }, 10000);
+                    }
+                }
+                vistos = new Set(pedidos.map(p => p.id));
+                asignarNumeros();
+                render();
+                refrescarCaja();
+                procesarColaComandas();
+            }, (error) => {
+                mostrarError(error.code === 'permission-denied'
+                    ? 'Este usuario no tiene permiso para ver los pedidos.'
+                    : 'No se pudieron cargar los pedidos: ' + error.message);
+            });
+        }
+
+        async function cambiarEstado(id, estado) {
+            if (esDelivery) return;
+            const actual = pedidos.find(x => x.id === id);
+            if (!actual || !(TRANSICIONES[estadoDe(actual)] || []).includes(estado)) {
+                mostrarError('Ese cambio no está permitido: un pedido no puede volver atrás, solo avanzar o cancelarse.');
+                return;
+            }
+            try {
+                await updateDoc(doc(db, 'pedidos', id), { estado: estado, estadoActualizado: serverTimestamp() });
+            } catch (e) {
+                mostrarError('No se pudo cambiar el estado: ' + e.message);
+            }
+        }
+
+        async function cambiarPago(id, pago) {
+            if (esDelivery) return;
+            try {
+                await updateDoc(doc(db, 'pedidos', id), { pago: pago });
+            } catch (e) {
+                mostrarError('No se pudo guardar la forma de pago: ' + e.message);
+            }
+        }
+
+        $('filtros').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-filtro]');
+            if (!b) return;
+            filtro = b.dataset.filtro;
+            render();
+        });
+
+        $('lista').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-accion]');
+            if (!b) return;
+            const p = pedidos.find(x => x.id === b.dataset.id);
+            if (!p) return;
+            const acc = b.dataset.accion;
+            if (acc === 'toggle') {
+                if (abiertos.has(p.id)) abiertos.delete(p.id); else abiertos.add(p.id);
+                render();
+            } else if (acc === 'estado') {
+                if (!esDelivery) cambiarEstado(p.id, b.dataset.estado);
+            } else if (acc === 'pago') {
+                if (!esDelivery) cambiarPago(p.id, b.dataset.pago === p.pago ? null : b.dataset.pago);
+            } else if (acc === 'imprimir') {
+                imprimirTicket(p);
+            } else if (acc === 'agregar') {
+                if (!esDelivery) abrirAgregar(p);
+            } else if (acc === 'comanda') {
+                imprimirComanda(p);
+            } else if (acc === 'cobrar') {
+                if (!esDelivery) abrirCobro(p);
+            } else if (acc === 'cancelar') {
+                if (!esDelivery) {
+                    const nombre = (p.cliente && p.cliente.nombre) || 'este cliente';
+                    const aviso = estadoDe(p) === 'entregado'
+                        ? '\n\nEste pedido ya figura como ENTREGADO: al cancelarlo deja de sumar en la caja.'
+                        : '';
+                    if (confirm('¿Cancelar el pedido de ' + nombre + '?' + aviso + '\n\nQuedará en la pestaña "Cancelados" y no se puede deshacer.')) {
+                        cambiarEstado(p.id, 'cancelado');
+                    }
+                }
+            }
+        });
+
+        function imprimirTicket(p) {
+            const c = p.cliente || {};
+            const ms = creadoMs(p);
+            const pizzas = (p.pizzas || []).map((z, i) => `
+                <div class="item">
+                    <div class="t">PIZZA ${i + 1} - ${esc(z.nombre)}</div>
+                    <div>${esc((z.sabores || []).join(' / '))}</div>
+                    ${z.borde ? '<div class="b">** BORDE RELLENO **</div>' : ''}
+                    <div class="r">${gs(z.precio)}</div>
+                </div>`).join('');
+            const extras = (p.extras || []).map(x => `<div>+ ${esc(x.item)} x${esc(x.cantidad)}</div>`).join('');
+            const gps = (c.lat && c.lng) ? `<div>GPS: ${esc(Number(c.lat).toFixed(5))}, ${esc(Number(c.lng).toFixed(5))}</div>` : '';
+
+            const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Ticket ${esc(numeroCorto(p))}</title>
+<style>
+  @page { size: 80mm auto; margin: 3mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Courier New", Courier, monospace; font-size: 12px; width: 72mm; margin: 0 auto; color: #000; }
+  .c { text-align: center; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  .n { font-size: 20px; font-weight: bold; }
+  hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+  .item { margin-bottom: 6px; }
+  .t { font-weight: bold; font-size: 13px; }
+  .b { font-weight: bold; }
+  .r { text-align: right; }
+  .total { font-size: 16px; font-weight: bold; text-align: right; }
+  .sm { font-size: 10px; }
+  @media screen { body { padding: 10px; } }
+</style></head>
+<body>
+  <div class="c"><h1>${esc(NOMBRE_LOCAL)}</h1><div class="n">PEDIDO ${esc(numeroCorto(p))}</div><div>${esc(fechaCorta(ms))}</div>${TIPOS[p.tipo] ? `<div class="b">** ${esc(TIPOS[p.tipo].label.toUpperCase())} **</div>` : ''}</div>
+  <hr>
+  <div><strong>${esc(c.nombre)}</strong></div>
+  ${c.celular ? `<div>Tel: <strong>${esc(telBonito(c.celular))}</strong></div>` : ''}
+  ${c.direccion ? `<div style="word-break:break-all">${esc(c.direccion)}</div>` : ''}
+  ${c.notas ? `<div>NOTA: ${esc(c.notas)}</div>` : ''}
+  ${gps}
+  <hr>
+  ${pizzas}
+  ${extras ? '<hr>' + extras : ''}
+  ${p.costoDelivery ? `<div>+ DELIVERY<div class="r">${gs(p.costoDelivery)}</div></div>` : ''}
+  <hr>
+  <div class="total">TOTAL: ${gs(p.total)}</div>
+  ${PAGOS[p.pago] ? `<div>Pago: ${esc(PAGOS[p.pago].label)}</div>` : ''}${p.recibido ? `<div>Recibido: ${gs(p.recibido)}</div><div>Vuelto: ${gs(p.vuelto || 0)}</div>` : ''}
+  <hr>
+  <div class="c sm">Impreso ${esc(fechaCorta(Date.now()))}</div>
+  <script>window.onload = function () { window.focus(); window.print(); };
+  window.onafterprint = function () { window.close(); };<\/script>
+</body></html>`;
+
+            const w = window.open('', '_blank', 'width=420,height=640');
+            if (!w) {
+                mostrarError('El navegador bloqueó la ventana de impresión.');
+                return;
+            }
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+        }
+
+        function actualizarFiltros() {
+            if (esDelivery) {
+                const enCamino = pedidos.filter(p => estadoDe(p) === 'en_camino').length;
+                $('contador').textContent = enCamino === 0 
+                    ? 'No tenés entregas pendientes' 
+                    : enCamino + ' pedido(s) listo(s) para entregar';
+                return;
+            }
+
+            const cuenta = { todos: 0 };
+            Object.keys(ESTADOS).forEach(k => cuenta[k] = 0);
+            pedidos.forEach(p => {
+                const e = estadoDe(p);
+                cuenta[e]++;
+                if (e !== 'cancelado') cuenta.todos++;
+            });
+            $('filtros').innerHTML = FILTROS.map(([clave, texto]) => {
+                const activo = clave === filtro;
+                return `<button type="button" data-filtro="${clave}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition ${activo ? 'bg-white text-red-700' : 'bg-white/20 text-white hover:bg-white/30'}">${texto} <span class="opacity-80">${cuenta[clave]}</span></button>`;
+            }).join('');
+
+            const nuevos = cuenta.nuevo;
+            const activos = cuenta.nuevo + cuenta.preparacion + cuenta.en_camino;
+            $('contador').textContent = pedidos.length === 0
+                ? 'Todavía no hay pedidos'
+                : activos + ' en curso · ' + nuevos + ' nuevo' + (nuevos === 1 ? '' : 's');
+            document.title = (nuevos > 0 ? '(' + nuevos + ') ' : '') + 'Pedidos - Mi Barrio';
+        }
+
+        const abiertos = new Set();   // pedidos desplegados (por defecto todos resumidos)
+
+        function tarjeta(p) {
+            const c = p.cliente || {};
+            const e = estadoDe(p);
+            const info = ESTADOS[e];
+            const ms = creadoMs(p);
+            const activo = ACTIVOS.includes(e);
+            const nuevoAviso = recien.has(p.id);
+
+            const pizzas = (p.pizzas || []).map((z, i) => `
+                <div class="bg-neutral-50 rounded-xl px-3 py-2 text-sm">
+                    <div class="font-bold">🍕 Pizza ${i + 1} – ${esc(z.nombre)}</div>
+                    <div class="text-neutral-700">${esc((z.sabores || []).join(', '))}${z.borde ? ' · <strong>Borde relleno</strong>' : ''}</div>
+                    <div class="text-xs text-neutral-500">${gs(z.precio)}</div>
+                </div>`).join('');
+            const extras = (p.extras || []).map(x => `<li>${esc(x.item)} x${esc(x.cantidad)}</li>`).join('');
+            const lt = Number(c.lat), ln = Number(c.lng);
+            const enMsg = (String(p.mensaje || '').match(/https?:\/\/(?:maps\.google\.com|www\.google\.com\/maps|maps\.app\.goo\.gl|goo\.gl\/maps)[^\s*]*/i) || [])[0] || '';
+            const mapa = /^https?:\/\//i.test(c.mapa || '') ? c.mapa
+                : (Number.isFinite(lt) && Number.isFinite(ln) && (lt || ln) ? `https://maps.google.com/?q=${lt},${ln}` : enMsg);
+            const idAttr = esc(p.id);
+
+            const sinReparto = p.tipo === 'retiro' || p.tipo === 'local';
+            let sig = info.siguiente, btnSig = info.btn, ant = info.anterior;
+            if (sinReparto) {
+                if (e === 'preparacion') { sig = 'entregado'; btnSig = '✅ Marcar Entregado'; }
+            }
+            let botones = '';
+            if (!esDelivery) {
+                if (sig) {
+                    botones += `<button type="button" data-accion="estado" data-estado="${sig}" data-id="${idAttr}" class="flex-1 min-w-[10rem] bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 rounded-xl active:scale-[0.98] transition">${btnSig}</button>`;
+                }
+                if (ant) {
+                    botones += `<button type="button" data-accion="estado" data-estado="${ant}" data-id="${idAttr}" class="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold px-3 py-2.5 rounded-xl">⬅ ${esc(ESTADOS[ant].label)}</button>`;
+                }
+            }
+            
+            botones += `<button type="button" data-accion="imprimir" data-id="${idAttr}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-3 py-2.5 rounded-xl">🖨️ Ticket</button>`;
+            botones += `<button type="button" data-accion="comanda" data-id="${idAttr}" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold px-3 py-2.5 rounded-xl">🍳 Comanda</button>`;
+            if (!esDelivery && e !== 'cancelado' && !p.pagado) botones += `<button type="button" data-accion="agregar" data-id="${idAttr}" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-3 py-2.5 rounded-xl">➕ Agregar</button>`;
+            if (!esDelivery && e !== 'cancelado' && !p.pagado) {
+                botones = `<button type="button" data-accion="cobrar" data-id="${idAttr}" class="flex-1 min-w-[10rem] bg-neutral-900 hover:bg-black text-white font-bold text-sm py-2.5 rounded-xl active:scale-[0.98] transition">💰 Cobrar ${gs(p.total)}</button>` + botones;
+            }
+
+            if (e === 'en_camino' && c.celular) {
+                botones += `<a href="https://wa.me/${esc(waNumero(c.celular))}?text=${encodeURIComponent(msgCamino(p))}" target="_blank" rel="noopener" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-3 py-2.5 rounded-xl">💬 Avisar: va en camino</a>`;
+            }
+
+            const pagoActual = PAGOS[p.pago] ? p.pago : '';
+            let pagoHtml = '';
+            if (!esDelivery && e !== 'cancelado') {
+                pagoHtml = `<div class="flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold text-neutral-500">Pago:</span>` +
+                    Object.entries(PAGOS).map(([k, v]) => `<button type="button" data-accion="pago" data-pago="${k}" data-id="${idAttr}" class="text-xs font-bold px-2.5 py-1 rounded-lg ${pagoActual === k ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}">${v.icono} ${v.label}</button>`).join('') + `</div>`;
+            } else if (esDelivery && pagoActual) {
+                pagoHtml = `<div class="text-sm font-bold">${PAGOS[pagoActual].icono} Pago: ${PAGOS[pagoActual].label}</div>`;
+            }
+
+            if (!esDelivery) {
+                if (e !== 'cancelado') {
+                    botones += `<button type="button" data-accion="cancelar" data-id="${idAttr}" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2.5 rounded-xl">✖ Cancelar</button>`;
+                }
+            }
+
+            if (p.pagado) pagoHtml += cobroInfoHtml(p);
+            const abierto = abiertos.has(p.id);
+            const tipoInfo = TIPOS[p.tipo] || TIPOS.delivery;
+            const origenTxt = (!sinReparto && p.origen === 'panel') ? ' · teléfono' : '';
+
+            return `
+            <article data-estado="${e}" class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
+                <div data-accion="toggle" data-id="${idAttr}" class="flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer select-none">
+                    <div class="min-w-0 flex items-center gap-2 flex-wrap">
+                        <span class="inline-block text-xs font-black px-2 py-0.5 rounded-lg bg-neutral-900 text-white">${esc(numeroCorto(p))}</span>
+                        <span class="font-extrabold truncate max-w-[11rem]">${esc(c.nombre)}</span>
+                        <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">${tipoInfo.icono} ${esc(tipoInfo.label.toUpperCase())}${origenTxt}</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
+                        ${p.pagado ? '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">✅ PAGADO</span>' : (e !== 'cancelado' && !esDelivery ? '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">💰 POR COBRAR</span>' : '')}
+                        <span class="text-neutral-400 text-xs">${abierto ? '▲' : '▼'}</span>
+                    </div>
+                </div>
+                <div class="${abierto ? '' : 'hidden'} px-4 pb-4 pt-3 space-y-3 border-t border-neutral-100">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            ${c.celular ? `
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-sm font-semibold text-neutral-700">📞 ${esc(telBonito(c.celular))}</span>
+                                <a href="tel:+${esc(waNumero(c.celular))}" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-2.5 py-1 rounded-lg transition shadow-sm">📞 Llamar</a>
+                                <a href="https://wa.me/${esc(waNumero(c.celular))}?text=${encodeURIComponent('¡Hola ' + c.nombre + '! Te escribimos de Mi Barrio por tu pedido ' + numeroCorto(p))}" target="_blank" rel="noopener" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1 rounded-lg transition">💬 WhatsApp</a>
+                            </div>` : ''}
+                            <div class="text-xs text-neutral-500 mt-1">${esc(numeroCorto(p))} · ${esc(fechaCorta(ms))}</div>
+                        </div>
+                        <div class="text-xl font-black text-red-700 shrink-0">${gs(p.total)}</div>
+                    </div>
+                    ${activo ? `<div data-tiempo="${ms}" class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg ${claseTiempo(ms)}">⏱ ${esc(hace(ms))}</div>` : ''}
+                    <div class="text-sm space-y-1">
+                        ${c.direccion ? direccionHtml(c.direccion) : ''}
+                        ${c.notas ? `<div>📝 ${esc(c.notas)}</div>` : ''}
+                        ${mapa ? `<a href="${esc(mapa)}" target="_blank" rel="noopener" class="inline-block text-xs bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-lg hover:bg-red-200">🗺️ Ver ubicación en el mapa</a>` : ''}
+                    </div>
+                    <div class="space-y-2">${pizzas}</div>
+                    ${extras ? `<ul class="text-sm list-disc list-inside text-neutral-700">${extras}</ul>` : ''}
+                    ${p.costoDelivery ? `<div class="text-sm">🛵 Delivery: <strong>${gs(p.costoDelivery)}</strong></div>` : ''}
+                    ${pagoHtml}
+                    <div class="flex flex-wrap gap-2 pt-1">${botones}</div>
+                </div>
+            </article>`;
+        }
+
+        function render() {
+            if (!$('vista-cocina').classList.contains('hidden')) renderCocina();
+            actualizarFiltros();
+
+            // SI ES DELIVERY: Filtra estrictamente los que están 'en_camino'
+            const visibles = pedidos.filter(p => {
+                const e = estadoDe(p);
+                if (esDelivery) {
+                    return e === 'en_camino';
+                }
+                return filtro === 'todos' ? e !== 'cancelado' : e === filtro;
+            });
+
+            if (visibles.length === 0) {
+                $('lista').innerHTML = '<p class="text-center text-neutral-500 py-10">' +
+                    (esDelivery 
+                        ? 'No hay pedidos en camino en este momento. Apenas el local pase un pedido a "En camino", te aparecerá acá automáticamente.'
+                        : (pedidos.length === 0 ? 'Cuando entre un pedido va a aparecer acá al instante.' : 'No hay pedidos en esta vista.')) + '</p>';
+                return;
+            }
+            $('lista').innerHTML = visibles.map(tarjeta).join('');
+        }
+
+        // ===== Nuevo pedido (mostrador / teléfono) =====
+        const TIPOS = {
+            retiro:   { label: 'Retiro',      icono: '🛍️' },
+            local:    { label: 'En el local', icono: '🍽️' },
+            delivery: { label: 'Delivery',    icono: '🛵' }
+        };
+        // Mismos tamaños, sabores y precios que la página de pedidos (si cambian allá, cambiarlos acá también)
+        const MENU = {
+            tamanos: {
+                'grande':      { nombre: 'Pizza Grande + Mediana muzza gratis', corto: 'Grande',     limite: 2, borde: 15000, precios: { clasico: 60000, especial: 75000, gourmet: 90000 } },
+                'mediano':     { nombre: 'Pizza Mediana',                       corto: 'Mediana',    limite: 2, borde: 12000, precios: { clasico: 30000, especial: 40000, gourmet: 50000 } },
+                'chico':       { nombre: 'Pizza Tren Chico',                    corto: 'Tren Chico', limite: 2, borde: 20000, precios: { clasico: 55000, especial: 65000, gourmet: 75000 } },
+                'tren-grande': { nombre: 'Pizza Tren Grande',                   corto: 'Tren Grande', limite: 3, borde: 30000, precios: { clasico: 75000, especial: 90000, gourmet: 110000 } }
+            },
+            sabores: {
+                gourmet:  ['Suprema', 'Carnívora', 'Carne Katupiry', 'Pollo Katupiry', 'Mexicana', 'Barbacoa de la Casa', 'Costilla BBC'],
+                especial: ['Calabacón', 'Especial', 'Peperonni', 'Carbonara', 'Cuatro Quesos', 'Calabresa', 'Bacon', 'Pollo Cheddar', 'Portuguesa'],
+                clasico:  ['Muzza', 'Choclo', 'Palmito', 'Vegetariana', 'Napolitana', 'Jamón', 'Margarita', 'Pollo bbc', 'Ajo & Aceite', 'Queso Paraguay']
+            },
+            extras: [
+                ['papas-med', 'Papas Medianas', 15000],
+                ['papas-gra', 'Papas Grandes', 25000],
+                ['coca-500', 'Coca Cola 500ml', 8000],
+                ['coca-1l', 'Coca Cola 1LT', 12000],
+                ['coca-15l', 'Coca Cola 1.5LT', 17000]
+            ]
+        };
+        const GRUPOS_SABOR = [['gourmet', '⭐ Gourmet', 'text-amber-700 bg-amber-50'], ['especial', '✨ Especiales', 'text-blue-700 bg-blue-50'], ['clasico', '🍃 Clásicos', 'text-green-700 bg-green-50']];
+
+        let propios = new Set();   // pedidos cargados desde este panel (no suenan como "nuevo")
+        let nuevo = { tipo: 'retiro', tamano: 'grande', sabores: [], borde: false, pizzas: [], extras: {}, pago: '', entrada: 'nuevo', guardando: false, envio: 0 };
+
+        function nuevoCat(sabores) {
+            if (sabores.some(x => MENU.sabores.gourmet.includes(x))) return 'gourmet';
+            if (sabores.some(x => MENU.sabores.especial.includes(x))) return 'especial';
+            return 'clasico';
+        }
+        function nuevoPrecio(tam, sabores, borde) {
+            const t = MENU.tamanos[tam];
+            return t.precios[nuevoCat(sabores)] + (borde ? t.borde : 0);
+        }
+        function nuevoTotales() {
+            const sub = nuevo.pizzas.reduce((a, z) => a + z.precio, 0) +
+                MENU.extras.reduce((a, x) => a + (nuevo.extras[x[0]] || 0) * x[2], 0);
+            const desc = Math.max(0, Math.round(Number($('nuevo-descuento').value) || 0));
+            const env = nuevo.tipo === 'delivery' ? nuevo.envio : 0;
+            return { sub, desc, env, total: Math.max(0, sub + env - desc) };
+        }
+        function nuevoMsg(id, texto) {
+            const el = $(id);
+            if (texto) {
+                el.textContent = texto; el.classList.remove('hidden');
+                try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+            } else { el.classList.add('hidden'); }
+        }
+        const clsOn = 'bg-red-700 text-white border-red-700';
+        const clsOff = 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50';
+
+        function renderNuevo() {
+            // tipo
+            $('nuevo-tipo').innerHTML = Object.entries(TIPOS).map(([k, v]) =>
+                `<button type="button" data-n-tipo="${k}" class="py-3 rounded-xl text-sm font-bold border ${nuevo.tipo === k ? clsOn : clsOff}"><div class="text-xl">${v.icono}</div>${v.label}</button>`).join('');
+            $('nuevo-direccion').classList.toggle('hidden', nuevo.tipo !== 'delivery');
+            $('nuevo-nombre').placeholder = nuevo.tipo === 'local' ? 'Mesa o nombre' : (nuevo.tipo === 'retiro' ? 'Nombre (si no, queda "Mostrador")' : 'Nombre del cliente');
+
+            // constructor de pizza
+            const t = MENU.tamanos[nuevo.tamano];
+            const tams = Object.entries(MENU.tamanos).map(([k, v]) =>
+                `<button type="button" data-n-tam="${k}" class="py-2 rounded-xl text-xs font-bold border ${nuevo.tamano === k ? clsOn : clsOff}">${esc(v.corto)}<div class="font-normal opacity-80">desde ${Number(v.precios.clasico).toLocaleString('es-PY')}</div></button>`).join('');
+            const grupos = GRUPOS_SABOR.map(([cat, titulo, clase]) =>
+                `<div><div class="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded mb-1.5 ${clase}">${titulo} · ${gs(t.precios[cat])}</div><div class="flex flex-wrap gap-1.5">` +
+                MENU.sabores[cat].map(sb => `<button type="button" data-n-sabor="${esc(sb)}" class="text-xs font-semibold px-2.5 py-1.5 rounded-full border ${nuevo.sabores.includes(sb) ? clsOn : clsOff}">${esc(sb)}</button>`).join('') +
+                `</div></div>`).join('');
+            const precio = nuevo.sabores.length ? nuevoPrecio(nuevo.tamano, nuevo.sabores, nuevo.borde) : 0;
+            $('nuevo-constructor').innerHTML = `
+                <div class="grid grid-cols-4 gap-1.5">${tams}</div>
+                ${grupos}
+                <button type="button" data-n-borde class="text-xs font-bold px-3 py-2 rounded-xl border ${nuevo.borde ? clsOn : clsOff}">🧀 Borde relleno (+${gs(t.borde)})</button>
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm">${nuevo.sabores.length ? '<strong>' + esc(nuevo.sabores.join(' / ')) + '</strong><br><span class="text-xs text-neutral-500">' + esc(t.corto) + ' · ' + gs(precio) + '</span>' : '<span class="text-xs text-neutral-500">Elegí los sabores (máx. ' + t.limite + ')</span>'}</div>
+                    <button type="button" data-n-addpizza ${nuevo.sabores.length ? '' : 'disabled'} class="shrink-0 bg-neutral-800 hover:bg-black disabled:opacity-40 text-white text-sm font-bold px-4 py-2.5 rounded-xl">＋ Agregar pizza</button>
+                </div>`;
+
+            // pizzas agregadas
+            $('nuevo-pizzas').innerHTML = nuevo.pizzas.map((z, i) => `
+                <div class="flex items-center justify-between gap-2 bg-neutral-50 rounded-xl px-3 py-2 text-sm">
+                    <div><div class="font-bold">🍕 ${esc(MENU.tamanos[z.tamano].corto)}${z.borde ? ' · Borde relleno' : ''}</div><div class="text-xs text-neutral-600">${esc(z.sabores.join(' / '))}</div></div>
+                    <div class="flex items-center gap-2 shrink-0"><span class="font-semibold">${gs(z.precio)}</span><button type="button" data-n-delpizza="${i}" class="text-xs text-red-600 font-bold">✖</button></div>
+                </div>`).join('');
+
+            // extras
+            $('nuevo-extras').innerHTML = MENU.extras.map(([k, nombre, pr]) => {
+                const n = nuevo.extras[k] || 0;
+                return `<div class="flex items-center justify-between gap-2 text-sm">
+                    <span>${esc(nombre)} <span class="text-xs text-neutral-500">${gs(pr)}</span></span>
+                    <span class="flex items-center gap-2">
+                        <button type="button" data-n-extra="${k}" data-delta="-1" class="w-8 h-8 rounded-lg bg-neutral-100 font-bold">−</button>
+                        <span class="w-5 text-center font-bold">${n}</span>
+                        <button type="button" data-n-extra="${k}" data-delta="1" class="w-8 h-8 rounded-lg bg-neutral-800 text-white font-bold">+</button>
+                    </span></div>`;
+            }).join('');
+
+            // costo de delivery
+            $('nuevo-envio-box').classList.toggle('hidden', nuevo.tipo !== 'delivery');
+            $('nuevo-envio').innerHTML = (MENU.envios || [6000, 8000, 10000, 12000]).map(v => `<button type="button" data-n-envio="${v}" class="text-xs font-bold px-3 py-2 rounded-xl border ${nuevo.envio === v ? clsOn : clsOff}">${v / 1000} mil</button>`).join('');
+
+            // pago y entrada
+            $('nuevo-pago').innerHTML = Object.entries(PAGOS).map(([k, v]) =>
+                `<button type="button" data-n-pago="${k}" class="text-xs font-bold px-3 py-2 rounded-xl border ${nuevo.pago === k ? clsOn : clsOff}">${v.icono} ${v.label}</button>`).join('');
+            $('nuevo-entrada').innerHTML = [['nuevo', '🔔 A cocina (pedido nuevo)'], ['entregado', '✅ Ya entregado y cobrado']].map(([k, tx]) =>
+                `<button type="button" data-n-entrada="${k}" class="text-xs font-bold px-3 py-2 rounded-xl border ${nuevo.entrada === k ? clsOn : clsOff}">${tx}</button>`).join('');
+
+            renderNuevoTotal();
+        }
+
+        function renderNuevoTotal() {
+            const { sub, desc, env, total } = nuevoTotales();
+            if (!nuevo.guardando) $('nuevo-guardar').textContent = '💾 Guardar pedido · ' + gs(total);
+            $('nuevo-total').innerHTML = `
+                ${(desc > 0 || env > 0) ? `<div class="flex justify-between text-sm text-neutral-600"><span>Subtotal</span><span>${gs(sub)}</span></div>` : ''}${env > 0 ? `<div class="flex justify-between text-sm text-neutral-600"><span>🛵 Delivery</span><span>+ ${gs(env)}</span></div>` : ''}${desc > 0 ? `<div class="flex justify-between text-sm text-red-700"><span>Descuento</span><span>− ${gs(desc)}</span></div>` : ''}
+                <div class="flex justify-between items-center"><span class="font-bold">TOTAL</span><span class="text-2xl font-black text-red-700">${gs(total)}</span></div>`;
+        }
+
+        function nuevoLimpiar() {
+            ['nuevo-nombre', 'nuevo-celular', 'nuevo-direccion', 'nuevo-notas', 'nuevo-descuento'].forEach(id => { $(id).value = ''; });
+            nuevo.sabores = []; nuevo.borde = false; nuevo.pizzas = []; nuevo.extras = {}; nuevo.pago = ''; nuevo.envio = 0; nuevo.agregarA = null;
+        }
+
+        let toastTimer = null;
+        function mostrarToast(texto) {
+            const t = $('toast');
+            t.textContent = texto;
+            t.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.add('hidden'), 4000);
+        }
+
+        async function guardarNuevo() {
+            if (esDelivery || nuevo.guardando) return;
+            nuevoMsg('nuevo-ok', ''); nuevoMsg('nuevo-error', '');
+            const n = nuevo;
+            if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
+            const extras = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
+            if (!n.pizzas.length && !extras.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
+            const direccion = n.tipo === 'delivery' ? $('nuevo-direccion').value.trim() : '';
+            if (n.tipo === 'delivery' && !direccion) { nuevoMsg('nuevo-error', 'Para delivery escribí la dirección.'); return; }
+            const celRaw = $('nuevo-celular').value.trim();
+            const celular = celRaw ? waNumero(celRaw) : '';
+            if (celRaw && celular.length !== 12) { nuevoMsg('nuevo-error', 'Revisá el celular. Ejemplo: 0981 123 456'); return; }
+            const nombre = $('nuevo-nombre').value.trim() || (n.tipo === 'retiro' ? 'Mostrador' : (n.tipo === 'local' ? 'En el local' : 'Cliente'));
+            const notas = $('nuevo-notas').value.trim();
+            const { sub, desc, env, total } = nuevoTotales();
+
+            const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
+            const lineas = ['*PEDIDO ' + TIPOS[n.tipo].label.toUpperCase() + ' (cargado en el panel)*', 'Cliente: ' + nombre];
+            if (celular) lineas.push('Celular: ' + telBonito(celular));
+            if (direccion) lineas.push('Dirección: ' + direccion);
+            pizzas.forEach((z, i) => lineas.push('• Pizza ' + (i + 1) + ' ' + z.nombre + ': ' + z.sabores.join(', ') + (z.borde ? ' · Borde relleno' : '') + ' - ' + gs(z.precio)));
+            extras.forEach(x => lineas.push('• ' + x.item + ' x' + x.cantidad));
+            if (notas) lineas.push('Notas: ' + notas);
+            if (env > 0) lineas.push('Delivery: ' + gs(env));
+            if (desc > 0) lineas.push('Descuento: ' + gs(desc));
+            lineas.push('TOTAL: ' + gs(total));
+
+            const datos = {
+                local: 'mi-barrio',
+                estado: n.entrada,
+                creado: serverTimestamp(),
+                tipo: n.tipo,
+                origen: 'panel',
+                pago: n.pago || null,
+                pagado: !!(n.pago && n.entrada === 'entregado'),
+                descuento: desc,
+                costoDelivery: env,
+                cliente: { nombre: nombre, direccion: direccion, celular: celular, notas: notas },
+                pizzas: pizzas,
+                extras: extras,
+                total: total,
+                mensaje: lineas.join('\n')
+            };
+            if (n.entrada === 'entregado') datos.estadoActualizado = serverTimestamp();
+
+            const ref = doc(collection(db, 'pedidos'));
+            propios.add(ref.id);
+            nuevo.guardando = true;
+            $('nuevo-guardar').disabled = true;
+            $('nuevo-guardar').textContent = 'Guardando...';
+            try {
+                await runTransaction(db, async (tx) => {
+                    const c = await tx.get(refContador());
+                    datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
+                    tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
+                    tx.set(ref, datos);
+                });
+                recordarCliente({ cliente: datos.cliente, total: total });
+                nuevoLimpiar();
+                renderNuevo();
+                $('modal-nuevo').classList.add('hidden');
+                mostrarToast('✅ Pedido #' + datos.numero + ' guardado · ' + gs(total));
+            } catch (e) {
+                propios.delete(ref.id);
+                nuevoMsg('nuevo-error', e.code === 'permission-denied'
+                    ? 'Firebase no dejó guardar el pedido: falta publicar las reglas nuevas (reglas_firestore.txt) o no entraste como administrador.'
+                    : 'No se pudo guardar el pedido: ' + e.message);
+            } finally {
+                nuevo.guardando = false;
+                $('nuevo-guardar').disabled = false;
+                renderNuevoTotal();
+            }
+        }
+
+        $('btn-nuevo').addEventListener('click', () => {
+            if (esDelivery) return;
+            nuevoMsg('nuevo-ok', ''); nuevoMsg('nuevo-error', '');
+            $('modal-nuevo').classList.remove('hidden');
+            renderNuevo();
+        });
+        $('nuevo-descuento').addEventListener('input', renderNuevoTotal);
+        $('modal-nuevo').addEventListener('click', (e) => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            const d = b.dataset;
+            nuevoMsg('nuevo-error', '');
+            if (b.id === 'nuevo-cerrar') { $('modal-nuevo').classList.add('hidden'); return; }
+            if (b.id === 'nuevo-guardar') { if (nuevo.agregarA) guardarAgregado(); else guardarNuevo(); return; }
+            if (d.nTipo) { nuevo.tipo = d.nTipo; }
+            else if (d.nTam) {
+                nuevo.tamano = d.nTam;
+                nuevo.sabores = nuevo.sabores.slice(0, MENU.tamanos[d.nTam].limite);
+            }
+            else if (d.nSabor) {
+                const i = nuevo.sabores.indexOf(d.nSabor);
+                if (i >= 0) nuevo.sabores.splice(i, 1);
+                else if (nuevo.sabores.length >= MENU.tamanos[nuevo.tamano].limite) { nuevoMsg('nuevo-error', 'Este tamaño admite hasta ' + MENU.tamanos[nuevo.tamano].limite + ' sabores.'); return; }
+                else nuevo.sabores.push(d.nSabor);
+            }
+            else if ('nBorde' in d) { nuevo.borde = !nuevo.borde; }
+            else if ('nAddpizza' in d) {
+                if (!nuevo.sabores.length) return;
+                nuevo.pizzas.push({ tamano: nuevo.tamano, sabores: nuevo.sabores.slice(), borde: nuevo.borde, precio: nuevoPrecio(nuevo.tamano, nuevo.sabores, nuevo.borde) });
+                nuevo.sabores = []; nuevo.borde = false;
+            }
+            else if (d.nDelpizza !== undefined) { nuevo.pizzas.splice(Number(d.nDelpizza), 1); }
+            else if (d.nExtra) { nuevo.extras[d.nExtra] = Math.max(0, (nuevo.extras[d.nExtra] || 0) + Number(d.delta)); }
+            else if (d.nEnvio) { nuevo.envio = nuevo.envio === Number(d.nEnvio) ? 0 : Number(d.nEnvio); }
+            else if (d.nPago) { nuevo.pago = nuevo.pago === d.nPago ? '' : d.nPago; }
+            else if (d.nEntrada) { nuevo.entrada = d.nEntrada; }
+            else return;
+            renderNuevo();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { $('modal-nuevo').classList.add('hidden'); $('modal-caja').classList.add('hidden'); }
+        });
+        $('modal-nuevo').addEventListener('click', (e) => { if (e.target === $('modal-nuevo')) $('modal-nuevo').classList.add('hidden'); });
+
+        // ===== Caja y cierre diario =====
+        let tabCaja = 'hoy';
+        let cierres = [];
+
+        function resumenActual() {
+            const entregados = pedidos.filter(p => estadoDe(p) === 'entregado');
+            const cancelados = pedidos.filter(p => estadoDe(p) === 'cancelado');
+            const enCurso = pedidos.filter(p => ACTIVOS.includes(estadoDe(p)));
+            const total = entregados.reduce((a, p) => a + Number(p.total || 0), 0);
+            const porTamano = {};
+            let pizzas = 0;
+            entregados.forEach(p => (p.pizzas || []).forEach(z => {
+                pizzas++;
+                const k = z.nombre || 'Pizza';
+                porTamano[k] = porTamano[k] || { nombre: k, cantidad: 0, monto: 0 };
+                porTamano[k].cantidad++;
+                porTamano[k].monto += Number(z.precio || 0);
+            }));
+            const porPago = { efectivo: 0, transferencia: 0, pos: 0, sinDefinir: 0 };
+            entregados.forEach(p => { porPago[PAGOS[p.pago] ? p.pago : 'sinDefinir'] += Number(p.total || 0); });
+            const porTipo = { delivery: { n: 0, monto: 0 }, retiro: { n: 0, monto: 0 }, local: { n: 0, monto: 0 } };
+            entregados.forEach(p => {
+                const k = (p.tipo === 'retiro' || p.tipo === 'local') ? p.tipo : 'delivery';
+                porTipo[k].n++; porTipo[k].monto += Number(p.total || 0);
+            });
+            const totalGastos = gastos.reduce((a, g) => a + Number(g.monto || 0), 0);
+            const sab = {}, hs = {};
+            entregados.forEach(p => {
+                (p.pizzas || []).forEach(z => (z.sabores || []).forEach(x => { sab[x] = (sab[x] || 0) + 1; }));
+                const h = new Date(creadoMs(p)).getHours(); hs[h] = (hs[h] || 0) + 1;
+            });
+            const topSabores = Object.entries(sab).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([nombre, cantidad]) => ({ nombre, cantidad }));
+            const pico = Object.entries(hs).sort((a, b) => b[1] - a[1])[0];
+            const horaPico = pico ? { hora: Number(pico[0]), pedidos: pico[1] } : null;
+            return { entregados, cancelados, enCurso, total, pizzas, porTamano: Object.values(porTamano), porPago, porTipo, totalGastos, topSabores, horaPico, porHora: hs };
+        }
+
+        function bloqueResumen(r) {
+            const filas = r.porTamano.map(t => `<div class="flex justify-between text-sm"><span>${esc(t.cantidad)} × ${esc(t.nombre)}</span><span class="font-semibold">${gs(t.monto)}</span></div>`).join('');
+            return `
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Total vendido (pedidos entregados)</div>
+                    <div class="text-3xl font-black text-red-700">${gs(r.total)}</div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-green-50 rounded-xl py-2"><div class="text-lg font-black text-green-700">${r.entregados.length}</div><div class="text-[11px] text-neutral-600">Entregados</div></div>
+                        <div class="bg-neutral-50 rounded-xl py-2"><div class="text-lg font-black">${r.entregados.length ? gs(Math.round(r.total / r.entregados.length)) : '-'}</div><div class="text-[11px] text-neutral-600">Ticket promedio</div></div>
+                        <div class="bg-red-50 rounded-xl py-2"><div class="text-lg font-black text-red-700">${r.cancelados.length}</div><div class="text-[11px] text-neutral-600">Cancelados</div></div>
+                    </div>
+                    ${filas ? `<div class="border-t pt-2 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Pizzas vendidas: ${r.pizzas}</div>${filas}</div>` : ''}
+                </div>`;
+        }
+
+        let gastos = [];
+        let cancelarGastos = null;
+
+        function escucharGastos() {
+            const q = query(collection(db, 'gastos'), where('cierreId', '==', null));
+            cancelarGastos = onSnapshot(q, (snap) => {
+                gastos = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))
+                    .sort((a, b) => (b.creado && b.creado.toMillis ? b.creado.toMillis() : 0) - (a.creado && a.creado.toMillis ? a.creado.toMillis() : 0));
+                refrescarCaja();
+            }, (error) => mostrarError('No se pudieron cargar los gastos: ' + error.message));
+        }
+
+        function refrescarCaja() {
+            if (!$('modal-caja').classList.contains('hidden') && tabCaja === 'hoy' && !$('caja-contenido').querySelector('#btn-cerrar-caja:disabled')) renderCaja();
+        }
+
+        function bloqueTipos(pt) {
+            const filas = Object.entries(TIPOS).map(([k, v]) => `<div class="flex justify-between text-sm"><span>${v.icono} ${v.label} <span class="text-xs text-neutral-500">(${(pt[k] && pt[k].n) || 0})</span></span><span class="font-semibold">${gs((pt[k] && pt[k].monto) || 0)}</span></div>`).join('');
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-1.5"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Por tipo de pedido</div>${filas}</div>`;
+        }
+
+        function bloquePagos(pp, tg, total, fo) {
+            const filas = Object.entries(PAGOS).map(([k, v]) => `<div class="flex justify-between text-sm"><span>${v.icono} ${v.label}</span><span class="font-semibold">${gs(pp[k] || 0)}</span></div>`).join('');
+            const sin = pp.sinDefinir > 0 ? `<div class="flex justify-between text-sm text-amber-700"><span>⚠️ Sin forma de pago</span><span class="font-semibold">${gs(pp.sinDefinir)}</span></div>` : '';
+            return `
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-1.5">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Por forma de pago</div>
+                    ${filas}${sin}
+                    <div class="border-t pt-2 mt-2 space-y-1">
+                        ${fo > 0 ? `<div class="flex justify-between text-sm"><span>🏦 Fondo inicial</span><span class="font-semibold">+ ${gs(fo)}</span></div>` : ''}<div class="flex justify-between text-sm"><span>Gastos</span><span class="font-semibold text-red-700">− ${gs(tg)}</span></div>
+                        <div class="flex justify-between text-sm"><span>💵 Efectivo esperado en caja</span><span class="font-bold">${gs((fo || 0) + (pp.efectivo || 0) - tg)}</span></div>
+                        <div class="flex justify-between text-sm"><span>Ganancia (ventas − gastos)</span><span class="font-bold">${gs(total - tg)}</span></div>
+                    </div>
+                </div>`;
+        }
+
+        function bloqueGastos() {
+            const lista = gastos.map(g => `<div class="flex items-center justify-between gap-2 text-sm border-b border-neutral-100 py-1"><span>${esc(g.concepto)}</span><span class="flex items-center gap-2"><span class="font-semibold">${gs(g.monto)}</span><button type="button" data-gasto-del="${esc(g.id)}" class="text-xs text-red-600 font-bold">✖</button></span></div>`).join('');
+            return `
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Gastos del día</div>
+                    <div class="flex gap-2">
+                        <input id="gasto-concepto" type="text" maxlength="60" placeholder="Ej. Hielo" class="flex-1 min-w-0 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                        <input id="gasto-monto" type="number" inputmode="numeric" min="1" placeholder="Gs" class="w-28 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                        <button type="button" data-gasto-add class="bg-neutral-800 text-white text-sm font-bold px-3 rounded-xl">+</button>
+                    </div>
+                    ${lista || '<p class="text-xs text-neutral-500">Sin gastos anotados.</p>'}
+                </div>`;
+        }
+
+        async function agregarGasto() {
+            const concepto = $('gasto-concepto').value.trim();
+            const monto = Math.round(Number($('gasto-monto').value));
+            if (!concepto || !(monto > 0)) { mostrarError('Escribí el concepto y un monto mayor a 0.'); return; }
+            try {
+                $('gasto-concepto').value = ''; $('gasto-monto').value = '';
+                await addDoc(collection(db, 'gastos'), { concepto: concepto, monto: monto, creado: serverTimestamp(), cierreId: null });
+            } catch (e) {
+                mostrarError('No se pudo guardar el gasto: ' + e.message);
+            }
+        }
+
+        function resumenPagosTicket(c) {
+            if (!c.porPago) return '';
+            const pp = c.porPago;
+            const gl = (c.gastos || []).map(g => `<div>- ${esc(g.concepto)}<div class="r">${gs(g.monto)}</div></div>`).join('');
+            return `<div>Efectivo<div class="r">${gs(pp.efectivo)}</div></div>
+  <div>Transferencia<div class="r">${gs(pp.transferencia)}</div></div>
+  <div>POS<div class="r">${gs(pp.pos)}</div></div>
+  ${pp.sinDefinir > 0 ? `<div>Sin definir<div class="r">${gs(pp.sinDefinir)}</div></div>` : ''}
+  <hr>${gl}<div>GASTOS<div class="r">- ${gs(c.totalGastos)}</div></div>
+  ${c.fondo ? `<div>FONDO INICIAL<div class="r">${gs(c.fondo)}</div></div>` : ''}<div>EFECTIVO EN CAJA<div class="r">${gs((c.fondo || 0) + (pp.efectivo || 0) - (c.totalGastos || 0))}</div></div>
+  <hr>`;
+        }
+
+        function renderCaja() {
+            const foco = document.activeElement && document.activeElement.id;
+            const vc = $('gasto-concepto') ? $('gasto-concepto').value : '';
+            const vm = $('gasto-monto') ? $('gasto-monto').value : '';
+            const vf = $('caja-fondo') ? $('caja-fondo').value : null;
+            document.querySelectorAll('.caja-tab').forEach(b => {
+                b.className = 'caja-tab text-xs font-bold px-3 py-1.5 rounded-full ' + (b.dataset.tab === tabCaja ? 'bg-white text-neutral-900' : 'bg-white/20 text-white');
+            });
+            const cont = $('caja-contenido');
+            if (tabCaja === 'hoy') {
+                const r = resumenActual();
+                const hayAlgo = r.entregados.length + r.cancelados.length + gastos.length > 0;
+                cont.innerHTML = bloqueFondo() + bloqueResumen(r) + bloqueTipos(r.porTipo) + bloquePagos(r.porPago, r.totalGastos, r.total, fondo) + bloqueGastos() + bloqueComparar(r) + bloqueHoras(r) + bloqueExtra(r) + bloqueArqueo(r) +
+                    (r.enCurso.length ? `<p class="text-sm text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">⚠️ Hay ${r.enCurso.length} pedido(s) en curso. No entran en este cierre: quedan en el panel para el próximo.</p>` : '') +
+                    `<button type="button" id="btn-cerrar-caja" ${hayAlgo ? '' : 'disabled'} class="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-3 rounded-xl transition">🔒 Cerrar caja y limpiar panel</button>
+                     <p class="text-xs text-neutral-500 text-center">Se guarda el reporte en el historial y los pedidos entregados y cancelados salen del panel.</p>`;
+                if ($('gasto-concepto')) { $('gasto-concepto').value = vc; $('gasto-monto').value = vm; }
+                if (vf !== null && $('caja-fondo')) $('caja-fondo').value = vf;
+                if (foco && $(foco) && (foco === 'gasto-concepto' || foco === 'gasto-monto' || foco === 'caja-contado' || foco === 'caja-fondo')) $(foco).focus();
+            } else {
+                if (tabCaja === 'clientes') { cont.innerHTML = bloqueClientes(); return; }
+                if (!cierres.length) {
+                    cont.innerHTML = '<p class="text-center text-neutral-500 py-10">Todavía no hay cierres guardados.</p>';
+                    return;
+                }
+                cont.innerHTML = bloqueHistorial() + cierresFiltrados().map(c => {
+                    const filas = (c.pedidos || []).map(x => `<div class="flex justify-between gap-2 text-xs border-b border-neutral-100 py-1"><span>${esc(x.n)} · ${esc(x.nombre)}${x.estado === 'cancelado' ? ' <em class="text-red-600">(cancelado)</em>' : ''}</span><span class="font-semibold">${gs(x.total)}</span></div>`).join('');
+                    return `
+                    <details class="bg-white rounded-2xl border border-neutral-200 p-4">
+                        <summary class="cursor-pointer flex justify-between items-center gap-2">
+                            <span class="font-bold">${c.nro ? 'Cierre #' + esc(c.nro) + ' · ' : ''}${esc(c.fecha)} <span class="text-xs font-normal text-neutral-500">· ${esc(c.cantidadEntregados)} pedidos</span></span>
+                            <span class="font-black text-red-700">${gs(c.total)}</span>
+                        </summary>
+                        <div class="mt-3 space-y-2">
+                            <div class="text-xs text-neutral-500">Cerrado ${esc(fechaCorta(c.cerradoMs))} por ${esc(c.cerradoPor)} · Cancelados: ${esc(c.cantidadCancelados)} · Pizzas: ${esc(c.pizzas)}</div>
+                            ${(c.porTamano || []).map(t => `<div class="flex justify-between text-sm"><span>${esc(t.cantidad)} × ${esc(t.nombre)}</span><span>${gs(t.monto)}</span></div>`).join('')}
+                            ${c.porTipo ? bloqueTipos(c.porTipo) : ''}${c.porPago ? bloquePagos(c.porPago, c.totalGastos || 0, c.total, c.fondo || 0) : ''}${bloqueHoras(c)}${bloqueExtra(c)}${difHtml(c)}
+                            <div class="border-t pt-2">${filas}</div>
+                            <button type="button" data-imprimir-cierre="${esc(c.id)}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-3 py-2 rounded-xl">🖨️ Imprimir reporte</button>
+                        </div>
+                    </details>`;
+                }).join('');
+            }
+        }
+
+        async function cargarCierres() {
+            $('caja-contenido').innerHTML = '<p class="text-center text-neutral-500 py-10">Cargando...</p>';
+            try {
+                const snap = await getDocs(query(collection(db, 'cierres'), orderBy('cerrado', 'desc'), limit(200)));
+                cierres = snap.docs.map(d => {
+                    const x = d.data();
+                    return { id: d.id, ...x, cerradoMs: x.cerrado && x.cerrado.toMillis ? x.cerrado.toMillis() : Date.now() };
+                });
+            } catch (e) {
+                mostrarError('No se pudo cargar el historial: ' + e.message);
+                cierres = [];
+            }
+            renderCaja();
+        }
+
+        async function cerrarCaja() {
+            if (esDelivery) return;
+            const r = resumenActual();
+            const aArchivar = [...r.entregados, ...r.cancelados];
+            if (!aArchivar.length && !gastos.length) return;
+            if (aArchivar.length + gastos.length > 450) { mostrarError('Son demasiados pedidos para un solo cierre.'); return; }
+            if (!confirm('¿Cerrar la caja?\n\nTotal: ' + gs(r.total) + '\nEntregados: ' + r.entregados.length + ' · Cancelados: ' + r.cancelados.length +
+                '\nGastos: ' + gs(r.totalGastos) + '\n\nSe guarda el reporte y estos pedidos salen del panel.')) return;
+            const btn = $('btn-cerrar-caja');
+            if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+            try {
+                const restante = r.enCurso.reduce((m, p) => Math.max(m, Number(p.numero || 0)), 0);
+                const esperado = efectivoEsperado(r);
+                const contado = contadoTmp === '' ? null : Math.round(Number(contadoTmp));
+                const cs = await getDoc(refContador());
+                const nroCierre = ((cs.exists() && cs.data().cierres) || 0) + 1;
+                const ms = aArchivar.map(creadoMs);
+                const ref = doc(collection(db, 'cierres'));
+                const batch = writeBatch(db);
+                batch.set(ref, {
+                    cerrado: serverTimestamp(),
+                    cerradoPor: (auth.currentUser && auth.currentUser.email) || '',
+                    fecha: new Date().toLocaleDateString('es-PY', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }),
+                    desde: ms.length ? Math.min(...ms) : Date.now(),
+                    hasta: ms.length ? Math.max(...ms) : Date.now(),
+                    total: r.total,
+                    porPago: r.porPago,
+                    porTipo: r.porTipo,
+                    totalGastos: r.totalGastos,
+                    gastos: gastos.map(g => ({ concepto: String(g.concepto || ''), monto: Number(g.monto || 0) })),
+                    efectivoEsperado: esperado,
+                    fondo: fondo,
+                    ganancia: r.total - r.totalGastos,
+                    nro: nroCierre,
+                    efectivoContado: contado,
+                    diferencia: contado === null ? null : contado - esperado,
+                    topSabores: r.topSabores,
+                    horaPico: r.horaPico,
+                    porHora: r.porHora,
+                    cantidadEntregados: r.entregados.length,
+                    cantidadCancelados: r.cancelados.length,
+                    pizzas: r.pizzas,
+                    porTamano: r.porTamano,
+                    pedidos: aArchivar.map(p => ({
+                        n: numeroCorto(p), numero: Number(p.numero || 0),
+                        hora: creadoMs(p),
+                        nombre: String((p.cliente && p.cliente.nombre) || ''),
+                        total: Number(p.total || 0),
+                        estado: estadoDe(p)
+                    }))
+                });
+                batch.set(refContador(), { ultimo: restante, cierres: nroCierre, fondo: 0 }, { merge: true });
+                aArchivar.forEach(p => batch.update(doc(db, 'pedidos', p.id), { estado: 'archivado', cierreId: ref.id, estadoActualizado: serverTimestamp() }));
+                gastos.forEach(g => batch.update(doc(db, 'gastos', g.id), { cierreId: ref.id }));
+                await batch.commit();
+                cargarUltimos(); contadoTmp = ''; mostrarToast('🔒 Caja cerrada · el próximo pedido será #' + (restante + 1)); tabCaja = 'historial';
+                await cargarCierres();
+            } catch (e) {
+                mostrarError('No se pudo cerrar la caja: ' + e.message);
+                renderCaja();
+            }
+        }
+
+        function imprimirCierre(c) {
+            const filas = (c.pedidos || []).map(x => `<div>${esc(x.n)} ${esc(x.nombre)}${x.estado === 'cancelado' ? ' (CANCELADO)' : ''}<div class="r">${gs(x.total)}</div></div>`).join('');
+            const tam = (c.porTamano || []).map(t => `<div>${esc(t.cantidad)} x ${esc(t.nombre)}<div class="r">${gs(t.monto)}</div></div>`).join('');
+            const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cierre ${esc(c.fecha)}</title>
+<style>
+  @page { size: 80mm auto; margin: 3mm; }
+  body { font-family: "Courier New", Courier, monospace; font-size: 12px; width: 72mm; margin: 0 auto; color: #000; }
+  .c { text-align: center; } h1 { font-size: 18px; margin: 0; }
+  hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+  .r { text-align: right; } .total { font-size: 16px; font-weight: bold; text-align: right; }
+  @media screen { body { padding: 10px; } }
+</style></head><body>
+  <div class="c"><h1>${esc(NOMBRE_LOCAL)}</h1><div><strong>CIERRE DE CAJA${c.nro ? ' #' + esc(c.nro) : ''}</strong></div><div>${esc(c.fecha)}</div></div>
+  <hr>${tam}<hr>${filas}<hr>${resumenPagosTicket(c)}${ticketExtra(c)}
+  <div>Entregados: ${esc(c.cantidadEntregados)} · Cancelados: ${esc(c.cantidadCancelados)}</div>
+  <div class="total">TOTAL: ${gs(c.total)}</div>
+  <script>window.onload = function () { window.focus(); window.print(); };
+  window.onafterprint = function () { window.close(); };<\/script>
+</body></html>`;
+            const w = window.open('', '_blank', 'width=420,height=640');
+            if (!w) { mostrarError('El navegador bloqueó la ventana de impresión.'); return; }
+            w.document.open(); w.document.write(html); w.document.close();
+        }
+
+        $('btn-caja').addEventListener('click', () => {
+            if (esDelivery) return;
+            tabCaja = 'hoy';
+            $('modal-caja').classList.remove('hidden');
+            renderCaja();
+        });
+        $('modal-caja').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.target.id === 'gasto-concepto' || e.target.id === 'gasto-monto')) { e.preventDefault(); agregarGasto(); }
+        });
+        $('caja-cerrar-modal').addEventListener('click', () => $('modal-caja').classList.add('hidden'));
+        $('modal-caja').addEventListener('click', (e) => {
+            const t = e.target.closest('[data-tab]');
+            if (t) {
+                tabCaja = t.dataset.tab;
+                if (tabCaja === 'historial') cargarCierres(); else renderCaja();
+                return;
+            }
+            const rg = e.target.closest('[data-rango]');
+            if (rg) { rangoHist = Number(rg.dataset.rango); renderCaja(); return; }
+            if (e.target.closest('[data-csv]')) { descargarCSV(); return; }
+            if (e.target.closest('[data-fondo-guardar]')) { guardarFondo(); return; }
+            const ce = e.target.closest('[data-cli-edit]');
+            if (ce) { abrirCliente(ce.dataset.cliEdit); return; }
+            if (e.target.closest('[data-cli-nuevo]')) { abrirCliente(null); return; }
+            if (e.target.closest('#btn-cerrar-caja')) { cerrarCaja(); return; }
+            if (e.target.closest('[data-gasto-add]')) { agregarGasto(); return; }
+            const gd = e.target.closest('[data-gasto-del]');
+            if (gd) {
+                if (confirm('¿Borrar este gasto?')) deleteDoc(doc(db, 'gastos', gd.dataset.gastoDel)).catch(err => mostrarError('No se pudo borrar: ' + err.message));
+                return;
+            }
+            const im = e.target.closest('[data-imprimir-cierre]');
+            if (im) {
+                const c = cierres.find(x => x.id === im.dataset.imprimirCierre);
+                if (c) imprimirCierre(c);
+            }
+        });
+
+        // ===== Número de pedido: arranca en 1 y vuelve a 0 al cerrar la caja =====
+        const refContador = () => doc(db, 'config', 'contador');
+        let asignando = false;
+        async function asignarNumeros() {
+            if (esDelivery || asignando) return;
+            const faltan = pedidos.filter(p => !p.numero).sort((a, b) => creadoMs(a) - creadoMs(b));
+            if (!faltan.length) return;
+            asignando = true;
+            try {
+                for (const p of faltan) {
+                    const hecho = await runTransaction(db, async (tx) => {
+                        const [c, d] = await Promise.all([tx.get(refContador()), tx.get(doc(db, 'pedidos', p.id))]);
+                        if (!d.exists() || d.data().numero) return false;
+                        const n = ((c.exists() && c.data().ultimo) || 0) + 1;
+                        tx.set(refContador(), { ultimo: n }, { merge: true });
+                        tx.update(d.ref, { numero: n });
+                        return true;
+                    });
+                    if (hecho) recordarCliente(p);
+                }
+            } catch (e) { mostrarError('No se pudo numerar los pedidos: ' + e.message); }
+            asignando = false;
+        }
+
+        // ===== Clientes frecuentes (memoria solo del panel: la colección "clientes" es solo del administrador) =====
+        let clientesMem = [], cancelarClientes = null;
+        const celLocal = (c) => '0' + String(c.celular).slice(3);
+        function escucharClientes() {
+            cancelarClientes = onSnapshot(query(collection(db, 'clientes'), orderBy('ultimo', 'desc'), limit(500)), (snap) => {
+                clientesMem = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                $('dl-nombres').innerHTML = clientesMem.map(c => `<option value="${esc(c.nombre)}" label="${esc(celLocal(c))}"></option>`).join('');
+                $('dl-cels').innerHTML = clientesMem.map(c => `<option value="${esc(celLocal(c))}" label="${esc(c.nombre)}"></option>`).join('');
+                if (!$('modal-caja').classList.contains('hidden') && tabCaja === 'clientes') renderCaja();
+            }, () => {});
+        }
+        async function recordarCliente(p) {
+            const c = p.cliente || {}, cel = waNumero(c.celular);
+            if (cel.length !== 12 || !c.nombre) return;
+            const d = { nombre: c.nombre, celular: cel, ultimo: serverTimestamp(), pedidos: increment(1), gastado: increment(Number(p.total || 0)) };
+            if (c.direccion) d.direccion = c.direccion;
+            try { await setDoc(doc(db, 'clientes', cel), d, { merge: true }); } catch (e) {}
+        }
+        function autoCliente(porCel) {
+            const nom = $('nuevo-nombre').value.trim().toLowerCase(), cel = waNumero($('nuevo-celular').value);
+            const c = porCel ? clientesMem.find(x => x.id === cel) : clientesMem.find(x => String(x.nombre).toLowerCase() === nom);
+            if (!c) return;
+            if (!$('nuevo-nombre').value.trim()) $('nuevo-nombre').value = c.nombre;
+            if (!$('nuevo-celular').value.trim()) $('nuevo-celular').value = celLocal(c);
+            if (c.direccion && !$('nuevo-direccion').value.trim()) $('nuevo-direccion').value = c.direccion;
+        }
+        $('nuevo-nombre').addEventListener('change', () => autoCliente(false));
+        $('nuevo-celular').addEventListener('input', () => { if (waNumero($('nuevo-celular').value).length === 12) autoCliente(true); });
+
+        // ===== Cierre avanzado: arqueo, top sabores, hora pico, resumen del historial y CSV =====
+        let contadoTmp = '', rangoHist = 30;
+        function textoDif(v, esp) {
+            if (v === '') return '';
+            const d = Math.round(Number(v)) - esp;
+            return d === 0 ? '✅ La caja cuadra' : (d > 0 ? '⬆️ Sobran ' : '⬇️ Faltan ') + gs(Math.abs(d));
+        }
+        function bloqueArqueo(r) {
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">🧮 Arqueo de caja (opcional)</div>
+                <div class="flex items-center justify-between gap-3"><label for="caja-contado" class="text-sm font-semibold">Efectivo contado (Gs)</label>
+                <input id="caja-contado" type="number" inputmode="numeric" min="0" value="${esc(contadoTmp)}" placeholder="0" class="w-36 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm text-right"></div>
+                <div id="caja-dif" class="text-sm font-bold">${textoDif(contadoTmp, efectivoEsperado(r))}</div></div>`;
+        }
+        $('modal-caja').addEventListener('input', (e) => {
+            if (e.target.id !== 'caja-contado') return;
+            contadoTmp = e.target.value;
+            const r = resumenActual();
+            $('caja-dif').textContent = textoDif(contadoTmp, efectivoEsperado(r));
+        });
+        function bloqueExtra(c) {
+            if (!(c.topSabores || []).length) return '';
+            const h = c.horaPico ? `<div class="flex justify-between text-sm border-t pt-2 mt-2"><span>⏰ Hora pico</span><span class="font-semibold">${esc(c.horaPico.hora)}:00 hs · ${esc(c.horaPico.pedidos)} pedidos</span></div>` : '';
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-1.5"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">🏆 Sabores más pedidos</div>${c.topSabores.map((x, i) => `<div class="flex justify-between text-sm"><span>${i + 1}. ${esc(x.nombre)}</span><span class="font-semibold">${esc(x.cantidad)}</span></div>`).join('')}${h}</div>`;
+        }
+        function difHtml(c) {
+            if (c.efectivoContado == null) return '';
+            const d = Number(c.diferencia || 0);
+            return `<div class="flex justify-between gap-2 text-sm bg-white rounded-2xl border border-neutral-200 p-4"><span>🧮 Contado: ${gs(c.efectivoContado)}</span><span class="font-bold ${d < 0 ? 'text-red-700' : 'text-green-700'}">${d === 0 ? 'Cuadra ✅' : (d > 0 ? 'Sobran ' : 'Faltan ') + gs(Math.abs(d))}</span></div>`;
+        }
+        function ticketExtra(c) {
+            let t = '';
+            if (c.efectivoContado != null) t += `<div>EFECTIVO CONTADO<div class="r">${gs(c.efectivoContado)}</div></div><div>${Number(c.diferencia) === 0 ? 'CAJA CUADRA' : (c.diferencia > 0 ? 'SOBRAN' : 'FALTAN')}<div class="r">${gs(Math.abs(c.diferencia || 0))}</div></div><hr>`;
+            if ((c.topSabores || []).length) t += '<div>MAS PEDIDOS</div>' + c.topSabores.map((x, i) => `<div>${i + 1}. ${esc(x.nombre)} x${esc(x.cantidad)}</div>`).join('') + '<hr>';
+            return t;
+        }
+        function cierresFiltrados() {
+            return cierres.filter(c => !rangoHist || c.cerradoMs >= Date.now() - rangoHist * 86400000);
+        }
+        function bloqueHistorial() {
+            const l = cierresFiltrados(), suma = (f) => l.reduce((a, c) => a + Number(f(c) || 0), 0);
+            const ventas = suma(c => c.total), gast = suma(c => c.totalGastos), ped = suma(c => c.cantidadEntregados);
+            const mejor = l.reduce((m, c) => (!m || c.total > m.total ? c : m), null);
+            const caja = (k, v, cl) => `<div class="bg-neutral-50 rounded-xl py-2"><div class="text-base font-black ${cl || ''}">${v}</div><div class="text-[11px] text-neutral-600">${k}</div></div>`;
+            const rg = [[7, '7 días'], [30, '30 días'], [0, 'Todo']].map(([v, t]) => `<button type="button" data-rango="${v}" class="text-xs font-bold px-3 py-1.5 rounded-full ${rangoHist === v ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700'}">${t}</button>`).join('');
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                <div class="flex items-center justify-between gap-2"><div class="flex gap-2">${rg}</div><button type="button" data-csv class="text-xs bg-green-100 hover:bg-green-200 text-green-800 font-bold px-3 py-1.5 rounded-xl">⬇️ CSV</button></div>
+                <div class="grid grid-cols-3 gap-2 text-center">${caja('Ventas', gs(ventas), 'text-red-700')}${caja('Gastos', gs(gast))}${caja('Ganancia', gs(ventas - gast), 'text-green-700')}${caja('Pedidos', ped)}${caja('Promedio por cierre', l.length ? gs(Math.round(ventas / l.length)) : '-')}${caja('Mejor día', mejor ? gs(mejor.total) : '-')}</div>
+                <div class="text-xs text-neutral-500 text-center">${l.length} cierre(s) en este período</div></div>`;
+        }
+        function descargarCSV() {
+            const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+            const filas = cierresFiltrados().map(c => { const p = c.porPago || {}; return [c.nro || '', c.fecha, c.cantidadEntregados, c.cantidadCancelados, c.total, c.totalGastos || 0, c.total - (c.totalGastos || 0), p.efectivo || 0, p.transferencia || 0, p.pos || 0, c.efectivoContado ?? '', c.diferencia ?? ''].map(q).join(';'); });
+            const csv = ['Cierre;Fecha;Entregados;Cancelados;Ventas;Gastos;Ganancia;Efectivo;Transferencia;POS;Contado;Diferencia', ...filas].join('\n');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+            a.download = 'cierres-mi-barrio.csv';
+            a.click();
+        }
+
+        
+        // ===== TPV: fondo de caja =====
+        let fondo = 0, cancelarFondo = null;
+        function escucharFondo() {
+            cancelarFondo = onSnapshot(refContador(), (snap) => {
+                fondo = Number((snap.exists() && snap.data().fondo) || 0);
+                refrescarCaja();
+            }, () => {});
+        }
+        const efectivoEsperado = (r) => fondo + r.porPago.efectivo - r.totalGastos;
+        function bloqueFondo() {
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                <div class="text-sm font-bold">🏦 Fondo inicial (cambio con el que abrís)</div>
+                <div class="flex gap-2">
+                    <input id="caja-fondo" type="number" inputmode="numeric" min="0" value="${fondo || ''}" placeholder="0" class="flex-1 min-w-0 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm text-right">
+                    <button type="button" data-fondo-guardar class="bg-neutral-800 text-white text-sm font-bold px-4 rounded-xl">Guardar</button>
+                </div>
+                <p class="text-xs text-neutral-500">Se suma al efectivo esperado y se reinicia al cerrar la caja.</p></div>`;
+        }
+        async function guardarFondo() {
+            const v = Math.max(0, Math.round(Number($('caja-fondo').value) || 0));
+            try {
+                await setDoc(refContador(), { fondo: v }, { merge: true });
+                mostrarToast('🏦 Fondo inicial: ' + gs(v));
+            } catch (e) { mostrarError('No se pudo guardar el fondo: ' + e.message); }
+        }
+
+        // ===== TPV: cobro con vuelto =====
+        let cobro = null;
+        const BILLETES = [10000, 20000, 50000, 100000, 200000];
+        function cobroInfoHtml(p) {
+            const m = PAGOS[p.pago];
+            return `<div class="text-sm font-bold text-green-700">✅ Cobrado${m ? ' · ' + m.icono + ' ' + m.label : ''}${p.recibido ? ' · recibido ' + gs(p.recibido) + ' · vuelto ' + gs(p.vuelto || 0) : ''}</div>`;
+        }
+        function pedidoCobro() { return cobro ? pedidos.find(x => x.id === cobro.id) : null; }
+        function abrirCobro(p) {
+            const e = estadoDe(p);
+            const puede = (TRANSICIONES[e] || []).includes('entregado');
+            cobro = { id: p.id, metodo: PAGOS[p.pago] ? p.pago : 'efectivo', recibido: 0, puedeEntregar: puede,
+                      entregar: puede && (e === 'en_camino' || p.tipo === 'retiro' || p.tipo === 'local'), imprimir: true, guardando: false };
+            $('modal-cobro').classList.remove('hidden');
+            renderCobro();
+        }
+        function cerrarCobro() { cobro = null; $('modal-cobro').classList.add('hidden'); }
+        function textoVuelto(total) {
+            const rec = cobro.recibido;
+            if (!rec) return '<span class="text-neutral-500">Tocá un billete o escribí lo que te dan</span>';
+            if (rec < total) return '<span class="text-red-700">Faltan ' + gs(total - rec) + '</span>';
+            return rec === total ? '<span class="text-green-700">Justo ✅</span>' : '<span class="text-green-700">Vuelto: ' + gs(rec - total) + '</span>';
+        }
+        function renderCobro() {
+            const p = pedidoCobro();
+            if (!p) { cerrarCobro(); return; }
+            const total = Number(p.total || 0), efec = cobro.metodo === 'efectivo';
+            $('cobro-titulo').textContent = '💰 Cobrar ' + numeroCorto(p);
+            const metodos = Object.entries(PAGOS).map(([k, v]) =>
+                `<button type="button" data-c-metodo="${k}" class="py-3 rounded-xl text-sm font-bold border ${cobro.metodo === k ? clsOn : clsOff}"><div class="text-xl">${v.icono}</div>${v.label}</button>`).join('');
+            const efectivoHtml = efec ? `
+                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                    <div class="flex items-center justify-between gap-3"><label for="cobro-recibido" class="text-sm font-semibold">Recibido (Gs)</label>
+                    <input id="cobro-recibido" type="number" inputmode="numeric" min="0" value="${cobro.recibido || ''}" placeholder="0" class="w-40 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-lg text-right font-bold"></div>
+                    <div class="flex flex-wrap gap-1.5"><button type="button" data-c-monto="exacto" class="text-xs font-bold px-3 py-2 rounded-xl border ${clsOff}">Justo</button>${BILLETES.map(b => `<button type="button" data-c-monto="${b}" class="text-xs font-bold px-3 py-2 rounded-xl border ${cobro.recibido === b ? clsOn : clsOff}">${b / 1000} mil</button>`).join('')}</div>
+                    <div id="cobro-vuelto" class="text-xl font-black text-center">${textoVuelto(total)}</div>
+                </div>` : '';
+            $('cobro-cuerpo').innerHTML = `
+                <div class="text-center"><div class="text-sm text-neutral-600">${esc((p.cliente && p.cliente.nombre) || '')}</div><div class="text-4xl font-black text-red-700">${gs(total)}</div></div>
+                <div class="grid grid-cols-3 gap-2">${metodos}</div>
+                ${efectivoHtml}
+                <div class="space-y-2 text-sm">
+                    ${cobro.puedeEntregar ? `<label class="flex items-center gap-2"><input id="cobro-entregar" type="checkbox" ${cobro.entregar ? 'checked' : ''}> Marcar como entregado</label>` : ''}
+                    <label class="flex items-center gap-2"><input id="cobro-imprimir" type="checkbox" ${cobro.imprimir ? 'checked' : ''}> Imprimir ticket</label>
+                </div>
+                <button id="cobro-confirmar" type="button" class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition">✅ Confirmar cobro</button>`;
+            if (efec) { const i = $('cobro-recibido'); if (i && !('ontouchstart' in window)) i.focus(); }
+        }
+        async function confirmarCobro() {
+            const p = pedidoCobro();
+            if (!p || cobro.guardando) return;
+            const total = Number(p.total || 0), efec = cobro.metodo === 'efectivo';
+            const rec = efec ? (cobro.recibido || total) : total;
+            if (efec && rec < total) { mostrarToast('Faltan ' + gs(total - rec) + ' para completar el cobro'); return; }
+            const vuelto = efec ? rec - total : 0;
+            const upd = { pago: cobro.metodo, pagado: true, cobradoEn: serverTimestamp(), recibido: efec ? rec : null, vuelto: efec ? vuelto : null };
+            const entregar = cobro.puedeEntregar && cobro.entregar;
+            if (entregar) { upd.estado = 'entregado'; upd.estadoActualizado = serverTimestamp(); }
+            if (cobro.imprimir) imprimirTicket({ ...p, pago: upd.pago, pagado: true, recibido: upd.recibido, vuelto: upd.vuelto });
+            cobro.guardando = true;
+            $('cobro-confirmar').disabled = true;
+            try {
+                await updateDoc(doc(db, 'pedidos', p.id), upd);
+                cerrarCobro();
+                mostrarToast('✅ Cobrado ' + numeroCorto(p) + ' · ' + gs(total) + (vuelto ? ' · vuelto ' + gs(vuelto) : ''));
+            } catch (e) {
+                if (cobro) { cobro.guardando = false; $('cobro-confirmar').disabled = false; }
+                mostrarError('No se pudo registrar el cobro: ' + e.message);
+            }
+        }
+        $('modal-cobro').addEventListener('click', (e) => {
+            if (e.target === $('modal-cobro')) { cerrarCobro(); return; }
+            const b = e.target.closest('button');
+            if (!b || !cobro) return;
+            const d = b.dataset, p = pedidoCobro();
+            if (b.id === 'cobro-cerrar') { cerrarCobro(); return; }
+            if (b.id === 'cobro-confirmar') { confirmarCobro(); return; }
+            if (d.cMetodo) { cobro.metodo = d.cMetodo; cobro.recibido = 0; }
+            else if (d.cMonto && p) { cobro.recibido = d.cMonto === 'exacto' ? Number(p.total || 0) : Number(d.cMonto); }
+            else return;
+            renderCobro();
+        });
+        $('modal-cobro').addEventListener('input', (e) => {
+            const p = pedidoCobro();
+            if (e.target.id !== 'cobro-recibido' || !p) return;
+            cobro.recibido = Math.max(0, Math.round(Number(e.target.value) || 0));
+            $('cobro-vuelto').innerHTML = textoVuelto(Number(p.total || 0));
+        });
+        $('modal-cobro').addEventListener('change', (e) => {
+            if (!cobro) return;
+            if (e.target.id === 'cobro-entregar') cobro.entregar = e.target.checked;
+            if (e.target.id === 'cobro-imprimir') cobro.imprimir = e.target.checked;
+        });
+        $('modal-cobro').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.id === 'cobro-recibido') { e.preventDefault(); confirmarCobro(); }
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && cobro) cerrarCobro(); });
+
+        // ===== TPV: venta rápida (mostrador, efectivo, ya entregada) =====
+        $('btn-rapida').addEventListener('click', () => {
+            if (esDelivery) return;
+            nuevoLimpiar();
+            nuevo.tipo = 'retiro'; nuevo.entrada = 'entregado'; nuevo.pago = 'efectivo';
+            $('btn-nuevo').click();
+        });
+
+        // ===== TPV: comanda de cocina (sin precios) =====
+        function htmlComanda(p, etiqueta, conScript) {
+            const c = p.cliente || {};
+            const tipo = TIPOS[p.tipo] ? TIPOS[p.tipo].label.toUpperCase() : 'DELIVERY';
+            const pizzas = (p.pizzas || []).map((z, i) => `<div class="item"><div class="t">${i + 1}. ${esc(z.nombre)}</div><div class="s">${esc((z.sabores || []).join(' / '))}</div>${z.borde ? '<div class="t">** BORDE RELLENO **</div>' : ''}</div>`).join('');
+            const extras = (p.extras || []).map(x => `<div class="t">+ ${esc(x.item)} x${esc(x.cantidad)}</div>`).join('');
+            const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Comanda ${esc(numeroCorto(p))}</title>
+<style>
+  @page { size: 80mm auto; margin: 3mm; }
+  body { font-family: "Courier New", Courier, monospace; font-size: 14px; width: 72mm; margin: 0 auto; color: #000; }
+  .c { text-align: center; } .n { font-size: 34px; font-weight: bold; }
+  hr { border: 0; border-top: 2px dashed #000; margin: 8px 0; }
+  .item { margin-bottom: 10px; } .t { font-weight: bold; font-size: 16px; } .s { font-size: 15px; }
+  @media screen { body { padding: 10px; } }
+</style></head><body>
+  <div class="c"><div>${esc(etiqueta || 'COCINA')}</div><div class="n">${esc(numeroCorto(p))}</div><div class="t">${esc(tipo)}</div><div>${esc(fechaCorta(creadoMs(p)))} · ${esc(c.nombre)}</div></div>
+  <hr>${pizzas}${extras ? '<hr>' + extras : ''}
+  ${c.notas ? `<hr><div class="t">NOTA: ${esc(c.notas)}</div>` : ''}
+  ${conScript ? '<script>window.onload = function () { window.focus(); window.print(); }; window.onafterprint = function () { window.close(); };<\/script>' : ''}
+</body></html>`;
+            return html;
+        }
+        function imprimirComanda(p, etiqueta) {
+            const html = htmlComanda(p, etiqueta, true);
+            const w = window.open('', '_blank', 'width=420,height=640');
+            if (!w) { mostrarError('El navegador bloqueó la ventana de impresión.'); return; }
+            w.document.open(); w.document.write(html); w.document.close();
+        }
+        // Impresión automática: usa un marco oculto (no abre ventanas, así el navegador no la bloquea)
+        function imprimirComandaAuto(p) {
+            const f = document.createElement('iframe');
+            f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+            f.onload = () => {
+                try { f.contentWindow.focus(); f.contentWindow.print(); }
+                catch (e) { mostrarError('No se pudo imprimir la comanda automática: ' + e.message); }
+                setTimeout(() => f.remove(), 60000);
+            };
+            document.body.appendChild(f);
+            f.srcdoc = htmlComanda(p, 'COCINA', false);
+        }
+
+        
+        // ===== TPV 2: pantalla de cocina =====
+        function renderCocina() {
+            const l = pedidos.filter(p => ['nuevo', 'preparacion'].includes(estadoDe(p))).sort((a, b) => creadoMs(a) - creadoMs(b));
+            $('cocina-cont').textContent = l.length + ' en cocina · ' + l.filter(p => estadoDe(p) === 'nuevo').length + ' nuevos';
+            $('cocina-lista').innerHTML = l.length ? l.map(p => {
+                const e = estadoDe(p), ms = creadoMs(p), c = p.cliente || {};
+                const sinReparto = p.tipo === 'retiro' || p.tipo === 'local';
+                const sig = e === 'nuevo' ? 'preparacion' : (sinReparto ? 'entregado' : 'en_camino');
+                const t = TIPOS[p.tipo] || TIPOS.delivery;
+                const pizzas = (p.pizzas || []).map((z, i) => `<div class="mb-2"><div class="font-extrabold text-lg">${i + 1}. ${esc(z.nombre)}</div><div class="text-base">${esc((z.sabores || []).join(' / '))}</div>${z.borde ? '<div class="font-bold text-amber-300">🧀 BORDE RELLENO</div>' : ''}</div>`).join('');
+                const extras = (p.extras || []).map(x => `<div class="font-bold">+ ${esc(x.item)} x${esc(x.cantidad)}</div>`).join('');
+                return `<article class="bg-neutral-800 rounded-2xl p-4 space-y-2 border-2 ${e === 'nuevo' ? 'border-green-500' : 'border-amber-500'}">
+                    <div class="flex items-center justify-between gap-2"><span class="text-3xl font-black">${esc(numeroCorto(p))}</span><span data-tiempo="${ms}" class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg ${claseTiempo(ms)}">⏱ ${esc(hace(ms))}</span></div>
+                    <div class="text-sm opacity-90">${t.icono} ${esc(t.label)} · ${esc(c.nombre)}</div>
+                    <div>${pizzas}${extras}</div>
+                    ${c.notas ? `<div class="bg-yellow-200 text-neutral-900 font-bold rounded-lg px-3 py-2 text-sm">📝 ${esc(c.notas)}</div>` : ''}
+                    <button type="button" data-cocina="${sig}" data-id="${esc(p.id)}" class="w-full ${e === 'nuevo' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-extrabold text-lg py-3 rounded-xl">${e === 'nuevo' ? '👨‍🍳 Empezar' : '✅ Listo'}</button>
+                </article>`;
+            }).join('') : '<p class="col-span-full text-center text-neutral-400 py-16 text-lg">No hay pedidos en cocina</p>';
+        }
+        $('btn-cocina').addEventListener('click', () => { $('vista-cocina').classList.remove('hidden'); renderCocina(); });
+        $('cocina-cerrar').addEventListener('click', () => $('vista-cocina').classList.add('hidden'));
+        $('cocina-lista').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-cocina]');
+            if (b) cambiarEstado(b.dataset.id, b.dataset.cocina);
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('vista-cocina').classList.add('hidden'); });
+
+        // ===== TPV 2: agregar a un pedido abierto (mesa) =====
+        $('btn-nuevo').addEventListener('click', () => { nuevo.agregarA = null; });
+        function abrirAgregar(p) {
+            nuevoLimpiar();
+            nuevo.agregarA = p.id; nuevo.tipo = TIPOS[p.tipo] ? p.tipo : 'delivery'; nuevo.entrada = 'nuevo';
+            nuevoMsg('nuevo-error', '');
+            $('modal-nuevo').classList.remove('hidden');
+            renderNuevo();
+            nuevoMsg('nuevo-ok', '➕ Agregando al pedido ' + numeroCorto(p) + ' · ' + ((p.cliente && p.cliente.nombre) || '') + '. Lo que sumes entra al total y sale una comanda solo con lo agregado.');
+        }
+        async function guardarAgregado() {
+            const n = nuevo, p = pedidos.find(x => x.id === n.agregarA);
+            if (!p || n.guardando) { nuevoMsg('nuevo-error', 'No se encontró el pedido.'); return; }
+            nuevoMsg('nuevo-ok', ''); nuevoMsg('nuevo-error', '');
+            if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
+            const extrasN = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
+            if (!n.pizzas.length && !extrasN.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
+            const pizzasN = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
+            const suma = pizzasN.reduce((a, z) => a + z.precio, 0) + MENU.extras.reduce((a, x) => a + (n.extras[x[0]] || 0) * x[2], 0);
+            const extras = (p.extras || []).map(x => ({ ...x }));
+            extrasN.forEach(x => { const f = extras.find(y => y.item === x.item); if (f) f.cantidad = Number(f.cantidad) + x.cantidad; else extras.push({ ...x }); });
+            imprimirComanda({ ...p, pizzas: pizzasN, extras: extrasN }, 'AGREGADO');
+            n.guardando = true; $('nuevo-guardar').disabled = true;
+            try {
+                await updateDoc(doc(db, 'pedidos', p.id), { pizzas: [...(p.pizzas || []), ...pizzasN], extras: extras, total: Number(p.total || 0) + suma });
+                nuevoLimpiar(); renderNuevo();
+                $('modal-nuevo').classList.add('hidden');
+                mostrarToast('➕ Agregado a ' + numeroCorto(p) + ' · total ' + gs(Number(p.total || 0) + suma));
+            } catch (e) {
+                nuevoMsg('nuevo-error', 'No se pudo agregar: ' + e.message);
+            } finally {
+                n.guardando = false; $('nuevo-guardar').disabled = false; renderNuevoTotal();
+            }
+        }
+
+        // ===== TPV 2: pedidos por hora y comparación con cierres anteriores =====
+        let ultimos = [];
+        async function cargarUltimos() {
+            try {
+                const snap = await getDocs(query(collection(db, 'cierres'), orderBy('cerrado', 'desc'), limit(12)));
+                ultimos = snap.docs.map(d => d.data());
+                refrescarCaja();
+            } catch (e) {}
+        }
+        function bloqueComparar(r) {
+            if (!ultimos.length) return '';
+            const dia = (f) => String(f || '').split(/[ ,]/)[0];
+            const hoy = new Date().toLocaleDateString('es-PY', { weekday: 'long' });
+            const ref = ultimos.find(c => dia(c.fecha) === hoy) || ultimos[0];
+            const pct = Number(ref.total) > 0 ? Math.round((r.total - ref.total) / ref.total * 100) : null;
+            const cl = pct === null ? '' : (pct >= 0 ? 'text-green-700' : 'text-red-700');
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-1">
+                <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">📈 Comparación</div>
+                <div class="text-sm">${dia(ref.fecha) === hoy ? 'Último ' + esc(hoy) : 'Último cierre'} (${esc(ref.fecha)}): <strong>${gs(ref.total)}</strong></div>
+                <div class="text-sm">Hasta ahora llevás <strong>${gs(r.total)}</strong>${pct === null ? '' : ` · <span class="font-bold ${cl}">${pct >= 0 ? '+' : ''}${pct}%</span>`}</div></div>`;
+        }
+        function bloqueHoras(c) {
+            const h = c.porHora || {}, ks = Object.keys(h).map(Number).sort((a, b) => a - b);
+            if (!ks.length) return '';
+            const max = Math.max(...ks.map(k => h[k]));
+            let filas = '';
+            for (let i = ks[0]; i <= ks[ks.length - 1]; i++) {
+                const n = h[i] || 0;
+                filas += `<div class="flex items-center gap-2 text-xs"><span class="w-10 text-right text-neutral-500">${i}:00</span><div class="flex-1 bg-neutral-100 rounded"><div class="bg-red-600 rounded h-4" style="width:${Math.round(n / max * 100)}%"></div></div><span class="w-6 font-semibold">${n}</span></div>`;
+            }
+            return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-1.5"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">📊 Pedidos por hora</div>${filas}</div>`;
+        }
+
+        // ===== TPV 2: clientes frecuentes =====
+        function bloqueClientes() {
+            const l = clientesMem.slice().sort((a, b) => Number(b.gastado || 0) - Number(a.gastado || 0)).slice(0, 60);
+            if (!l.length) return '<p class="text-center text-neutral-500 py-10">Todavía no hay clientes guardados.</p>';
+            const ms = (c) => c.ultimo && c.ultimo.toMillis ? c.ultimo.toMillis() : 0;
+            const frec = clientesMem.filter(c => Number(c.pedidos || 0) >= 5).length;
+            return `<div class="text-sm text-neutral-600 text-center">${clientesMem.length} clientes · ${frec} frecuentes (5 pedidos o más)</div>` + l.map(c => {
+                const n = Number(c.pedidos || 0), g = Number(c.gastado || 0), m = ms(c);
+                const dias = m ? Math.floor((Date.now() - m) / 86400000) : null;
+                const tag = n >= 5 ? '⭐ Frecuente' : (dias !== null && dias > 30 ? '💤 Hace tiempo' : (n <= 1 ? '🆕 Nuevo' : ''));
+                return `<div class="bg-white rounded-2xl border border-neutral-200 p-3 flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1"><div class="font-bold truncate">${esc(c.nombre)} ${tag ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-neutral-100">${tag}</span>` : ''}</div>
+                    <div class="text-xs text-neutral-600">📞 ${esc(celLocal(c))} · ${n} pedidos · ${gs(g)} · promedio ${gs(n ? Math.round(g / n) : 0)}${dias === null ? '' : ' · último hace ' + dias + (dias === 1 ? ' día' : ' días')}</div>${c.direccion ? '<div class="text-xs text-neutral-500 truncate">📍 ' + esc(c.direccion) + '</div>' : ''}</div>
+                    
+                    <a href="https://wa.me/${esc(c.celular)}?text=${encodeURIComponent('¡Hola ' + c.nombre + '! Te escribimos de Mi Barrio 🍕')}" target="_blank" rel="noopener" class="shrink-0 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl">💬</a>
+                </div>`;
+            }).join('');
+        }
+
+        
+        // ===== Editar la base de clientes =====
+        let editCli = null;
+        function abrirCliente(id) {
+            const c = id ? clientesMem.find(x => x.id === id) : null;
+            if (id && !c) return;
+            editCli = { id: id };
+            $('cli-titulo').textContent = c ? '✏️ Editar cliente' : '➕ Nuevo cliente';
+            $('cli-nombre').value = c ? (c.nombre || '') : '';
+            $('cli-celular').value = c ? celLocal(c) : '';
+            $('cli-direccion').value = c ? (c.direccion || '') : '';
+            $('cli-eliminar').classList.toggle('hidden', !c);
+            $('cli-error').classList.add('hidden');
+            $('modal-cliente').classList.remove('hidden');
+        }
+        function cerrarCliente() { editCli = null; $('modal-cliente').classList.add('hidden'); }
+        async function guardarCliente() {
+            if (!editCli) return;
+            const err = (t) => { $('cli-error').textContent = t; $('cli-error').classList.remove('hidden'); };
+            const nombre = $('cli-nombre').value.trim(), cel = waNumero($('cli-celular').value), direccion = $('cli-direccion').value.trim();
+            if (!nombre) { err('Escribí el nombre.'); return; }
+            if (cel.length !== 12) { err('Revisá el celular. Ejemplo: 0981 123 456'); return; }
+            if (cel !== editCli.id && clientesMem.some(x => x.id === cel)) { err('Ya existe un cliente con ese celular.'); return; }
+            const viejo = editCli.id ? clientesMem.find(x => x.id === editCli.id) : null;
+            try {
+                if (viejo && viejo.id === cel) {
+                    await setDoc(doc(db, 'clientes', cel), { nombre: nombre, celular: cel, direccion: direccion }, { merge: true });
+                } else {
+                    const datos = { nombre: nombre, celular: cel, direccion: direccion, pedidos: viejo ? Number(viejo.pedidos || 0) : 0, gastado: viejo ? Number(viejo.gastado || 0) : 0, ultimo: (viejo && viejo.ultimo) || serverTimestamp() };
+                    const b = writeBatch(db);
+                    b.set(doc(db, 'clientes', cel), datos);
+                    if (viejo) b.delete(doc(db, 'clientes', viejo.id));
+                    await b.commit();
+                }
+                cerrarCliente();
+                mostrarToast('✅ Cliente guardado: ' + nombre);
+            } catch (e) { err('No se pudo guardar: ' + e.message); }
+        }
+        async function eliminarCliente() {
+            if (!editCli || !editCli.id) return;
+            if (!confirm('¿Eliminar este cliente de la memoria?\n\nSus pedidos anteriores no se borran.')) return;
+            try { await deleteDoc(doc(db, 'clientes', editCli.id)); cerrarCliente(); mostrarToast('🗑️ Cliente eliminado'); }
+            catch (e) { $('cli-error').textContent = 'No se pudo eliminar: ' + e.message; $('cli-error').classList.remove('hidden'); }
+        }
+        $('cli-guardar').addEventListener('click', guardarCliente);
+        $('cli-eliminar').addEventListener('click', eliminarCliente);
+        $('cli-cerrar').addEventListener('click', cerrarCliente);
+        $('modal-cliente').addEventListener('click', (e) => { if (e.target === $('modal-cliente')) cerrarCliente(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editCli) cerrarCliente(); });
+
+        // ===== Menú editable (se cambia desde panel_config.html) =====
+        let menuEscuchando = false;
+        function escucharMenu() {
+            if (menuEscuchando) return;
+            menuEscuchando = true;
+            onSnapshot(doc(db, 'config', 'menu'), (snap) => {
+                if (!snap.exists()) return;
+                const d = snap.data();
+                if (d.tamanos) MENU.tamanos = d.tamanos;
+                if (d.sabores) MENU.sabores = d.sabores;
+                if (d.extras) MENU.extras = d.extras.map(x => [x.id, x.nombre, Number(x.precio) || 0]);
+                if (d.envios && d.envios.length) MENU.envios = d.envios;
+                if (d.negocio) NOMBRE_LOCAL = d.negocio;
+                if (!MENU.tamanos[nuevo.tamano]) nuevo.tamano = Object.keys(MENU.tamanos)[0];
+                nuevo.sabores = nuevo.sabores.filter(x => Object.values(MENU.sabores).some(a => a.includes(x)));
+                if (!$('modal-nuevo').classList.contains('hidden')) renderNuevo();
+            }, () => { menuEscuchando = false; });
+        }
+
+        // ===== Configuración (pantalla dentro del panel) =====
+        (function () {
+        const clone = (o) => JSON.parse(JSON.stringify(o));
+        const toast = (t) => mostrarToast(t);
+        const CARD = 'bg-white rounded-2xl border border-neutral-200 p-4 space-y-3';
+const LBL = 'text-xs font-semibold uppercase tracking-wider text-neutral-500';
+const BTN = 'text-sm font-bold px-4 py-2.5 rounded-xl';
+
+// Menú original (el mismo que usa el TPV si todavía no se guardó nada)
+const DEF = {
+    negocio: 'MI BARRIO',
+    tamanos: {
+        'grande':      { nombre: 'Pizza Grande + Mediana muzza gratis', corto: 'Grande',      limite: 2, borde: 15000, precios: { clasico: 60000, especial: 75000, gourmet: 90000 } },
+        'mediano':     { nombre: 'Pizza Mediana',                       corto: 'Mediana',     limite: 2, borde: 12000, precios: { clasico: 30000, especial: 40000, gourmet: 50000 } },
+        'chico':       { nombre: 'Pizza Tren Chico',                    corto: 'Tren Chico',  limite: 2, borde: 20000, precios: { clasico: 55000, especial: 65000, gourmet: 75000 } },
+        'tren-grande': { nombre: 'Pizza Tren Grande',                   corto: 'Tren Grande', limite: 3, borde: 30000, precios: { clasico: 75000, especial: 90000, gourmet: 110000 } }
+    },
+    sabores: {
+        gourmet:  ['Suprema', 'Carnívora', 'Carne Katupiry', 'Pollo Katupiry', 'Mexicana', 'Barbacoa de la Casa', 'Costilla BBC'],
+        especial: ['Calabacón', 'Especial', 'Peperonni', 'Carbonara', 'Cuatro Quesos', 'Calabresa', 'Bacon', 'Pollo Cheddar', 'Portuguesa'],
+        clasico:  ['Muzza', 'Choclo', 'Palmito', 'Vegetariana', 'Napolitana', 'Jamón', 'Margarita', 'Pollo bbc', 'Ajo & Aceite', 'Queso Paraguay']
+    },
+    extras: [
+        { id: 'papas-med', nombre: 'Papas Medianas', precio: 15000 },
+        { id: 'papas-gra', nombre: 'Papas Grandes', precio: 25000 },
+        { id: 'coca-500', nombre: 'Coca Cola 500ml', precio: 8000 },
+        { id: 'coca-1l', nombre: 'Coca Cola 1LT', precio: 12000 },
+        { id: 'coca-15l', nombre: 'Coca Cola 1.5LT', precio: 17000 }
+    ],
+    envios: [6000, 8000, 10000, 12000]
+};
+const CATS = [['gourmet', '⭐ Gourmet'], ['especial', '✨ Especiales'], ['clasico', '🍃 Clásicos']];
+const norm = (d) => clone({ negocio: d.negocio || DEF.negocio, tamanos: d.tamanos || DEF.tamanos, sabores: d.sabores || DEF.sabores, extras: d.extras || DEF.extras, envios: d.envios || DEF.envios });
+
+let tab = 'menu', draft = null, clientes = [], edCli = null, bus = '', cierres = null, rango = 30;
+let stops = [];
+let hdraft = null;
+
+// ===== Navegación =====
+const TABS = [['menu', '💲 Menú y precios'], ['clientes', '👥 Clientes'], ['reportes', '📊 Reportes'], ['horario', '🕒 Horario'], ['apariencia', '🎨 Apariencia'], ['datos', '🧹 Datos']];
+function render() {
+    $('cfg-tabs').innerHTML = TABS.map(([k, t]) => `<button type="button" data-tab="${k}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${tab === k ? 'bg-white text-neutral-900' : 'bg-white/20 text-white hover:bg-white/30'}">${t}</button>`).join('');
+    if (tab === 'menu') vistaMenu();
+    else if (tab === 'clientes') vistaClientes();
+    else if (tab === 'reportes') vistaReportes();
+    else if (tab === 'horario') vistaHorario();
+    else if (tab === 'apariencia') vistaApariencia();
+    else vistaDatos();
+}
+$('cfg-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    tab = b.dataset.tab; render();
+});
+
+// ===== 1. Menú y precios =====
+function inp(path, val, num, cls) {
+    return `<input data-p="${path}" ${num ? 'data-n="1" type="number" inputmode="numeric" min="0"' : 'type="text" maxlength="60"'} value="${esc(val)}" class="${cls || 'w-full'} bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm">`;
+}
+function vistaMenu() {
+    if (!draft) { $('cfg-vista').innerHTML = '<p class="text-center text-neutral-500 py-10">Cargando menú...</p>'; return; }
+    const tam = Object.entries(draft.tamanos).map(([k, t]) => `
+        <div class="${CARD}"><div class="font-bold">🍕 ${esc(t.corto)}</div>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="text-xs">Nombre completo${inp(`tamanos.${k}.nombre`, t.nombre)}</label>
+                <label class="text-xs">Nombre corto${inp(`tamanos.${k}.corto`, t.corto)}</label>
+                <label class="text-xs">Máx. de sabores${inp(`tamanos.${k}.limite`, t.limite, 1)}</label>
+                <label class="text-xs">Borde relleno (Gs)${inp(`tamanos.${k}.borde`, t.borde, 1)}</label>
+            </div>
+            <div class="grid grid-cols-3 gap-2">${CATS.map(([c, n]) => `<label class="text-xs">${n}${inp(`tamanos.${k}.precios.${c}`, t.precios[c], 1)}</label>`).join('')}</div>
+        </div>`).join('');
+    const sab = CATS.map(([c, n]) => `
+        <div class="${CARD}"><div class="font-bold">${n} <span class="text-xs font-normal text-neutral-500">(${draft.sabores[c].length})</span></div>
+            <div class="flex flex-wrap gap-1.5">${draft.sabores[c].map((s, i) => `<span class="inline-flex items-center gap-1 text-xs font-semibold bg-neutral-100 rounded-full pl-3 pr-1 py-1">${esc(s)}<button type="button" data-del-sabor="${c}|${i}" class="w-5 h-5 rounded-full hover:bg-red-100 text-red-600">✖</button></span>`).join('')}</div>
+            <div class="flex gap-2"><input id="add-${c}" type="text" maxlength="40" placeholder="Nuevo sabor ${n.split(' ')[1].toLowerCase()}" class="flex-1 min-w-0 bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"><button type="button" data-add-sabor="${c}" class="${BTN} bg-neutral-800 text-white">＋</button></div>
+        </div>`).join('');
+    const ext = draft.extras.map((x, i) => `<div class="flex gap-2 items-center">${inp(`extras.${i}.nombre`, x.nombre, 0, 'flex-1 min-w-0')}${inp(`extras.${i}.precio`, x.precio, 1, 'w-28')}<button type="button" data-del-extra="${i}" class="text-red-600 font-bold px-2">✖</button></div>`).join('');
+    $('cfg-vista').innerHTML = `
+        <p class="text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3">Los cambios se aplican al TPV apenas guardás. La página de pedidos de los clientes (index.html) todavía tiene sus propios precios: hay que conectarla aparte.</p>
+        <div class="${CARD}"><div class="${LBL}">Negocio</div><label class="text-xs">Nombre que sale en los tickets${inp('negocio', draft.negocio)}</label></div>
+        <div class="${LBL} pt-2">Tamaños y precios</div>${tam}
+        <div class="${LBL} pt-2">Variedades (sabores)</div>${sab}
+        <div class="${CARD}"><div class="${LBL}">Extras (papas, bebidas...)</div>${ext}<button type="button" id="add-extra" class="${BTN} bg-neutral-800 text-white">＋ Agregar extra</button></div>
+        <div class="${CARD}"><div class="${LBL}">Costos de delivery (separados por coma)</div><input id="inp-envios" type="text" value="${esc(draft.envios.join(', '))}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></div>
+        <div class="flex gap-2 sticky bottom-3"><button type="button" id="m-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar menú</button><button type="button" id="m-reset" class="${BTN} bg-white border border-neutral-300 shadow-lg">↩️ Valores originales</button></div>`;
+}
+async function guardarMenu() {
+    for (const [k, t] of Object.entries(draft.tamanos)) {
+        if (!t.nombre.trim() || !t.corto.trim()) { toast('Completá el nombre de cada tamaño.'); return; }
+        if (!(t.limite >= 1)) { toast('El máximo de sabores de ' + t.corto + ' debe ser 1 o más.'); return; }
+    }
+    if (CATS.some(([c]) => !draft.sabores[c].length)) { toast('Cada categoría necesita al menos un sabor.'); return; }
+    draft.extras = draft.extras.filter(x => String(x.nombre).trim());
+    if (!draft.envios.length) draft.envios = DEF.envios.slice();
+    try {
+        await setDoc(doc(db, 'config', 'menu'), { ...clone(draft), negocio: draft.negocio.trim() || 'MI BARRIO', actualizado: serverTimestamp() });
+        toast('✅ Menú guardado. El TPV ya usa estos precios.'); vistaMenu();
+    } catch (e) { toast('No se pudo guardar: ' + e.message); }
+}
+
+// ===== 2. Clientes =====
+function vistaClientes() {
+    $('cfg-vista').innerHTML = `<div class="flex gap-2"><input id="cfc-bus" type="search" placeholder="Buscar por nombre o celular" value="${esc(bus)}" class="flex-1 min-w-0 bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"><button type="button" id="cfc-nuevo" class="${BTN} bg-neutral-800 text-white">➕ Nuevo</button></div><div id="cfc-form"></div><div id="cfc-lista" class="space-y-2"></div>`;
+    pintaForm(); pintaClientes();
+}
+function pintaClientes() {
+    const el = $('cfc-lista'); if (!el) return;
+    const q = bus.trim().toLowerCase();
+    const l = clientes.filter(c => !q || String(c.nombre).toLowerCase().includes(q) || celLocal(c).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§'));
+    el.innerHTML = (l.length ? `<div class="text-xs text-neutral-500 text-center">${l.length} de ${clientes.length} clientes</div>` : '<p class="text-center text-neutral-500 py-10">No hay clientes.</p>') + l.slice(0, 100).map(c => `
+        <div class="bg-white rounded-2xl border border-neutral-200 p-3 flex items-center justify-between gap-2">
+            <div class="min-w-0"><div class="font-bold truncate">${esc(c.nombre)}</div>
+            <div class="text-xs text-neutral-600">📞 ${esc(celLocal(c))} · ${Number(c.pedidos || 0)} pedidos · ${gs(c.gastado)}</div>
+            ${c.direccion ? `<div class="text-xs text-neutral-500 truncate">📍 ${esc(c.direccion)}</div>` : ''}</div>
+            <button type="button" data-cli-edit="${esc(c.id)}" class="shrink-0 text-xs bg-neutral-100 hover:bg-neutral-200 font-bold px-3 py-2 rounded-xl">✏️ Editar</button>
+        </div>`).join('');
+}
+function pintaForm() {
+    const el = $('cfc-form'); if (!el) return;
+    if (!edCli) { el.innerHTML = ''; return; }
+    const c = edCli.id ? clientes.find(x => x.id === edCli.id) : null;
+    el.innerHTML = `<div class="${CARD} border-2 border-red-300">
+        <div class="font-bold">${c ? '✏️ Editar cliente' : '➕ Nuevo cliente'}</div>
+        <p id="cfc-error" class="hidden text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2"></p>
+        <label class="text-xs block">Nombre<input id="cfc-nombre" type="text" maxlength="60" value="${esc(c ? c.nombre : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs block">Celular<input id="cfc-celular" type="tel" inputmode="tel" maxlength="20" placeholder="Ej. 0981 123 456" value="${esc(c ? celLocal(c) : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs block">Ubicación (dirección o link de Google Maps)<input id="cfc-direccion" type="text" maxlength="500" value="${esc(c ? c.direccion || '' : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <div class="flex gap-2"><button type="button" id="cfc-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white">💾 Guardar</button><button type="button" id="cfc-cancelar" class="${BTN} bg-neutral-100">Cancelar</button>${c ? `<button type="button" id="cfc-eliminar" class="${BTN} bg-red-100 text-red-700">🗑️</button>` : ''}</div></div>`;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+async function guardarCliente() {
+    const err = (t) => { $('cfc-error').textContent = t; $('cfc-error').classList.remove('hidden'); };
+    const nombre = $('cfc-nombre').value.trim(), cel = waNumero($('cfc-celular').value), direccion = $('cfc-direccion').value.trim();
+    if (!nombre) return err('Escribí el nombre.');
+    if (cel.length !== 12) return err('Revisá el celular. Ejemplo: 0981 123 456');
+    if (cel !== edCli.id && clientes.some(x => x.id === cel)) return err('Ya existe un cliente con ese celular.');
+    const viejo = edCli.id ? clientes.find(x => x.id === edCli.id) : null;
+    try {
+        if (viejo && viejo.id === cel) {
+            await setDoc(doc(db, 'clientes', cel), { nombre, celular: cel, direccion }, { merge: true });
+        } else {
+            const b = writeBatch(db);
+            b.set(doc(db, 'clientes', cel), { nombre, celular: cel, direccion, pedidos: viejo ? Number(viejo.pedidos || 0) : 0, gastado: viejo ? Number(viejo.gastado || 0) : 0, ultimo: (viejo && viejo.ultimo) || serverTimestamp() });
+            if (viejo) b.delete(doc(db, 'clientes', viejo.id));
+            await b.commit();
+        }
+        edCli = null; pintaForm(); toast('✅ Cliente guardado: ' + nombre);
+    } catch (e) { err('No se pudo guardar: ' + e.message); }
+}
+
+// ===== 3. Reportes (a partir de los cierres de caja) =====
+async function vistaReportes() {
+    if (!cierres) {
+        $('cfg-vista').innerHTML = '<p class="text-center text-neutral-500 py-10">Cargando cierres...</p>';
+        try {
+            const s = await getDocs(query(collection(db, 'cierres'), orderBy('cerrado', 'desc'), limit(500)));
+            cierres = s.docs.map(d => { const x = d.data(); return { ...x, ms: x.cerrado && x.cerrado.toMillis ? x.cerrado.toMillis() : 0 }; });
+        } catch (e) { $('cfg-vista').innerHTML = '<p class="text-red-700 text-center py-10">No se pudieron cargar los cierres: ' + esc(e.message) + '</p>'; return; }
+    }
+    if (tab !== 'reportes') return;
+    const l = cierres.filter(c => !rango || c.ms >= Date.now() - rango * 86400000);
+    const rg = [[7, '7 días'], [30, '30 días'], [90, '90 días'], [0, 'Todo']].map(([v, t]) => `<button type="button" data-rango="${v}" class="text-xs font-bold px-3 py-1.5 rounded-full ${rango === v ? 'bg-neutral-900 text-white' : 'bg-white border border-neutral-300'}">${t}</button>`).join('');
+    if (!l.length) { $('cfg-vista').innerHTML = `<div class="flex gap-2">${rg}</div><p class="text-center text-neutral-500 py-10">No hay cierres en este período.</p>`; return; }
+    const S = (f) => l.reduce((a, c) => a + Number(f(c) || 0), 0);
+    const ventas = S(c => c.total), gastos = S(c => c.totalGastos), ped = S(c => c.cantidadEntregados);
+    const dia = (f) => String(f || '').split(/[ ,]/)[0];
+    const sem = {}, sab = {};
+    l.forEach(c => { const d = dia(c.fecha); (sem[d] = sem[d] || []).push(Number(c.total || 0)); (c.topSabores || []).forEach(x => { sab[x.nombre] = (sab[x.nombre] || 0) + Number(x.cantidad || 0); }); });
+    const semFilas = Object.entries(sem).map(([d, a]) => [d, Math.round(a.reduce((x, y) => x + y, 0) / a.length)]).sort((a, b) => b[1] - a[1]);
+    const maxSem = semFilas[0][1] || 1;
+    const top = Object.entries(sab).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const dias = l.slice(0, 31).reverse(), maxD = Math.max(...dias.map(c => Number(c.total || 0)), 1);
+    const caja = (k, v, cl) => `<div class="bg-neutral-50 rounded-xl py-2 text-center"><div class="text-base font-black ${cl || ''}">${v}</div><div class="text-[11px] text-neutral-600">${k}</div></div>`;
+    const pp = (k) => S(c => c.porPago && c.porPago[k]), tp = (k) => S(c => c.porTipo && c.porTipo[k] && c.porTipo[k].monto);
+    const fila = (a, b) => `<div class="flex justify-between text-sm"><span>${a}</span><span class="font-semibold">${b}</span></div>`;
+    const barra = (a, v, max, b) => `<div class="flex items-center gap-2 text-xs"><span class="w-24 shrink-0 truncate text-neutral-600">${a}</span><div class="flex-1 bg-neutral-100 rounded"><div class="bg-red-600 rounded h-4" style="width:${Math.round(v / max * 100)}%"></div></div><span class="w-24 shrink-0 text-right font-semibold">${b}</span></div>`;
+    $('cfg-vista').innerHTML = `
+        <div class="flex items-center justify-between gap-2 flex-wrap"><div class="flex gap-2">${rg}</div><button type="button" id="rep-csv" class="text-xs bg-green-100 hover:bg-green-200 text-green-800 font-bold px-3 py-1.5 rounded-xl">⬇️ CSV</button></div>
+        <div class="${CARD}"><div class="grid grid-cols-3 gap-2">${caja('Ventas', gs(ventas), 'text-red-700')}${caja('Gastos', gs(gastos))}${caja('Ganancia', gs(ventas - gastos), 'text-green-700')}${caja('Pedidos', ped)}${caja('Ticket promedio', ped ? gs(Math.round(ventas / ped)) : '-')}${caja('Cancelados', S(c => c.cantidadCancelados))}</div><div class="text-xs text-neutral-500 text-center">${l.length} cierre(s) en el período</div></div>
+        <div class="${CARD}"><div class="${LBL}">Ventas por cierre</div>${dias.map(c => barra(esc(String(c.fecha || '').replace(/^[^,]*,\s*/, '')), Number(c.total || 0), maxD, gs(c.total))).join('')}</div>
+        <div class="${CARD}"><div class="${LBL}">Promedio por día de la semana</div>${semFilas.map(([d, v]) => barra(esc(d), v, maxSem, gs(v))).join('')}</div>
+        <div class="grid sm:grid-cols-2 gap-4">
+            <div class="${CARD}"><div class="${LBL}">Por forma de pago</div>${fila('💵 Efectivo', gs(pp('efectivo')))}${fila('🏦 Transferencia', gs(pp('transferencia')))}${fila('💳 POS', gs(pp('pos')))}${fila('⚠️ Sin definir', gs(pp('sinDefinir')))}</div>
+            <div class="${CARD}"><div class="${LBL}">Por tipo de pedido</div>${fila('🛵 Delivery', gs(tp('delivery')))}${fila('🛍️ Retiro', gs(tp('retiro')))}${fila('🍽️ En el local', gs(tp('local')))}</div>
+        </div>
+        ${top.length ? `<div class="${CARD}"><div class="${LBL}">Sabores más pedidos (suma de los top de cada cierre)</div>${top.map(([n, v], i) => fila((i + 1) + '. ' + esc(n), v)).join('')}</div>` : ''}`;
+}
+function csvReporte() {
+    const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const l = cierres.filter(c => !rango || c.ms >= Date.now() - rango * 86400000);
+    const filas = l.map(c => { const p = c.porPago || {}; return [c.nro || '', c.fecha, c.cantidadEntregados, c.cantidadCancelados, c.total, c.totalGastos || 0, (c.total || 0) - (c.totalGastos || 0), p.efectivo || 0, p.transferencia || 0, p.pos || 0, c.fondo || 0, c.efectivoContado ?? '', c.diferencia ?? ''].map(q).join(';'); });
+    descargar('reporte-mi-barrio.csv', '\ufeff' + ['Cierre;Fecha;Entregados;Cancelados;Ventas;Gastos;Ganancia;Efectivo;Transferencia;POS;Fondo;Contado;Diferencia', ...filas].join('\n'), 'text/csv;charset=utf-8');
+}
+function descargar(nombre, texto, tipo) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([texto], { type: tipo }));
+    a.download = nombre; a.click();
+}
+
+// ===== 4. Datos: respaldo y borrado =====
+const COLS = [['pedidos', '🍕 Pedidos'], ['cierres', '🔒 Cierres de caja'], ['gastos', '🧾 Gastos'], ['clientes', '👥 Clientes']];
+async function vistaDatos() {
+    $('cfg-vista').innerHTML = `
+        <div class="${CARD}"><div class="${LBL}">Lo que hay guardado</div><div id="d-conteo" class="space-y-1 text-sm">Contando...</div></div>
+        <div class="${CARD}"><div class="${LBL}">Respaldo</div><p class="text-sm text-neutral-600">Descarga todo (pedidos, cierres, gastos, clientes y menú) en un archivo. Conviene hacerlo antes de borrar.</p><button type="button" id="d-backup" class="${BTN} bg-neutral-800 text-white">⬇️ Descargar respaldo</button></div>
+        <div class="${CARD} border-red-200"><div class="${LBL} text-red-700">Zona de borrado</div><p class="text-sm text-neutral-600">No se puede deshacer. Te va a pedir que escribas BORRAR.</p>
+            <button type="button" data-borrar="cierres" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar historial de cierres</button>
+            <button type="button" data-borrar="ventas" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar toda la base de ventas (pedidos, gastos, cierres) y reiniciar numeración</button>
+            <button type="button" data-borrar="clientes" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar la memoria de clientes</button></div>`;
+    const filas = [];
+    for (const [c, t] of COLS) {
+        try { filas.push(`<div class="flex justify-between"><span>${t}</span><span class="font-semibold">${(await getCountFromServer(collection(db, c))).data().count}</span></div>`); }
+        catch (e) { filas.push(`<div class="flex justify-between"><span>${t}</span><span class="text-neutral-400">?</span></div>`); }
+    }
+    if ($('d-conteo')) $('d-conteo').innerHTML = filas.join('');
+}
+async function respaldo() {
+    toast('Preparando respaldo...');
+    try {
+        const out = { generado: new Date().toISOString() };
+        for (const [c] of COLS) out[c] = (await getDocs(collection(db, c))).docs.map(d => ({ id: d.id, ...d.data() }));
+        out.menu = clone(draft);
+        descargar('respaldo-mi-barrio-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(out), 'application/json');
+        toast('✅ Respaldo descargado');
+    } catch (e) { toast('No se pudo hacer el respaldo: ' + e.message); }
+}
+async function vaciar(nombre) {
+    let n = 0;
+    for (;;) {
+        const s = await getDocs(query(collection(db, nombre), limit(400)));
+        if (s.empty) break;
+        const b = writeBatch(db); s.docs.forEach(d => b.delete(d.ref)); await b.commit(); n += s.size;
+    }
+    return n;
+}
+async function borrar(que) {
+    const plan = { cierres: [['cierres'], 'el historial de cierres de caja'], ventas: [['pedidos', 'gastos', 'cierres'], 'TODOS los pedidos, gastos y cierres (la numeración vuelve a 0)'], clientes: [['clientes'], 'la memoria de clientes'] }[que];
+    if (prompt('⚠️ Vas a borrar ' + plan[1] + '.\nNo se puede deshacer.\n\nEscribí BORRAR para confirmar:') !== 'BORRAR') return;
+    toast('Borrando...');
+    try {
+        let total = 0;
+        for (const c of plan[0]) total += await vaciar(c);
+        if (que === 'ventas') await setDoc(doc(db, 'config', 'contador'), { ultimo: 0, cierres: 0, fondo: 0 }, { merge: true });
+        if (que !== 'clientes') cierres = null; cargarUltimos();
+        toast('🗑️ Listo: ' + total + ' registros borrados'); vistaDatos();
+    } catch (e) { toast('No se pudo borrar todo: ' + e.message); }
+}
+
+// ===== 5. Horario del local (abierto / cerrado) =====
+const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
+const TIME_CLS = 'bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm';
+function pintaEstadoHorario() {
+    const el = $('h-estado');
+    if (!el || $('modal-config').classList.contains('hidden')) return;
+    const e = estadoLocal(localCfg, Date.now());
+    const modo = e.modo === 'manual' ? 'manual' + (e.hasta ? ' hasta las ' + fmtHora(e.hasta) : '') : e.modo === 'auto' ? 'siguiendo el horario' : 'sin horario automático (figura siempre abierto)';
+    el.innerHTML = `<div class="${LBL}">Estado ahora</div>
+        <div class="text-lg font-extrabold">${e.abierto ? '🟢 Abierto' : '🔴 Cerrado'} <span class="text-xs font-semibold text-neutral-500">· ${esc(modo)}</span></div>
+        <div class="flex flex-wrap gap-2">
+            <button type="button" data-hloc="abierto" class="${BTN} bg-green-600 hover:bg-green-700 text-white">🟢 Abrir ahora</button>
+            <button type="button" data-hloc="cerrado" class="${BTN} bg-neutral-900 hover:bg-black text-white">🔴 Cerrar ahora</button>
+            <button type="button" data-hloc="auto" class="${BTN} bg-white border border-neutral-300">↺ Volver a automático</button>
+        </div>`;
+}
+window.refrescarHorarioUI = () => { if (tab === 'horario') pintaEstadoHorario(); else if (tab === 'apariencia') vistaApariencia(); };
+function vistaHorario() {
+    if (!hdraft) hdraft = clone(localCfg);
+    const filas = ORDEN_DIAS.map(d => {
+        const ts = hdraft.horarios[d] || [];
+        return `<div class="${CARD}">
+            <div class="flex items-center justify-between"><div class="font-bold">${DIAS_N[d]}</div><button type="button" data-hadd="${d}" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-neutral-800 text-white">＋ Turno</button></div>
+            ${ts.length ? ts.map((t, i) => `<div class="flex items-center gap-2 text-sm flex-wrap"><span>Abre</span><input type="time" data-hd="${d}" data-hi="${i}" data-hk="a" value="${esc(t.a)}" class="${TIME_CLS}"><span>cierra</span><input type="time" data-hd="${d}" data-hi="${i}" data-hk="c" value="${esc(t.c)}" class="${TIME_CLS}"><button type="button" data-hdel="${d}|${i}" class="text-red-600 font-bold px-2" title="Quitar turno">✖</button></div>`).join('') : '<p class="text-sm text-neutral-500">Cerrado todo el día</p>'}
+        </div>`;
+    }).join('');
+    $('cfg-vista').innerHTML = `
+        <div id="h-estado" class="${CARD}"></div>
+        <div class="${CARD}">
+            <label class="flex items-center gap-2 font-bold"><input id="h-auto" type="checkbox" ${hdraft.auto ? 'checked' : ''}> Abrir y cerrar solo, según este horario</label>
+            <p class="text-xs text-neutral-500">Apagado: el local figura siempre abierto y lo manejás solo con el botón del panel. Un turno que cierra pasada la medianoche (por ejemplo 19:00 a 01:00) también funciona. Las horas son de Paraguay. El botón manual del panel manda hasta el próximo cambio del horario.</p>
+        </div>
+        <div class="${CARD}">
+            <div class="${LBL}">Atajo: el mismo horario todos los días</div>
+            <div class="flex items-center gap-2 text-sm flex-wrap"><input id="h-all-a" type="time" value="18:00" class="${TIME_CLS}"><span>a</span><input id="h-all-c" type="time" value="23:30" class="${TIME_CLS}"><button type="button" id="h-all" class="${BTN} bg-neutral-800 text-white">Aplicar a todos</button></div>
+        </div>
+        ${filas}
+        <div class="${CARD}">
+            <div class="${LBL}">Mensaje cuando estamos cerrados</div>
+            <input id="h-msg" type="text" maxlength="140" value="${esc(hdraft.mensaje)}" placeholder="Por el momento no estamos tomando pedidos. ¡Te esperamos pronto!" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm">
+            <p class="text-xs text-neutral-500">Debajo del mensaje, la página agrega sola "Abrimos hoy a las 18:00" cuando hay horario automático.</p>
+        </div>
+        <div class="flex gap-2 sticky bottom-3"><button type="button" id="h-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar horario</button></div>`;
+    pintaEstadoHorario();
+}
+// ===== 5. Apariencia (temas) =====
+const TEMAS_CLIENTE = [
+    ['clasico', 'Clásico', 'El diseño de siempre: simple y claro.', { bg: '#fcf8f2', top: '#000', a: '#b91c1c', card: '#fff', line: '#e5e5e5' }],
+    ['bonito', 'Bonito', 'Fondo crema, toldo de pizzería, pasos numerados y tarjetas redondeadas.', { bg: '#fbf4ea', top: '#c8321f', a: '#c8321f', card: '#fff', line: '#ecdfce' }],
+    ['noche', 'Noche', 'Misma estructura pero oscura, con naranja y dorado. Cómoda para pedir de noche.', { bg: '#14100d', top: '#ff6a3d', a: '#ff6a3d', card: '#271f19', line: '#3a2f27' }]
+];
+function miniTema(c) {
+    return `<div style="background:${c.bg};border-radius:12px;overflow:hidden;border:1px solid ${c.line}">
+        <div style="height:16px;background:${c.top}"></div>
+        <div style="padding:8px;display:grid;gap:6px">
+            <div style="height:8px;width:55%;border-radius:6px;background:${c.a}"></div>
+            <div style="height:20px;border-radius:8px;background:${c.card};border:1px solid ${c.line}"></div>
+            <div style="height:20px;border-radius:8px;background:${c.card};border:2px solid ${c.a}"></div>
+            <div style="height:12px;width:70%;margin:0 auto;border-radius:8px;background:${c.a}"></div>
+        </div></div>`;
+}
+function vistaApariencia() {
+    const actual = (localCfg && localCfg.tema) || 'clasico';
+    const actualPan = document.documentElement.getAttribute('data-panel') || 'clasico';
+    $('cfg-vista').innerHTML = `
+        <div class="${CARD}">
+            <div class="font-bold">🎨 Tema de la página de pedidos</div>
+            <p class="text-xs text-neutral-500">Es lo que ven tus clientes. Se cambia al instante, sin volver a subir archivos. Podés usar <b>Probar</b> para verlo en otra pestaña antes de activarlo: ahí solo lo ves vos.</p>
+            <div class="grid gap-3 sm:grid-cols-3">
+                ${TEMAS_CLIENTE.map(([k, nombre, desc, c]) => `
+                <div class="rounded-2xl border-2 p-3 space-y-2 ${actual === k ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'}">
+                    ${miniTema(c)}
+                    <div class="flex items-center justify-between gap-2"><div class="font-bold">${nombre}</div>${actual === k ? '<span class="text-[11px] font-extrabold text-green-700">✅ EN USO</span>' : ''}</div>
+                    <p class="text-xs text-neutral-500">${desc}</p>
+                    <div class="flex gap-2">
+                        <a href="./?tema=${k}" target="_blank" rel="noopener" class="flex-1 text-center text-xs font-bold px-3 py-2 rounded-lg bg-white border border-neutral-300">👁️ Probar</a>
+                        ${actual === k ? '' : `<button type="button" data-tema-cli="${k}" class="flex-1 text-xs font-bold px-3 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white">Usar este</button>`}
+                    </div>
+                </div>`).join('')}
+            </div>
+        </div>
+        <div class="${CARD}">
+            <div class="font-bold">🖥️ Tema del panel de control</div>
+            <p class="text-xs text-neutral-500">Se guarda <b>en este equipo</b>: podés tener uno en la PC y otro en el celular. En celular, los botones pasan a una barra fija abajo para usarlos con el pulgar.</p>
+            <div class="grid gap-3 sm:grid-cols-3">
+                ${TEMAS_PANEL.map(([k, nombre, desc, c]) => `
+                <div class="rounded-2xl border-2 p-3 space-y-2 ${actualPan === k ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'}">
+                    ${miniPanel(c)}
+                    <div class="flex items-center justify-between gap-2"><div class="font-bold">${nombre}</div>${actualPan === k ? '<span class="text-[11px] font-extrabold text-green-700">✅ EN USO</span>' : ''}</div>
+                    <p class="text-xs text-neutral-500">${desc}</p>
+                    ${actualPan === k ? '' : `<button type="button" data-tema-pan="${k}" class="w-full text-xs font-bold px-3 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white">Usar este</button>`}
+                </div>`).join('')}
+            </div>
+        </div>`;
+}
+const TEMAS_PANEL = [
+    ['clasico', 'Clásico', 'El panel como lo venís usando.', { bg: '#f5f5f5', top: '#b91c1c', card: '#fff', line: '#e5e5e5', st: '#16a34a' }],
+    ['pro', 'Pro', 'Claro y ordenado: franja de color por estado, barra de acciones abajo en celular.', { bg: '#f1f5f9', top: '#0f172a', card: '#fff', line: '#e2e8f0', st: '#16a34a' }],
+    ['oscuro', 'Oscuro', 'Fondo oscuro que cansa menos la vista de noche y en la cocina.', { bg: '#0b1020', top: '#10172b', card: '#151b2e', line: '#27304a', st: '#f59e0b' }]
+];
+function miniPanel(c) {
+    return `<div style="background:${c.bg};border-radius:12px;overflow:hidden;border:1px solid ${c.line}">
+        <div style="height:16px;background:${c.top}"></div>
+        <div style="padding:8px;display:grid;gap:6px">
+            <div style="height:22px;border-radius:8px;background:${c.card};border:1px solid ${c.line};border-left:5px solid ${c.st}"></div>
+            <div style="height:22px;border-radius:8px;background:${c.card};border:1px solid ${c.line};border-left:5px solid #2563eb"></div>
+        </div></div>`;
+}
+$('cfg-vista').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tema-pan]');
+    if (!b) return;
+    window.aplicarTemaPanel(b.dataset.temaPan);
+    toast('🖥️ Tema del panel cambiado en este equipo');
+    vistaApariencia();
+});
+$('cfg-vista').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-tema-cli]');
+    if (!b) return;
+    const t = b.dataset.temaCli;
+    const nombre = (TEMAS_CLIENTE.find(x => x[0] === t) || [])[1] || t;
+    try {
+        await setDoc(doc(db, 'config', 'local'), { tema: t, actualizado: serverTimestamp() }, { merge: true });
+        toast('🎨 Tema "' + nombre + '" activado: tus clientes lo ven al instante');
+    } catch (err) {
+        toast('No se pudo cambiar el tema: ' + (err.code === 'permission-denied' ? 'sin permiso (entrá como administrador).' : err.message));
+    }
+});
+
+async function guardarHorario() {
+    const horarios = {};
+    for (let k = 0; k < 7; k++) {
+        horarios[k] = (hdraft.horarios[k] || []).map(t => ({ a: t.a, c: t.c }));
+        for (const t of horarios[k]) {
+            if (!t.a || !t.c || t.a === t.c) { toast('Revisá ' + DIAS_N[k] + ': cada turno necesita hora de apertura y de cierre distintas.'); return; }
+        }
+    }
+    if (hdraft.auto && !hayHorarios(horarios)) { toast('Activaste el modo automático pero no cargaste ningún turno.'); return; }
+    try {
+        await setDoc(doc(db, 'config', 'local'), { auto: !!hdraft.auto, horarios: horarios, mensaje: (hdraft.mensaje || '').trim().slice(0, 140), manual: null, manualHasta: null, actualizado: serverTimestamp() }, { merge: true });
+        toast('✅ Horario guardado');
+    } catch (e) { toast('No se pudo guardar: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas nuevas (reglas_firestore.txt).' : e.message)); }
+}
+$('cfg-vista').addEventListener('input', (e) => {
+    const t = e.target;
+    if (!hdraft) return;
+    if (t.dataset.hk) { const ts = hdraft.horarios[t.dataset.hd]; if (ts && ts[t.dataset.hi]) ts[t.dataset.hi][t.dataset.hk] = t.value; }
+    else if (t.id === 'h-auto') hdraft.auto = t.checked;
+    else if (t.id === 'h-msg') hdraft.mensaje = t.value;
+});
+$('cfg-vista').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.hloc) { ponerLocalManual(d.hloc === 'auto' ? null : d.hloc); return; }
+    if (!hdraft) return;
+    if (d.hadd !== undefined) { (hdraft.horarios[d.hadd] = hdraft.horarios[d.hadd] || []).push({ a: '18:00', c: '23:30' }); vistaHorario(); }
+    else if (d.hdel) { const [dd, i] = d.hdel.split('|'); hdraft.horarios[dd].splice(Number(i), 1); vistaHorario(); }
+    else if (b.id === 'h-all') {
+        const a = $('h-all-a').value, c = $('h-all-c').value;
+        if (!a || !c || a === c) { toast('Poné una hora de apertura y otra de cierre distintas.'); return; }
+        for (let k = 0; k < 7; k++) hdraft.horarios[k] = [{ a: a, c: c }];
+        vistaHorario();
+    }
+    else if (b.id === 'h-guardar') guardarHorario();
+});
+
+// ===== Eventos =====
+$('cfg-vista').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.p && draft) {
+        const k = t.dataset.p.split('.'); let o = draft;
+        for (let i = 0; i < k.length - 1; i++) o = o[k[i]];
+        o[k[k.length - 1]] = t.dataset.n ? Math.max(0, Math.round(Number(t.value) || 0)) : t.value;
+    } else if (t.id === 'inp-envios') {
+        draft.envios = t.value.split(/[\s,;]+/).map(Number).filter(n => n > 0);
+    } else if (t.id === 'cfc-bus') { bus = t.value; pintaClientes(); }
+});
+$('cfg-vista').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.addSabor) {
+        const v = $('add-' + d.addSabor).value.trim();
+        if (!v) return;
+        if (Object.values(draft.sabores).some(a => a.some(x => x.toLowerCase() === v.toLowerCase()))) { toast('Ese sabor ya existe.'); return; }
+        draft.sabores[d.addSabor].push(v); vistaMenu(); $('add-' + d.addSabor).focus();
+    } else if (d.delSabor) { const [c, i] = d.delSabor.split('|'); draft.sabores[c].splice(Number(i), 1); vistaMenu(); }
+    else if (b.id === 'add-extra') { draft.extras.push({ id: 'x' + Date.now(), nombre: '', precio: 0 }); vistaMenu(); }
+    else if (d.delExtra) { draft.extras.splice(Number(d.delExtra), 1); vistaMenu(); }
+    else if (b.id === 'm-guardar') guardarMenu();
+    else if (b.id === 'm-reset') { if (confirm('¿Volver a los precios y sabores originales? Se aplican recién al guardar.')) { draft = norm(DEF); vistaMenu(); } }
+    else if (b.id === 'cfc-nuevo') { edCli = { id: null }; pintaForm(); }
+    else if (d.cliEdit) { edCli = { id: d.cliEdit }; pintaForm(); }
+    else if (b.id === 'cfc-cancelar') { edCli = null; pintaForm(); }
+    else if (b.id === 'cfc-guardar') guardarCliente();
+    else if (b.id === 'cfc-eliminar') {
+        if (confirm('¿Eliminar este cliente de la memoria?\n\nSus pedidos anteriores no se borran.')) deleteDoc(doc(db, 'clientes', edCli.id)).then(() => { edCli = null; pintaForm(); toast('🗑️ Cliente eliminado'); }).catch(er => toast('No se pudo eliminar: ' + er.message));
+    }
+    else if (d.rango !== undefined) { rango = Number(d.rango); vistaReportes(); }
+    else if (b.id === 'rep-csv') csvReporte();
+    else if (b.id === 'd-backup') respaldo();
+    else if (d.borrar) borrar(d.borrar);
+});
+
+        function abrirConfig() {
+            if (esDelivery) return;
+            $('modal-config').classList.remove('hidden');
+            stops.forEach(f => f()); stops = [];
+            stops.push(onSnapshot(doc(db, 'config', 'menu'), (s) => { if (!draft) { draft = norm(s.exists() ? s.data() : DEF); if (tab === 'menu') render(); } }, () => {}));
+            stops.push(onSnapshot(query(collection(db, 'clientes'), orderBy('ultimo', 'desc'), limit(1000)), (s) => {
+                clientes = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (tab === 'clientes') pintaClientes();
+            }, () => {}));
+            render();
+        }
+        function cerrarConfig() {
+            $('modal-config').classList.add('hidden');
+            stops.forEach(f => f()); stops = [];
+            draft = null; cierres = null; edCli = null; hdraft = null;
+        }
+        $('btn-config').addEventListener('click', abrirConfig);
+        $('cfg-cerrar').addEventListener('click', cerrarConfig);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal-config').classList.contains('hidden') && $('modal-nuevo').classList.contains('hidden')) cerrarConfig(); });
+        })();
+
+        setInterval(() => {
+            document.querySelectorAll('[data-tiempo]').forEach(el => {
+                const ms = Number(el.dataset.tiempo);
+                el.textContent = '⏱ ' + hace(ms);
+                el.className = 'inline-block text-xs font-bold px-2.5 py-1 rounded-lg ' + claseTiempo(ms);
+            });
+            actualizarAvisoSonido();
+        }, 15000);
+    </script>
+</body>
+</html>
