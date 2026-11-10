@@ -642,9 +642,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                         marker.setLatLng([lat, lng]);
                         actualizarCoordenadas(lat, lng);
                     },
-                    () => {
+                    (err) => {
                         alert("⚠️ No se pudo obtener tu ubicación actual. Arrastra el marcador en el mapa.");
-                    }
+                    },
+                    // Precisión: pedirle al GPS del celular datos más exactos (hasta ~20 m / nivel GPS)
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
             } else {
                 alert("⚠️ Tu navegador no soporta geolocalización.");
@@ -976,7 +978,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             mensaje += `*👤 Cliente:* ${window.MESA_ACTUAL ? 'Mesa ' + window.MESA_ACTUAL : nombre}\n`;
             if (celular) mensaje += `*📞 Celular:* ${formatearCelularPY(celular)}\n`;
             if (direccion) mensaje += `*📍 Dirección:* ${direccion}\n`;
-            mensaje += `*🗺️ Ubicación GPS:* ${enlaceGoogleMaps}\n`;
+            if (direccion && lat && lng) mensaje += `*🗺️ Ubicación GPS:* ${enlaceGoogleMaps}\n`;
             mensaje += `\n---------------------------------\n\n`;
             if (window.MESA_ACTUAL) mensaje += `*🪑 Mesa: ${window.MESA_ACTUAL}*\n`;
             mensaje += `*📦 DETALLE DE LA ORDEN:*\n`;
