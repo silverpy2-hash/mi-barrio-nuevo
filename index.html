@@ -321,6 +321,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         </div>
     </div>
 
+    <div id="aviso-mesa" class="hidden max-w-xl mx-auto px-4 mt-6 bg-amber-100 border border-amber-300 text-amber-900 rounded-2xl px-4 py-3 text-center text-sm font-bold">🪑 Pedido para la mesa</div>
+
     <main class="max-w-xl mx-auto px-4 mt-6 space-y-6">
 
         <!-- 1. Datos del Cliente y Ubicación -->
@@ -981,6 +983,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             mensaje += `*📍 Dirección:* ${direccion}\n`;
             mensaje += `*🗺️ Ubicación GPS:* ${enlaceGoogleMaps}\n`;
             mensaje += `\n---------------------------------\n\n`;
+            if (mesaActual) mensaje += `*🪑 Mesa: ${mesaActual}*\n`;
             mensaje += `*📦 DETALLE DE LA ORDEN:*\n`;
             const pizzasEnvio = pedido.slice();
             if (saboresChecked.length > 0) {
@@ -1173,6 +1176,17 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             });
             if (window.validarSabores) window.validarSabores();
         }
+        // ===== Mesa desde QR (?mesa=N) =====
+        let mesaActual = null;
+        try { const mq = parseInt(new URLSearchParams(location.search).get('mesa'), 10); if (mq && mq > 0) mesaActual = mq; } catch (e) {}
+        window.MESA_ACTUAL = mesaActual;
+        function pintarAvisoMesa() {
+            const el = document.getElementById('aviso-mesa');
+            if (!el) return;
+            if (mesaActual) { el.textContent = '🪑 Pedido para la mesa ' + mesaActual; el.classList.remove('hidden'); }
+            else { el.classList.add('hidden'); }
+        }
+        pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
         onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); }, () => {});
         setInterval(pintarCartel, 15000);
