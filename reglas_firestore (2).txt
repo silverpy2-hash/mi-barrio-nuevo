@@ -14,7 +14,7 @@ service cloud.firestore {
 
     // Cambios de estado permitidos en un pedido (solo hacia adelante o cancelar)
     function estadoPermitido(de, a) {
-      return (de == 'nuevo'       && a in ['preparacion', 'entregado', 'cancelado'])
+      return (de == 'nuevo'       && a in ['preparacion', 'cancelado'])
           || (de == 'preparacion' && a in ['en_camino', 'entregado', 'cancelado'])
           || (de == 'en_camino'   && a in ['entregado', 'cancelado'])
           || (de == 'entregado'   && a in ['cancelado', 'archivado'])
