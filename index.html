@@ -638,11 +638,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        // Solo tomamos la ubicacion si la precision alcanza ~20 metros
-                        if (position.coords.accuracy > 20) {
-                            alert("📍 Ubicación aún no precisa (" + Math.round(position.coords.accuracy) + " m). Esperá un momento...");
-                            return;
-                        }
+                        // Solo tomamos la ubicacion si la precision alcanza ~20 metros (silencioso en segundo plano)
+                        if (position.coords.accuracy > 20) { return; }
                         map.setView([lat, lng], 16);
                         marker.setLatLng([lat, lng]);
                         actualizarCoordenadas(lat, lng);
