@@ -1336,7 +1336,7 @@
             nuevoMsg('nuevo-error', '');
             if (b.id === 'nuevo-cerrar') { $('modal-nuevo').classList.add('hidden'); return; }
             if (b.id === 'nuevo-guardar') { if (nuevo.agregarA) guardarAgregado(); else guardarNuevo(); return; }
-            if (d.nTipo) { nuevo.tipo = d.nTipo; }
+            if (d.nTipo) { nuevo.tipo = (d.nTipo === 'local') ? 'retiro' : d.nTipo; }
             else if (d.nTam) {
                 nuevo.tamano = d.nTam;
                 nuevo.sabores = nuevo.sabores.slice(0, MENU.tamanos[d.nTam].limite);
@@ -2000,7 +2000,7 @@
         function abrirAgregar(p) {
             nuevoLimpiar();
             if (p.estado === 'entregado' || p.pagado) { toast('⚠️ El pedido ' + numeroCorto(p) + ' ya fue cobrado/entregado: no se puede agregar más. Creá un nuevo pedido.'); return; }
-            nuevo.agregarA = p.id; nuevo.tipo = TIPOS[p.tipo] ? p.tipo : 'delivery'; nuevo.entrada = 'nuevo';
+            nuevo.agregarA = p.id; nuevo.tipo = TIPOS[p.tipo] ? (p.tipo === 'local' ? 'retiro' : p.tipo) : 'delivery'; nuevo.entrada = 'nuevo';
             nuevoMsg('nuevo-error', '');
             $('modal-nuevo').classList.remove('hidden');
             renderNuevo();

@@ -326,7 +326,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
     <main class="max-w-xl mx-auto px-4 mt-6 space-y-6">
 
         <!-- 1. Datos del Cliente y Ubicación -->
-        <section class="bg-white p-5 rounded-2xl shadow-sm border border-neutral-200">
+        <section id="seccion-cliente" class="bg-white p-5 rounded-2xl shadow-sm border border-neutral-200">
             <h2 class="text-lg font-bold text-red-700 mb-3 border-b pb-2 flex items-center gap-2">
                 👤 Datos para el Delivery
             </h2>
@@ -588,7 +588,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 <span class="text-xs uppercase font-bold tracking-wider text-neutral-400 block">Total Estimado</span>
                 <span id="total-pantalla" class="text-2xl font-black text-red-700">0 Gs</span>
             </div>
-            <button type="button" onclick="enviarPedido()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md transition transform active:scale-[0.98] text-center text-sm tracking-wide">
+            <button type="button" id="btn-enviar" onclick="enviarPedido()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md transition transform active:scale-[0.98] text-center text-sm tracking-wide">
                 🚀 Confirmar y Enviar
             </button>
         </div>
@@ -941,14 +941,9 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const tamano = obtenerTamanoSeleccionado();
             const saboresChecked = document.querySelectorAll('input[name="sabor"]:checked');
 
-            if (!nombre || !direccion) {
-                alert("⚠️ Por favor, ingresa tu nombre y dirección completa de entrega.");
-                return;
-            }
-
-            if (!celular) {
-                alert("⚠️ Ingresá un número de celular válido de Paraguay. Ejemplo: 0981 123 456");
-                return;
+            if (!mesaActual) {
+                if (!nombre || !direccion) { alert("⚠️ Por favor, ingresa tu nombre y dirección completa de entrega."); return; }
+                if (!celular) { alert("⚠️ Ingresá un número de celular válido de Paraguay. Ejemplo: 0981 123 456"); return; }
             }
 
             if (saboresChecked.length === 0 && pedido.length === 0) {
@@ -978,12 +973,12 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
             // Construcción del mensaje de WhatsApp
             let mensaje = `*🍕 NUEVO PEDIDO - MI BARRIO 🍕*\n\n`;
-            mensaje += `*👤 Cliente:* ${nombre}\n`;
-            mensaje += `*📞 Celular:* ${formatearCelularPY(celular)}\n`;
-            mensaje += `*📍 Dirección:* ${direccion}\n`;
+            mensaje += `*👤 Cliente:* ${window.MESA_ACTUAL ? 'Mesa ' + window.MESA_ACTUAL : nombre}\n`;
+            if (celular) mensaje += `*📞 Celular:* ${formatearCelularPY(celular)}\n`;
+            if (direccion) mensaje += `*📍 Dirección:* ${direccion}\n`;
             mensaje += `*🗺️ Ubicación GPS:* ${enlaceGoogleMaps}\n`;
             mensaje += `\n---------------------------------\n\n`;
-            if (mesaActual) mensaje += `*🪑 Mesa: ${mesaActual}*\n`;
+            if (window.MESA_ACTUAL) mensaje += `*🪑 Mesa: ${window.MESA_ACTUAL}*\n`;
             mensaje += `*📦 DETALLE DE LA ORDEN:*\n`;
             const pizzasEnvio = pedido.slice();
             if (saboresChecked.length > 0) {
@@ -1182,9 +1177,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         window.MESA_ACTUAL = mesaActual;
         function pintarAvisoMesa() {
             const el = document.getElementById('aviso-mesa');
-            if (!el) return;
-            if (mesaActual) { el.textContent = '🪑 Pedido para la mesa ' + mesaActual; el.classList.remove('hidden'); }
-            else { el.classList.add('hidden'); }
+            if (el) { if (mesaActual) { el.textContent = '🪑 Pedido para la mesa ' + mesaActual; el.classList.remove('hidden'); } else { el.classList.add('hidden'); } }
+            const sec = document.getElementById('seccion-cliente');
+            if (sec) sec.classList.toggle('hidden', !!mesaActual);
+            const b = document.getElementById('btn-enviar');
+            if (b) b.innerHTML = mesaActual ? '✅ Confirmar y Pedir' : '🚀 Confirmar y Enviar';
         }
         pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
