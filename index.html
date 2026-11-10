@@ -1181,7 +1181,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const sec = document.getElementById('seccion-cliente');
             if (sec) sec.classList.toggle('hidden', !!mesaActual);
             const b = document.getElementById('btn-enviar');
-            if (b) b.innerHTML = mesaActual ? '✅ Confirmar y Pedir' : '🚀 Confirmar y Enviar';
+            if (b) b.textContent = mesaActual ? '✅ Confirmar y Pedir' : '🚀 Confirmar y Enviar';
         }
         pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
