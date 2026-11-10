@@ -945,7 +945,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const tamano = obtenerTamanoSeleccionado();
             const saboresChecked = document.querySelectorAll('input[name="sabor"]:checked');
 
-            if (!mesaActual) {
+            if (!window.MESA_ACTUAL) {
                 if (!nombre || !direccion) { alert("⚠️ Por favor, ingresa tu nombre y dirección completa de entrega."); return; }
                 if (!celular) { alert("⚠️ Ingresá un número de celular válido de Paraguay. Ejemplo: 0981 123 456"); return; }
             }
