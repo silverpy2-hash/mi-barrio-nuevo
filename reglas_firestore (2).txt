@@ -24,7 +24,7 @@ service cloud.firestore {
     match /pedidos/{id} {
       // Cualquier cliente puede CREAR un pedido
       allow create: if request.resource.data.keys().hasOnly(
-                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago'])
+                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm'])
                     && (!('pago' in request.resource.data) || request.resource.data.pago in ['efectivo', 'transferencia'])
                     && request.resource.data.estado == 'nuevo'
                     && request.resource.data.creado == request.time

@@ -1215,7 +1215,7 @@
 
             // costo de delivery
             $('nuevo-envio-box').classList.toggle('hidden', nuevo.tipo !== 'delivery');
-            $('nuevo-envio').innerHTML = (MENU.envios || [6000, 8000, 10000, 12000]).map(v => `<button type="button" data-n-envio="${v}" class="text-xs font-bold px-3 py-2 rounded-xl border ${nuevo.envio === v ? clsOn : clsOff}">${v / 1000} mil</button>`).join('');
+            $('nuevo-envio').innerHTML = (MENU.envios || [5000, 7000, 9000, 12000, 15000]).map(v => `<button type="button" data-n-envio="${v}" class="text-xs font-bold px-3 py-2 rounded-xl border ${nuevo.envio === v ? clsOn : clsOff}">${v / 1000} mil</button>`).join('');
 
             // pago y entrada
             $('nuevo-pago').innerHTML = Object.entries(PAGOS).map(([k, v]) =>
@@ -2182,7 +2182,7 @@ const DEF = {
         { id: 'coca-1l', nombre: 'Coca Cola 1LT', precio: 12000 },
         { id: 'coca-15l', nombre: 'Coca Cola 1.5LT', precio: 17000 }
     ],
-    envios: [6000, 8000, 10000, 12000]
+    envios: [5000, 7000, 9000, 12000, 15000]
 };
 const CATS = [['gourmet', '⭐ Gourmet'], ['especial', '✨ Especiales'], ['clasico', '🍃 Clásicos']];
 const norm = (d) => clone({ negocio: d.negocio || DEF.negocio, tamanos: d.tamanos || DEF.tamanos, sabores: d.sabores || DEF.sabores, extras: d.extras || DEF.extras, envios: d.envios || DEF.envios });
