@@ -73,9 +73,9 @@ service cloud.firestore {
     }
 
     // Estado del local (abierto/cerrado, horarios y mensaje): lo lee cualquiera (la página de pedidos); solo el administrador lo escribe.
-    // Los demás documentos de config (menú, contador de pedidos) son solo del administrador.
+    // El menú (precios, sabores, extras) también lo lee la página de pedidos; el resto de config es solo del administrador.
     match /config/{doc} {
-      allow read: if doc == 'local' || esAdmin();
+      allow read: if doc == 'local' || doc == 'menu' || esAdmin();
       allow write: if esAdmin();
     }
 

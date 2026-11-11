@@ -454,7 +454,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             <!-- Sabores Gourmet -->
             <div class="mb-4">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-1 rounded mb-2">⭐ Sabores Gourmet</h3>
-                <div class="grid grid-cols-2 gap-2 text-sm">
+                <div id="grid-gourmet" class="grid grid-cols-2 gap-2 text-sm">
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Suprema" data-cat="gourmet" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-amber-600"><span><span class="leading-tight">Suprema</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Suprema"></span></span></label>
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Carnívora" data-cat="gourmet" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-amber-600"><span><span class="leading-tight">Carnívora</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Carnívora"></span></span></label>
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Carne Katupiry" data-cat="gourmet" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-amber-600"><span><span class="leading-tight">Carne Katupiry</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Carne Katupiry"></span></span></label>
@@ -468,7 +468,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             <!-- Sabores Especiales -->
             <div class="mb-4">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-1 rounded mb-2">✨ Sabores Especiales</h3>
-                <div class="grid grid-cols-2 gap-2 text-sm">
+                <div id="grid-especial" class="grid grid-cols-2 gap-2 text-sm">
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Calabacón" data-cat="especial" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-blue-600"><span><span class="leading-tight">Calabacón</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Calabacón"></span></span></label>
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Especial" data-cat="especial" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-blue-600"><span><span class="leading-tight">Especial</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Especial"></span></span></label>
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Peperonni" data-cat="especial" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-blue-600"><span><span class="leading-tight">Peperonni</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Peperonni"></span></span></label>
@@ -484,7 +484,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             <!-- Sabores Clásicos -->
             <div>
                 <h3 class="text-xs font-bold uppercase tracking-wider text-green-700 bg-green-50 px-2 py-1 rounded mb-2">🍃 Sabores Clásicos</h3>
-                <div class="grid grid-cols-2 gap-2 text-sm">
+                <div id="grid-clasico" class="grid grid-cols-2 gap-2 text-sm">
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Muzza" data-cat="clasico" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-green-600"><span><span class="leading-tight">Muzza</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Muzza"></span></span></label>
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Choclo" data-cat="clasico" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-green-600"><span><span class="leading-tight">Choclo</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Choclo"></span></span></label>
                     <label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="Palmito" data-cat="clasico" onchange="validarSabores()" class="mt-0.5 w-4 h-4 accent-green-600"><span><span class="leading-tight">Palmito</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="Palmito"></span></span></label>
@@ -517,7 +517,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             </h2>
 
             <!-- Resto de Adicionales -->
-            <div class="space-y-3">
+            <div id="lista-extras" class="space-y-3">
                 <div class="flex items-center justify-between text-sm py-1">
                     <div>
                         <span class="font-medium block">Papas Medianas</span>
@@ -784,12 +784,17 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             });
         }
 
-        // Datos fijos de precios de la Pizza
+        // ===== Datos del menú (el panel los puede cambiar en vivo) =====
+        function escaparHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Precios de referencia: se reemplazan con lo que esté guardado en el panel (config/menu)
         const matrizPrecios = {
-            'grande': { 'clasico': 60000, 'especial': 75000, 'gourmet': 90000, 'limiteSabores': 2 },
-            'chico': { 'clasico': 55000, 'especial': 65000, 'gourmet': 75000, 'limiteSabores': 2 },
-            'tren-grande': { 'clasico': 75000, 'especial': 90000, 'gourmet': 110000, 'limiteSabores': 3 },
-            'mediano': { 'clasico': 30000, 'especial': 40000, 'gourmet': 50000, 'limiteSabores': 2 }
+            'grande': { 'clasico': 60000, 'especial': 75000, 'gourmet': 90000, 'limiteSabores': 2, 'nombre': 'Pizza Grande + Mediana muzza gratis', 'corto': 'Grande', 'borde': 15000 },
+            'chico': { 'clasico': 55000, 'especial': 65000, 'gourmet': 75000, 'limiteSabores': 2, 'nombre': 'Pizza Tren Chico', 'corto': 'Tren Chico', 'borde': 20000 },
+            'tren-grande': { 'clasico': 75000, 'especial': 90000, 'gourmet': 110000, 'limiteSabores': 3, 'nombre': 'Pizza Tren Grande', 'corto': 'Tren Grande', 'borde': 30000 },
+            'mediano': { 'clasico': 30000, 'especial': 40000, 'gourmet': 50000, 'limiteSabores': 2, 'nombre': 'Pizza Mediana', 'corto': 'Mediana', 'borde': 12000 }
         };
 
         const adicionales = {
@@ -801,7 +806,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             'coca-15l': 0
         };
 
-        const preciosAdicionales = {
+        let preciosAdicionales = {
             'papas-med': 15000,
             'papas-gra': 25000,
             'coca-500': 8000,
@@ -809,14 +814,134 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             'coca-15l': 17000
         };
 
+        let nombresExtras = {
+            'papas-med': 'Papas Medianas',
+            'papas-gra': 'Papas Grandes',
+            'coca-500': 'Coca Cola 500ml',
+            'coca-1l': 'Coca Cola 1LT',
+            'coca-15l': 'Coca Cola 1.5LT'
+        };
+
+        let SABORES = { gourmet: [], especial: [], clasico: [] };
+        let EXTRAS_MENU = null;
+
         // ===== Varias pizzas =====
         const pedido = [];
         const nombresTamano = { 'grande': 'Pizza Grande + Mediana muzza gratis', 'chico': 'Pizza Tren Chico', 'tren-grande': 'Pizza Tren Grande', 'mediano': 'Pizza Mediana' };
 
         function precioBorde(t) {
-            if (t === 'mediano') return 12000;
-            return t === 'grande' ? 15000 : (t === 'chico' ? 20000 : 30000);
+            const p = matrizPrecios[t];
+            return p && p.borde ? Number(p.borde) : 0;
         }
+
+        function renderTamanosMenu(prevTam) {
+            const cont = document.getElementById('grupo-tamaño');
+            if (!cont) return;
+            const claves = Object.keys(matrizPrecios);
+            if (!claves.length) return;
+            if (!claves.includes(prevTam)) prevTam = claves[0];
+            cont.innerHTML = claves.map(k => {
+                const t = matrizPrecios[k];
+                const on = k === prevTam;
+                return `<label class="flex items-center justify-between p-3.5 border-2 ${on ? 'border-red-500 bg-red-50/50' : 'border-neutral-200'} rounded-xl cursor-pointer transition select-none" id="label-${escaparHtml(k)}">
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="tamano" value="${escaparHtml(k)}" ${on ? 'checked' : ''} onchange="actualizarInterfaz()" class="w-4 h-4 accent-red-600">
+                        <div>
+                            <span class="font-bold text-neutral-900 block">${escaparHtml(t.nombre)}</span>
+                            <span class="text-xs text-neutral-500">Hasta ${t.limiteSabores} variedades</span>
+                        </div>
+                    </div>
+                    <div class="text-right text-xs text-neutral-600">
+                        <div>Clásico: <strong class="text-red-700">${t.clasico.toLocaleString('es-PY')} Gs</strong></div>
+                        <div>Especial: <strong class="text-red-700">${t.especial.toLocaleString('es-PY')} Gs</strong></div>
+                        <div>Gourmet: <strong class="text-red-700">${t.gourmet.toLocaleString('es-PY')} Gs</strong></div>
+                    </div>
+                </label>`;
+            }).join('');
+        }
+
+        const COLOR_SABOR = { gourmet: 'accent-amber-600', especial: 'accent-blue-600', clasico: 'accent-green-600' };
+        function renderSaboresMenu() {
+            const marcados = new Set(Array.from(document.querySelectorAll('input[name="sabor"]:checked')).map(cb => cb.value));
+            ['gourmet', 'especial', 'clasico'].forEach(cat => {
+                const cont = document.getElementById('grid-' + cat);
+                if (!cont) return;
+                cont.innerHTML = (SABORES[cat] || []).map(s => `<label class="flex items-start gap-2 p-1.5 hover:bg-neutral-50 rounded cursor-pointer"><input type="checkbox" name="sabor" value="${escaparHtml(s)}" data-cat="${cat}" onchange="validarSabores()" class="mt-0.5 w-4 h-4 ${COLOR_SABOR[cat]}"${marcados.has(s) ? ' checked' : ''}><span><span class="leading-tight">${escaparHtml(s)}</span><span class="block text-[11px] leading-tight text-neutral-500 mt-0.5" data-ing="${escaparHtml(s)}"></span></span></label>`).join('');
+            });
+            cargarIngredientes();
+            if (window.aplicarAgotadosCliente) window.aplicarAgotadosCliente(Array.from(window.AGOTADOS || []));
+            validarSabores();
+        }
+
+        function renderExtrasMenu() {
+            const cont = document.getElementById('lista-extras');
+            if (!cont || !Array.isArray(EXTRAS_MENU)) return;
+            const nuevoAd = { 'borde-piz': adicionales['borde-piz'] || 0 };
+            const nuevosPrecios = {}, nuevosNombres = {};
+            cont.innerHTML = EXTRAS_MENU.map((x, i) => {
+                const id = String(x.id);
+                nuevoAd[id] = adicionales[id] || 0;
+                nuevosPrecios[id] = Number(x.precio) || 0;
+                nuevosNombres[id] = x.nombre;
+                return `<div class="flex items-center justify-between text-sm py-1${i ? ' border-t border-neutral-100' : ''}">
+                    <div>
+                        <span class="font-medium block">${escaparHtml(x.nombre)}</span>
+                        <span class="text-xs text-neutral-500">${(Number(x.precio) || 0).toLocaleString('es-PY')} Gs</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" data-extra-id="${escaparHtml(id)}" data-delta="-1" class="w-8 h-8 rounded-full border border-neutral-300 font-bold bg-neutral-50 active:bg-neutral-200">-</button>
+                        <span id="cant-${escaparHtml(id)}" class="w-6 text-center font-bold">${nuevoAd[id]}</span>
+                        <button type="button" data-extra-id="${escaparHtml(id)}" data-delta="1" class="w-8 h-8 rounded-full border border-neutral-300 font-bold bg-neutral-50 active:bg-neutral-200">+</button>
+                    </div>
+                </div>`;
+            }).join('');
+            Object.keys(adicionales).forEach(k => { if (!(k in nuevoAd)) delete adicionales[k]; });
+            Object.assign(adicionales, nuevoAd);
+            Object.keys(preciosAdicionales).forEach(k => delete preciosAdicionales[k]);
+            Object.assign(preciosAdicionales, nuevosPrecios);
+            nombresExtras = nuevosNombres;
+            calcularTotal();
+        }
+
+        // El panel guarda el menú en config/menu y esto lo aplica al instante
+        window.aplicarMenuCliente = function (menu) {
+            if (!menu || !menu.tamanos) return;
+            const claves = Object.keys(menu.tamanos);
+            if (!claves.length) return;
+            const anterior = (document.querySelector('input[name="tamano"]:checked') || {}).value;
+            const nuevos = {};
+            claves.forEach(k => {
+                const t = menu.tamanos[k] || {}, p = t.precios || {};
+                nuevos[k] = {
+                    clasico: Math.max(0, Number(p.clasico) || 0),
+                    especial: Math.max(0, Number(p.especial) || 0),
+                    gourmet: Math.max(0, Number(p.gourmet) || 0),
+                    limiteSabores: Math.max(1, Number(t.limite) || 1),
+                    nombre: String(t.nombre || k),
+                    corto: String(t.corto || k),
+                    borde: Math.max(0, Number(t.borde) || 0)
+                };
+            });
+            Object.keys(matrizPrecios).forEach(k => delete matrizPrecios[k]);
+            Object.assign(matrizPrecios, nuevos);
+            Object.keys(nombresTamano).forEach(k => delete nombresTamano[k]);
+            Object.keys(nuevos).forEach(k => { nombresTamano[k] = nuevos[k].nombre; });
+
+            const s = menu.sabores || {};
+            SABORES = { gourmet: [], especial: [], clasico: [] };
+            ['gourmet', 'especial', 'clasico'].forEach(c => { SABORES[c] = Array.isArray(s[c]) ? s[c].map(String) : []; });
+
+            EXTRAS_MENU = Array.isArray(menu.extras) ? menu.extras.map(x => ({
+                id: String(x.id || ('x' + Math.random().toString(36).slice(2))),
+                nombre: String(x.nombre || ''),
+                precio: Math.max(0, Number(x.precio) || 0)
+            })).filter(x => x.nombre) : null;
+
+            renderTamanosMenu(anterior);
+            renderSaboresMenu();
+            if (EXTRAS_MENU) renderExtrasMenu();
+            actualizarInterfaz();
+        };
 
         function anadirPizza() {
             const sabores = Array.from(document.querySelectorAll('input[name="sabor"]:checked')).map(cb => cb.value);
@@ -847,7 +972,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             cont.innerHTML = pedido.map((p, i) => `
                 <div class="flex items-start justify-between gap-2 p-3 bg-green-50 rounded-xl text-sm">
                     <div>
-                        <span class="font-bold block">Pizza ${i + 1} – ${nombresTamano[p.tamano]}</span>
+                        <span class="font-bold block">Pizza ${i + 1} – ${nombresTamano[p.tamano] || p.tamano}</span>
                         <span class="text-xs text-neutral-600">${p.sabores.join(', ')}${p.borde ? ' · Borde relleno' : ''}</span>
                         <span class="block font-bold text-red-700">${p.precio.toLocaleString('es-PY')} Gs</span>
                     </div>
@@ -858,14 +983,16 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
 
         function obtenerTamanoSeleccionado() {
-            return document.querySelector('input[name="tamano"]:checked').value;
+            const el = document.querySelector('input[name="tamano"]:checked');
+            return el ? el.value : Object.keys(matrizPrecios)[0];
         }
 
         function actualizarInterfaz() {
             const tamano = obtenerTamanoSeleccionado();
-            
-            ['grande', 'chico', 'tren-grande', 'mediano'].forEach(t => {
+
+            Object.keys(matrizPrecios).forEach(t => {
                 const label = document.getElementById(`label-${t}`);
+                if (!label) return;
                 if (t === tamano) {
                     label.classList.add('border-red-500', 'bg-red-50/50');
                     label.classList.remove('border-neutral-200');
@@ -876,52 +1003,25 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             });
 
             const contenedorBorde = document.getElementById('contenedor-borde');
-            adicionales['borde-piz'] = 0; 
-            
-            if (tamano === 'grande') {
+            adicionales['borde-piz'] = 0;
+            const cfgTam = matrizPrecios[tamano] || {};
+            const pb = precioBorde(tamano);
+            if (pb > 0) {
                 contenedorBorde.innerHTML = `
                     <label class="flex items-center justify-between cursor-pointer select-none text-sm font-medium">
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="chk-borde" onchange="cambiarBorde(this)" class="w-4 h-4 accent-red-600">
-                            <span>Añadir Borde Pizza Grande</span>
+                            <span>Añadir Borde Relleno${cfgTam.corto ? ' (' + escaparHtml(cfgTam.corto) + ')' : ''}</span>
                         </div>
-                        <span class="text-red-700 font-bold">+15.000 Gs</span>
-                    </label>
-                `;
-            } else if (tamano === 'mediano') {
-                contenedorBorde.innerHTML = `
-                    <label class="flex items-center justify-between cursor-pointer select-none text-sm font-medium">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="chk-borde" onchange="cambiarBorde(this)" class="w-4 h-4 accent-red-600">
-                            <span>Añadir Borde Pizza Mediana</span>
-                        </div>
-                        <span class="text-red-700 font-bold">+12.000 Gs</span>
-                    </label>
-                `;
-            } else if (tamano === 'chico') {
-                contenedorBorde.innerHTML = `
-                    <label class="flex items-center justify-between cursor-pointer select-none text-sm font-medium">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="chk-borde" onchange="cambiarBorde(this)" class="w-4 h-4 accent-red-600">
-                            <span>Añadir Borde Tren Chico</span>
-                        </div>
-                        <span class="text-red-700 font-bold">+20.000 Gs</span>
+                        <span class="text-red-700 font-bold">+${pb.toLocaleString('es-PY')} Gs</span>
                     </label>
                 `;
             } else {
-                contenedorBorde.innerHTML = `
-                    <label class="flex items-center justify-between cursor-pointer select-none text-sm font-medium">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="chk-borde" onchange="cambiarBorde(this)" class="w-4 h-4 accent-red-600">
-                            <span>Añadir Borde Tren Grande</span>
-                        </div>
-                        <span class="text-red-700 font-bold">+30.000 Gs</span>
-                    </label>
-                `;
+                contenedorBorde.innerHTML = '';
             }
 
             const checkboxes = document.querySelectorAll('input[name="sabor"]:checked');
-            const limite = matrizPrecios[tamano].limiteSabores;
+            const limite = (matrizPrecios[tamano] || {}).limiteSabores || 1;
             if (checkboxes.length > limite) {
                 checkboxes.forEach(cb => cb.checked = false);
             }
@@ -935,14 +1035,15 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
 
         function cambiarCantidad(item, cambio) {
-            adicionales[item] = Math.max(0, adicionales[item] + cambio);
-            document.getElementById(`cant-${item}`).innerText = adicionales[item];
+            adicionales[item] = Math.max(0, (adicionales[item] || 0) + cambio);
+            const el = document.getElementById(`cant-${item}`);
+            if (el) el.innerText = adicionales[item];
             calcularTotal();
         }
 
         function validarSabores() {
             const tamano = obtenerTamanoSeleccionado();
-            const limite = matrizPrecios[tamano].limiteSabores;
+            const limite = (matrizPrecios[tamano] || {}).limiteSabores || 1;
             const checkboxesChecked = document.querySelectorAll('input[name="sabor"]:checked');
             
             document.getElementById('contador-sabores').innerText = `Seleccionados: ${checkboxesChecked.length} / ${limite}`;
@@ -985,16 +1086,13 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                     categoriaFinal = 'especial';
                 }
 
-                precioBasePizza = matrizPrecios[tamano][categoriaFinal];
+                precioBasePizza = (matrizPrecios[tamano] || {})[categoriaFinal] || 0;
             }
 
             let subtotalAdicionales = 0;
             
             if (adicionales['borde-piz'] === 1 && saboresSeleccionados.length > 0) {
-                if (tamano === 'grande') subtotalAdicionales += 15000;
-                if (tamano === 'chico') subtotalAdicionales += 20000;
-                if (tamano === 'tren-grande') subtotalAdicionales += 30000;
-                if (tamano === 'mediano') subtotalAdicionales += 12000;
+                subtotalAdicionales += precioBorde(tamano);
             }
 
             for (const key in preciosAdicionales) {
@@ -1067,11 +1165,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
             const { totalGeneral, precioBasePizza } = calcularTotal();
 
-            let nombreTamano = "";
-            if (tamano === 'grande') nombreTamano = "Pizza Grande + Mediana muzza gratis";
-            if (tamano === 'chico') nombreTamano = "Pizza Tren Chico";
-            if (tamano === 'tren-grande') nombreTamano = "Pizza Tren Grande";
-            if (tamano === 'mediano') nombreTamano = "Pizza Mediana";
+            const nombreTamano = nombresTamano[tamano] || tamano;
 
             let listaSabores = [];
             saboresChecked.forEach(cb => listaSabores.push(cb.value));
@@ -1094,21 +1188,18 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 pizzasEnvio.push({ tamano, sabores: listaSabores, borde: b, precio: precioBasePizza + (b ? precioBorde(tamano) : 0) });
             }
             pizzasEnvio.forEach((p, i) => {
-                mensaje += `🍕 *Pizza ${i + 1}* – ${nombresTamano[p.tamano]}\n`;
+                mensaje += `🍕 *Pizza ${i + 1}* – ${nombresTamano[p.tamano] || p.tamano}\n`;
                 mensaje += `• *Sabores:* ${p.sabores.join(', ')}\n`;
                 if (p.borde) mensaje += `• Con Borde Relleno (+${precioBorde(p.tamano).toLocaleString('es-PY')} Gs)\n`;
                 mensaje += `• Precio: ${p.precio.toLocaleString('es-PY')} Gs\n\n`;
             });
 
-            if (adicionales['papas-med'] > 0) mensaje += `• Papas Medianas x${adicionales['papas-med']}\n`;
-            if (adicionales['papas-gra'] > 0) mensaje += `• Papas Grandes x${adicionales['papas-gra']}\n`;
-            if (adicionales['coca-500'] > 0) mensaje += `• Coca Cola 500ml x${adicionales['coca-500']}\n`;
-            if (adicionales['coca-1l'] > 0) mensaje += `• Coca Cola 1LT x${adicionales['coca-1l']}\n`;
-            if (adicionales['coca-15l'] > 0) mensaje += `• Coca Cola 1.5LT x${adicionales['coca-15l']}\n`;
+            Object.keys(nombresExtras).forEach(k => {
+                if ((adicionales[k] || 0) > 0) mensaje += `• ${nombresExtras[k]} x${adicionales[k]}\n`;
+            });
 
             if (!window.MESA_ACTUAL) {
                 if (deliveryCosto > 0) mensaje += `\n*🛵 Delivery:* ${deliveryCosto.toLocaleString('es-PY')} Gs (${deliveryKm.toFixed(1)} km)\n`;
-                else mensaje += `\n*🛵 Delivery:* SIN COSTO\n`;
             }
             mensaje += `*💰 TOTAL A PAGAR:* ${totalGeneral.toLocaleString('es-PY')} Gs\n`;
             mensaje += `*💳 Forma de pago:* ${PAGOS_TXT[pago]}\n\n`;
@@ -1117,11 +1208,12 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             // Guardar copia del pedido en Firebase (no frena ni bloquea el envío por WhatsApp)
             try {
                 if (window.guardarPedidoFirebase) {
-                    const nombresExtras = { 'papas-med': 'Papas Medianas', 'papas-gra': 'Papas Grandes', 'coca-500': 'Coca Cola 500ml', 'coca-1l': 'Coca Cola 1LT', 'coca-15l': 'Coca Cola 1.5LT' };
-                    const extras = Object.keys(nombresExtras).filter(k => adicionales[k] > 0).map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] }));
+                    const extras = Object.keys(nombresExtras)
+                        .filter(k => (adicionales[k] || 0) > 0)
+                        .map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] }));
                     window.guardarPedidoFirebase({
                         cliente: { nombre: nombre, direccion: direccion, celular: celular, lat: Number(lat), lng: Number(lng), mapa: enlaceGoogleMaps },
-                        pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano], sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
+                        pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
                         extras: extras,
                         total: totalGeneral,
                         pago: pago,
@@ -1165,6 +1257,13 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             .then(data => console.log("Copia enviada por correo", data))
             .catch(error => console.error("Error:", error));
         }
+
+        // Botones de cantidad de los extras (funciona también con los extras que agrega el panel)
+        document.getElementById('lista-extras').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-extra-id]');
+            if (!b) return;
+            cambiarCantidad(b.dataset.extraId, Number(b.dataset.delta));
+        });
 
         // Armar el borde de la pizza Grande apenas carga (sin esperar al mapa)
         cargarIngredientes();
@@ -1287,6 +1386,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             });
             if (window.validarSabores) window.validarSabores();
         }
+        window.aplicarAgotadosCliente = aplicarAgotados;
         // ===== Mesa desde QR (?mesa=N) =====
         let mesaActual = null;
         try { const mq = parseInt(new URLSearchParams(location.search).get('mesa'), 10); if (mq && mq > 0) mesaActual = mq; } catch (e) {}
@@ -1302,6 +1402,12 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
         onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarDeliveryCliente) window.aplicarDeliveryCliente(cfgLocal); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); }, () => {});
+
+        // Menú y precios cargados desde el panel (config/menu): se aplican al instante
+        onSnapshot(doc(db, "config", "menu"), (s) => {
+            if (!s.exists()) return;
+            if (window.aplicarMenuCliente) window.aplicarMenuCliente(s.data());
+        }, () => {});
         setInterval(pintarCartel, 15000);
 
         window.guardarPedidoFirebase = function (datos) {
