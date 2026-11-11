@@ -201,6 +201,11 @@
 
                 <div id="nuevo-tipo" class="grid grid-cols-3 gap-2"></div>
 
+                <div id="nuevo-mesa-box" class="hidden bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">🪑 Mesa</div>
+                    <div id="nuevo-mesa" class="flex flex-wrap gap-2"></div>
+                </div>
+
                 <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
                     <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Cliente</div>
                     <input id="nuevo-nombre" list="dl-nombres" autocomplete="off" type="text" maxlength="60" placeholder="Nombre (o mesa)" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
@@ -662,7 +667,7 @@
 
         let localCfg = normLocal({});
         let cancelarLocal = null;
-        let mesas = []; let cancelarMesas = null;
+        let mesas = []; let cancelarMesas = null; let mesasListas = false;
 
         function pintarLocal() {
             if (esDelivery || !panelAbierto) return;
@@ -690,7 +695,10 @@
             if (cancelarMesas) cancelarMesas();
             cancelarMesas = onSnapshot(doc(db, 'config', 'mesas'), (s) => {
                 mesas = Array.isArray(s.exists() ? s.data().mesas : null) ? s.data().mesas.map(Number).filter(n => n > 0) : [];
+                mesasListas = true;
                 pintarMesas();
+                const modal = $('modal-nuevo');
+                if (modal && !modal.classList.contains('hidden')) pintarMesasNuevo();
             }, () => {});
         }
         // quiere: 'abierto' | 'cerrado' | null (volver al horario automático)
@@ -1057,6 +1065,7 @@
                         <span class="inline-block text-xs font-black px-2 py-0.5 rounded-lg bg-neutral-900 text-white">${esc(numeroCorto(p))}</span>
                         <span class="font-extrabold truncate max-w-[11rem]">${esc(c.nombre)}</span>
                         <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">${tipoInfo.icono} ${esc(tipoInfo.label.toUpperCase())}${origenTxt}</span>
+                        ${p.mesa ? `<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">🪑 Mesa ${esc(p.mesa)}</span>` : ''}
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
@@ -1145,7 +1154,7 @@
         const GRUPOS_SABOR = [['gourmet', '⭐ Gourmet', 'text-amber-700 bg-amber-50'], ['especial', '✨ Especiales', 'text-blue-700 bg-blue-50'], ['clasico', '🍃 Clásicos', 'text-green-700 bg-green-50']];
 
         let propios = new Set();   // pedidos cargados desde este panel (no suenan como "nuevo")
-        let nuevo = { tipo: 'retiro', tamano: 'grande', sabores: [], borde: false, pizzas: [], extras: {}, pago: '', entrada: 'nuevo', guardando: false, envio: 0, distanciaKm: null, deliveryFuera: false, envioManual: false };
+        let nuevo = { tipo: 'retiro', mesa: null, tamano: 'grande', sabores: [], borde: false, pizzas: [], extras: {}, pago: '', entrada: 'nuevo', guardando: false, envio: 0, distanciaKm: null, deliveryFuera: false, envioManual: false };
 
         function nuevoCat(sabores) {
             if (sabores.some(x => MENU.sabores.gourmet.includes(x))) return 'gourmet';
@@ -1277,12 +1286,22 @@
             } catch (e) {}
             if (km != null && seq === deliveryNuevoSeq) aplicarCostoDelivery(km);
         }
+        function pintarMesasNuevo() {
+            const cont = $('nuevo-mesa');
+            if (!cont) return;
+            if (!mesasListas) { cont.innerHTML = '<p class="text-sm text-neutral-500">Cargando mesas…</p>'; return; }
+            if (!mesas.length) { cont.innerHTML = '<p class="text-sm text-red-700 font-semibold">No hay mesas configuradas. Cargalas en Configuración → 🪑 Mesas.</p>'; return; }
+            if (nuevo.mesa && !mesas.includes(Number(nuevo.mesa))) nuevo.mesa = null;
+            cont.innerHTML = mesas.map(n => `<button type="button" data-n-mesa="${n}" class="py-2 px-3 rounded-xl text-sm font-bold border ${Number(nuevo.mesa) === n ? clsOn : clsOff}">Mesa ${n}</button>`).join('');
+        }
         function renderNuevo() {
             // tipo
             $('nuevo-tipo').innerHTML = Object.entries(TIPOS).map(([k, v]) =>
                 `<button type="button" data-n-tipo="${k}" class="py-3 rounded-xl text-sm font-bold border ${nuevo.tipo === k ? clsOn : clsOff}"><div class="text-xl">${v.icono}</div>${v.label}</button>`).join('');
+            $('nuevo-mesa-box').classList.toggle('hidden', nuevo.tipo !== 'local');
+            pintarMesasNuevo();
             $('nuevo-direccion').classList.toggle('hidden', nuevo.tipo !== 'delivery');
-            $('nuevo-nombre').placeholder = nuevo.tipo === 'local' ? 'Mesa o nombre' : (nuevo.tipo === 'retiro' ? 'Nombre (si no, queda "Mostrador")' : 'Nombre del cliente');
+            $('nuevo-nombre').placeholder = nuevo.tipo === 'local' ? 'Nombre (opcional)' : (nuevo.tipo === 'retiro' ? 'Nombre (si no, queda "Mostrador")' : 'Nombre del cliente');
 
             // constructor de pizza
             const t = MENU.tamanos[nuevo.tamano];
@@ -1346,6 +1365,7 @@
             ['nuevo-nombre', 'nuevo-celular', 'nuevo-direccion', 'nuevo-notas', 'nuevo-descuento'].forEach(id => { $(id).value = ''; });
             nuevo.sabores = []; nuevo.borde = false; nuevo.pizzas = []; nuevo.extras = {}; nuevo.pago = ''; nuevo.envio = 0; nuevo.agregarA = null;
             nuevo.distanciaKm = null; nuevo.deliveryFuera = false; nuevo.envioManual = false;
+            nuevo.mesa = null; nuevo.entrada = 'nuevo';
             deliveryNuevoSeq++;
             clearTimeout(deliveryNuevoTimer);
         }
@@ -1368,10 +1388,16 @@
             if (!n.pizzas.length && !extras.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
             const direccion = n.tipo === 'delivery' ? $('nuevo-direccion').value.trim() : '';
             if (n.tipo === 'delivery' && !direccion) { nuevoMsg('nuevo-error', 'Para delivery escribí la dirección.'); return; }
+            if (n.tipo === 'local') {
+                if (!mesasListas) { nuevoMsg('nuevo-error', 'Todavía se están cargando las mesas. Esperá un segundo.'); return; }
+                if (!mesas.length) { nuevoMsg('nuevo-error', 'No hay mesas configuradas. Cargalas en Configuración → 🪑 Mesas.'); return; }
+                if (!n.mesa || !mesas.includes(Number(n.mesa))) { nuevoMsg('nuevo-error', 'Elegí la mesa del pedido.'); return; }
+                n.mesa = Number(n.mesa);
+            }
             const celRaw = $('nuevo-celular').value.trim();
             const celular = celRaw ? waNumero(celRaw) : '';
             if (celRaw && celular.length !== 12) { nuevoMsg('nuevo-error', 'Revisá el celular. Ejemplo: 0981 123 456'); return; }
-            const nombre = $('nuevo-nombre').value.trim() || (n.tipo === 'retiro' ? 'Mostrador' : (n.tipo === 'local' ? 'En el local' : 'Cliente'));
+            const nombre = $('nuevo-nombre').value.trim() || (n.tipo === 'retiro' ? 'Mostrador' : (n.tipo === 'local' ? 'Mesa ' + n.mesa : 'Cliente'));
             const notas = $('nuevo-notas').value.trim();
             const { sub, desc, env, total } = nuevoTotales();
             if (n.tipo === 'delivery') {
@@ -1383,6 +1409,7 @@
 
             const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
             const lineas = ['*PEDIDO ' + TIPOS[n.tipo].label.toUpperCase() + ' (cargado en el panel)*', 'Cliente: ' + nombre];
+            if (n.tipo === 'local') lineas.push('🪑 Mesa: ' + n.mesa);
             if (celular) lineas.push('Celular: ' + telBonito(celular));
             if (direccion) lineas.push('Dirección: ' + direccion);
             pizzas.forEach((z, i) => lineas.push('• Pizza ' + (i + 1) + ' ' + z.nombre + ': ' + z.sabores.join(', ') + (z.borde ? ' · Borde relleno' : '') + ' - ' + gs(z.precio)));
@@ -1398,6 +1425,7 @@
                 estado: n.entrada,
                 creado: serverTimestamp(),
                 tipo: n.tipo,
+                mesa: n.tipo === 'local' ? n.mesa : null,
                 origen: 'panel',
                 pago: n.pago || null,
                 pagado: !!(n.pago && n.entrada === 'entregado'),
@@ -1458,11 +1486,13 @@
             if (b.id === 'nuevo-cerrar') { $('modal-nuevo').classList.add('hidden'); return; }
             if (b.id === 'nuevo-guardar') { if (nuevo.agregarA) guardarAgregado(); else guardarNuevo(); return; }
             if (d.nTipo) {
-                nuevo.tipo = (d.nTipo === 'local') ? 'retiro' : d.nTipo;
+                nuevo.tipo = d.nTipo;
                 deliveryNuevoSeq++;
                 if (nuevo.tipo === 'delivery') programarDeliveryNuevo();
                 else { nuevo.distanciaKm = null; nuevo.deliveryFuera = false; nuevo.envio = 0; }
+                if (nuevo.tipo !== 'local') nuevo.mesa = null;
             }
+            else if (d.nMesa) { nuevo.mesa = Number(d.nMesa); }
             else if (d.nTam) {
                 nuevo.tamano = d.nTam;
                 nuevo.sabores = nuevo.sabores.slice(0, MENU.tamanos[d.nTam].limite);
@@ -1954,10 +1984,7 @@
         }
         function pedidoCobro() { return cobro ? pedidos.find(x => x.id === cobro.id) : null; }
         function abrirCobro(p) {
-            const e = estadoDe(p);
-            const puede = (TRANSICIONES[e] || []).includes('entregado');
-            cobro = { id: p.id, metodo: PAGOS[p.pago] ? p.pago : 'efectivo', recibido: 0, puedeEntregar: puede,
-                      entregar: puede && (e === 'en_camino' || p.tipo === 'retiro' || p.tipo === 'local'), imprimir: true, guardando: false };
+            cobro = { id: p.id, metodo: PAGOS[p.pago] ? p.pago : 'efectivo', recibido: 0, imprimir: true, guardando: false };
             $('modal-cobro').classList.remove('hidden');
             renderCobro();
         }
@@ -1987,8 +2014,8 @@
                 <div class="grid grid-cols-3 gap-2">${metodos}</div>
                 ${efectivoHtml}
                 <div class="space-y-2 text-sm">
-                    ${cobro.puedeEntregar ? `<label class="flex items-center gap-2"><input id="cobro-entregar" type="checkbox" ${cobro.entregar ? 'checked' : ''}> Marcar como entregado</label>` : ''}
                     <label class="flex items-center gap-2"><input id="cobro-imprimir" type="checkbox" ${cobro.imprimir ? 'checked' : ''}> Imprimir ticket</label>
+                    <p class="text-xs text-neutral-500">Al confirmar el cobro, el pedido pasa a entregado.</p>
                 </div>
                 <button id="cobro-confirmar" type="button" class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl transition">✅ Confirmar cobro</button>`;
             if (efec) { const i = $('cobro-recibido'); if (i && !('ontouchstart' in window)) i.focus(); }
@@ -2000,9 +2027,8 @@
             const rec = efec ? (cobro.recibido || total) : total;
             if (efec && rec < total) { mostrarToast('Faltan ' + gs(total - rec) + ' para completar el cobro'); return; }
             const vuelto = efec ? rec - total : 0;
-            const upd = { pago: cobro.metodo, pagado: true, cobradoEn: serverTimestamp(), recibido: efec ? rec : null, vuelto: efec ? vuelto : null };
-            const entregar = cobro.puedeEntregar && cobro.entregar;
-            if (entregar) { upd.estado = 'entregado'; upd.estadoActualizado = serverTimestamp(); }
+            const upd = { pago: cobro.metodo, pagado: true, cobradoEn: serverTimestamp(), recibido: efec ? rec : null, vuelto: efec ? vuelto : null,
+                          estado: 'entregado', estadoActualizado: serverTimestamp() };
             if (cobro.imprimir) imprimirTicket({ ...p, pago: upd.pago, pagado: true, recibido: upd.recibido, vuelto: upd.vuelto });
             cobro.guardando = true;
             $('cobro-confirmar').disabled = true;
@@ -2035,7 +2061,6 @@
         });
         $('modal-cobro').addEventListener('change', (e) => {
             if (!cobro) return;
-            if (e.target.id === 'cobro-entregar') cobro.entregar = e.target.checked;
             if (e.target.id === 'cobro-imprimir') cobro.imprimir = e.target.checked;
         });
         $('modal-cobro').addEventListener('keydown', (e) => {
@@ -2126,7 +2151,8 @@
         function abrirAgregar(p) {
             nuevoLimpiar();
             if (p.estado === 'entregado' || p.pagado) { toast('⚠️ El pedido ' + numeroCorto(p) + ' ya fue cobrado/entregado: no se puede agregar más. Creá un nuevo pedido.'); return; }
-            nuevo.agregarA = p.id; nuevo.tipo = TIPOS[p.tipo] ? (p.tipo === 'local' ? 'retiro' : p.tipo) : 'delivery'; nuevo.entrada = 'nuevo';
+            nuevo.agregarA = p.id; nuevo.tipo = TIPOS[p.tipo] ? p.tipo : 'delivery'; nuevo.entrada = 'nuevo';
+            nuevo.mesa = (nuevo.tipo === 'local' && Number(p.mesa)) || null;
             nuevoMsg('nuevo-error', '');
             $('modal-nuevo').classList.remove('hidden');
             renderNuevo();
