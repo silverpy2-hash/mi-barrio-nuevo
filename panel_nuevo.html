@@ -634,7 +634,10 @@
                 horarios: d.horarios || {},
                 mensaje: d.mensaje || '',
                 agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
-                tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico'
+                tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
+                delivery: (d.delivery && Array.isArray(d.delivery.tramos))
+                    ? d.delivery.tramos.map(t => ({ max: Number(t.max) || 0, costo: Math.max(0, Number(t.costo) || 0) })).filter(t => t.max > 0)
+                    : []
             };
         }
         // Estado real ahora: el botón manual manda hasta el próximo cambio del horario
@@ -2190,15 +2193,17 @@ const norm = (d) => clone({ negocio: d.negocio || DEF.negocio, tamanos: d.tamano
 let tab = 'menu', draft = null, clientes = [], edCli = null, bus = '', cierres = null, rango = 30;
 let stops = [];
 let hdraft = null;
+let ddraft = null;
 
 // ===== Navegación =====
-const TABS = [['menu', '💲 Menú y precios'], ['clientes', '👥 Clientes'], ['reportes', '📊 Reportes'], ['horario', '🕒 Horario'], ['apariencia', '🎨 Apariencia'], ['mesas', '🪑 Mesas'], ['datos', '🧹 Datos']];
+const TABS = [['menu', '💲 Menú y precios'], ['clientes', '👥 Clientes'], ['reportes', '📊 Reportes'], ['horario', '🕒 Horario'], ['delivery', '🛵 Delivery'], ['apariencia', '🎨 Apariencia'], ['mesas', '🪑 Mesas'], ['datos', '🧹 Datos']];
 function render() {
     $('cfg-tabs').innerHTML = TABS.map(([k, t]) => `<button type="button" data-tab="${k}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${tab === k ? 'bg-white text-neutral-900' : 'bg-white/20 text-white hover:bg-white/30'}">${t}</button>`).join('');
     if (tab === 'menu') vistaMenu();
     else if (tab === 'clientes') vistaClientes();
     else if (tab === 'reportes') vistaReportes();
     else if (tab === 'horario') vistaHorario();
+    else if (tab === 'delivery') vistaDelivery();
     else if (tab === 'apariencia') vistaApariencia();
     else if (tab === 'mesas') vistaMesas();
     else vistaDatos();
@@ -2447,6 +2452,56 @@ function vistaHorario() {
         <div class="flex gap-2 sticky bottom-3"><button type="button" id="h-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar horario</button></div>`;
     pintaEstadoHorario();
 }
+// ===== 5. Delivery por distancia (editable) =====
+const TRAMOS_DELIVERY_DEF = [{ max: 1.9, costo: 5000 }, { max: 2.9, costo: 7000 }, { max: 3.9, costo: 9000 }, { max: 4.9, costo: 12000 }, { max: 6.5, costo: 15000 }];
+function vistaDelivery() {
+    if (!ddraft) {
+        ddraft = (localCfg.delivery && localCfg.delivery.length)
+            ? localCfg.delivery.map(t => ({ max: t.max, costo: t.costo }))
+            : TRAMOS_DELIVERY_DEF.map(t => ({ ...t }));
+    }
+    const filas = ddraft.map((t, i) => `<div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-neutral-500">Hasta</span>
+        <input type="number" step="0.1" min="0.1" data-del-km="${i}" value="${t.max}" class="w-24 bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm">
+        <span class="text-xs text-neutral-500">km →</span>
+        <input type="number" step="1000" min="0" data-del-costo="${i}" value="${t.costo}" class="w-32 bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm">
+        <span class="text-xs text-neutral-500">Gs</span>
+        <button type="button" data-del-quitar="${i}" class="text-red-600 font-bold px-2" title="Quitar tramo">✖</button>
+    </div>`).join('');
+    $('cfg-vista').innerHTML = `
+        <div class="${CARD}">
+            <div class="font-bold">🛵 Costo de delivery por distancia</div>
+            <p class="text-xs text-neutral-500 mt-1">Cada tramo dice hasta qué distancia (km) se cobra ese precio. El último tramo es el límite: si el cliente está más lejos, la página avisa que no se cubre la zona y no lo deja pedir.</p>
+            <div class="space-y-2 mt-3">${filas}</div>
+            <button type="button" id="del-agregar" class="${BTN} bg-white border border-neutral-300 mt-3">＋ Agregar tramo</button>
+        </div>
+        <div class="flex gap-2 sticky bottom-3"><button type="button" id="del-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar delivery</button></div>`;
+}
+async function guardarDelivery() {
+    const tramos = (ddraft || []).map(t => ({ max: Number(t.max), costo: Math.max(0, Math.round(Number(t.costo) || 0)) }))
+        .filter(t => isFinite(t.max) && t.max > 0)
+        .sort((a, b) => a.max - b.max);
+    if (!tramos.length) { toast('Agregá al menos un tramo.'); return; }
+    try {
+        await setDoc(doc(db, 'config', 'local'), { delivery: { tramos: tramos }, actualizado: serverTimestamp() }, { merge: true });
+        toast('✅ Delivery guardado');
+    } catch (e) { toast('No se pudo guardar: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas (reglas_firestore.txt).' : e.message)); }
+}
+$('cfg-vista').addEventListener('input', (e) => {
+    const t = e.target;
+    if (!ddraft) return;
+    if (t.dataset.delKm !== undefined) ddraft[Number(t.dataset.delKm)].max = Number(t.value);
+    else if (t.dataset.delCosto !== undefined) ddraft[Number(t.dataset.delCosto)].costo = Math.round(Number(t.value) || 0);
+});
+$('cfg-vista').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b || !ddraft) return;
+    const d = b.dataset;
+    if (b.id === 'del-agregar') { ddraft.push({ max: ddraft.length ? (Number(ddraft[ddraft.length - 1].max) || 0) + 1 : 1.9, costo: 0 }); vistaDelivery(); }
+    else if (d.delQuitar !== undefined) { ddraft.splice(Number(d.delQuitar), 1); vistaDelivery(); }
+    else if (b.id === 'del-guardar') guardarDelivery();
+});
+
 // ===== 5. Mesas (QR por mesa) =====
 function vistaMesas() {
     $('cfg-vista').innerHTML = `
@@ -2606,6 +2661,7 @@ $('cfg-vista').addEventListener('click', (e) => {
 
         function abrirConfig() {
             if (esDelivery) return;
+            ddraft = null;
             $('modal-config').classList.remove('hidden');
             stops.forEach(f => f()); stops = [];
             stops.push(onSnapshot(doc(db, 'config', 'menu'), (s) => { if (!draft) { draft = norm(s.exists() ? s.data() : DEF); if (tab === 'menu') render(); } }, () => {}));
@@ -2618,7 +2674,7 @@ $('cfg-vista').addEventListener('click', (e) => {
         function cerrarConfig() {
             $('modal-config').classList.add('hidden');
             stops.forEach(f => f()); stops = [];
-            draft = null; cierres = null; edCli = null; hdraft = null;
+            draft = null; cierres = null; edCli = null; hdraft = null; ddraft = null;
         }
         $('btn-config').addEventListener('click', abrirConfig);
         $('cfg-cerrar').addEventListener('click', cerrarConfig);

@@ -648,16 +648,31 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
-        // Tramos: 0-1.9 -> 5.000 | 2.0-2.9 -> 7.000 | 3.0-3.9 -> 9.000 | 4.0-4.9 -> 12.000 | 4.9-6.5 -> 15.000 | >6.5 no cubierto
+        // Tramos de delivery (se editan desde el panel > Configuración > 🛵 Delivery)
+        let TRAMOS_DELIVERY = [
+            { max: 1.9, costo: 5000 },
+            { max: 2.9, costo: 7000 },
+            { max: 3.9, costo: 9000 },
+            { max: 4.9, costo: 12000 },
+            { max: 6.5, costo: 15000 }
+        ];
         function costoPorKm(km) {
             if (!(km >= 0)) return null;
-            if (km < 2) return 5000;
-            if (km < 3) return 7000;
-            if (km < 4) return 9000;
-            if (km < 4.9) return 12000;
-            if (km <= 6.5) return 15000;
+            for (const t of TRAMOS_DELIVERY) if (km <= t.max) return t.costo;
             return null;
         }
+        window.aplicarDeliveryCliente = function (cfg) {
+            if (cfg && Array.isArray(cfg.delivery) && cfg.delivery.length) {
+                TRAMOS_DELIVERY = cfg.delivery.slice().sort((a, b) => a.max - b.max);
+            }
+            if (deliveryKm != null) {
+                const c = costoPorKm(deliveryKm);
+                deliveryCosto = c || 0;
+                deliveryFuera = (c === null);
+                pintarDelivery();
+                calcularTotal();
+            }
+        };
 
         function pintarDelivery() {
             const el = document.getElementById('delivery-info');
@@ -1218,7 +1233,10 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 horarios: d.horarios || {},
                 mensaje: d.mensaje || '',
                 agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
-                tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico'
+                tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
+                delivery: (d.delivery && Array.isArray(d.delivery.tramos))
+                    ? d.delivery.tramos.map(t => ({ max: Number(t.max), costo: Math.max(0, Number(t.costo) || 0) })).filter(t => isFinite(t.max) && t.max > 0).sort((a, b) => a.max - b.max)
+                    : []
             };
         }
         // Estado real ahora: el botón manual manda hasta el próximo cambio del horario
@@ -1283,7 +1301,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
         pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
-        onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); }, () => {});
+        onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarDeliveryCliente) window.aplicarDeliveryCliente(cfgLocal); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); }, () => {});
         setInterval(pintarCartel, 15000);
 
         window.guardarPedidoFirebase = function (datos) {
