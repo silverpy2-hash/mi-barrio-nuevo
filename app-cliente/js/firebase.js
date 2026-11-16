@@ -5,7 +5,6 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getFirestore, serverTimestamp, collection } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import { getAuth } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 
 // Configuración del proyecto Firebase (misma que index.html y panel_nuevo.html)
 const firebaseConfig = {
@@ -20,19 +19,17 @@ const firebaseConfig = {
 // Inicializar Firebase
 let app;
 let db;
-let auth;
 
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  auth = getAuth(app);
   console.log('[Firebase] Inicializado correctamente');
 } catch (err) {
   console.error('[Firebase] Error al inicializar:', err);
 }
 
 // Exportar instancias
-export { app, db, auth };
+export { app, db };
 
 // Helper para serverTimestamp
 export { serverTimestamp };

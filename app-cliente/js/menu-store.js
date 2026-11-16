@@ -26,6 +26,7 @@ function notificar() {
 
 export function suscribir(fn) {
   suscriptores.add(fn);
+  fn(getState()); // Emitir el estado actual (menú cacheado o ya procesado)
   return () => suscriptores.delete(fn);
 }
 

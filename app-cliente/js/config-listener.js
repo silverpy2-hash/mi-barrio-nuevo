@@ -15,6 +15,30 @@ let unsubLocal = null;
 let unsubMenu = null;
 let unsubMesas = null;
 
+// Caché local del menú: permite pintar los tamaños al instante y refrescar con Firestore.
+const MENU_CACHE_KEY = 'mb_menu_v1';
+
+function leerMenuCache() {
+  try {
+    const raw = localStorage.getItem(MENU_CACHE_KEY);
+    if (!raw) return null;
+    const menu = JSON.parse(raw);
+    return (menu && menu.tamanos) ? menu : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function guardarMenuCache(menu) {
+  try {
+    if (menu && menu.tamanos) localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(menu));
+    else localStorage.removeItem(MENU_CACHE_KEY);
+  } catch (e) { /* sin caché disponible */ }
+}
+
+// Arrancar con el último menú guardado (si existe)
+menuConfig = leerMenuCache();
+
 // Normalizar config/local (igual que index.html y panel_nuevo.html)
 function normLocal(d) {
   d = d || {};
@@ -90,7 +114,16 @@ export function iniciarConfigListeners() {
 
   // config/menu
   unsubMenu = onSnapshot(doc(db, 'config', 'menu'), (snap) => {
-    menuConfig = snap.exists() ? snap.data() : null;
+    // Solo guardar/borrar la caché con datos del servidor (evita que un snapshot
+    // vacío de la caché local de Firestore borre el menú cuando no hay conexión).
+    const delServidor = !snap.metadata.fromCache;
+    if (snap.exists()) {
+      menuConfig = snap.data();
+      if (delServidor) guardarMenuCache(menuConfig);
+    } else if (delServidor) {
+      menuConfig = null;
+      guardarMenuCache(null);
+    }
     emit('config:menu', menuConfig);
   }, (err) => {
     console.error('[Config] Error escuchando menu:', err);
