@@ -180,6 +180,12 @@ function navegarPaso(paso) {
   if (pasoActual === 4 && getTipoPedido() === 'delivery') initMapa();
 }
 
+// Fila de precio del paso 1: etiqueta a la izquierda, monto + "Gs" a la derecha
+function filaPrecio(etiqueta, valor) {
+  const monto = formatearGs(valor).replace(/\s*Gs$/, '');
+  return `<div class="precio-fila"><span>${etiqueta}</span><span>${monto} <small>Gs</small></span></div>`;
+}
+
 // Renderizar tamaños
 function renderTamanos() {
   const tamanos = getTamanos();
@@ -196,10 +202,10 @@ function renderTamanos() {
       <button type="button" class="radio-card ${on ? 'border-accent bg-accent/5' : 'border-line'}" data-tamano="${k}" role="radio" aria-checked="${on}">
         <div class="font-bold text-center leading-tight">${escaparHtml(t.nombre)}</div>
         <div class="text-xs text-center text-muted mt-1">Hasta ${t.limiteSabores} variedades</div>
-        <div class="text-[11px] text-center text-muted leading-snug mt-1">
-          Clásico: <strong class="text-accent">${formatearGs(t.clasico)}</strong><br>
-          Especial: <strong class="text-accent">${formatearGs(t.especial)}</strong><br>
-          Gourmet: <strong class="text-accent">${formatearGs(t.gourmet)}</strong>
+        <div class="precios-tamano">
+          ${filaPrecio('Clásico', t.clasico)}
+          ${filaPrecio('Especial', t.especial)}
+          ${filaPrecio('Gourmet', t.gourmet)}
         </div>
       </button>
     `;
