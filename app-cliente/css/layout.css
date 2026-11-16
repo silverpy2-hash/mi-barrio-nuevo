@@ -1,0 +1,128 @@
+/* ==========================================================================
+   MI BARRIO — Layout & Structure
+   Header, Footer, Navegación, Páginas, Safe Areas
+   ========================================================================== */
+
+/* ---------- HTML / BODY BASE ---------- */
+html { background: var(--bg); }
+html[data-nuevo] body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 50% -80px, var(--bg-secondary), transparent 72%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Tema clásico (sin data-nuevo) — fondo simple */
+html:not([data-nuevo]) body { background: var(--bg); }
+
+/* Safe areas para móviles con notch */
+:root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px); }
+
+/* ---------- HEADER ---------- */
+.app-header { position: sticky; top: 0; z-index: var(--z-sticky); background: var(--card); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); background-color: rgba(255, 255, 255, 0.9); }
+html[data-tema="noche"] .app-header { background-color: rgba(31, 25, 20, 0.9); }
+
+.app-header-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); max-width: 640px; margin: 0 auto; }
+
+.app-logo { display: flex; align-items: center; gap: var(--space-2); }
+.app-logo img { width: 40px; height: 40px; border-radius: var(--radius-full); background: var(--ink); }
+.app-logo-text { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--ink); }
+
+.app-header-actions { display: flex; align-items: center; gap: var(--space-1); }
+
+/* Header con toldo (tema bonito/noche) */
+html[data-nuevo] .app-header { background: transparent; border-bottom: none; box-shadow: none; }
+html[data-nuevo] .app-header::after {
+  content: ""; display: block; height: 22px;
+  background:
+    radial-gradient(circle at 14px 0, var(--btn-primary) 13.5px, transparent 14px) 0 5px / 56px 17px repeat-x,
+    radial-gradient(circle at 42px 0, var(--color-gold) 13.5px, transparent 14px) 0 5px / 56px 17px repeat-x,
+    linear-gradient(90deg, var(--btn-primary) 50%, var(--color-gold) 50%) 0 0 / 56px 5px repeat-x;
+}
+
+/* ---------- FOOTER / BARRA INFERIOR ---------- */
+.app-bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: var(--z-fixed); background: var(--bar-bg); backdrop-filter: blur(14px); border-top: 1px solid var(--line); border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; padding: var(--space-4) var(--space-4) calc(var(--space-4) + var(--safe-bottom)); box-shadow: 0 -16px 34px -18px rgba(0, 0, 0, 0.25); }
+html[data-tema="noche"] .app-bottom-bar { box-shadow: 0 -16px 34px -18px rgba(0, 0, 0, 0.6); }
+
+.bottom-bar-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); max-width: 640px; margin: 0 auto; }
+
+.bottom-bar-total { display: flex; flex-direction: column; gap: 2px; }
+.bottom-bar-label { font-size: 0.6875rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.bottom-bar-amount { font-family: var(--font-display); font-weight: 900; font-size: 1.5rem; color: var(--btn-primary); }
+
+/* ---------- MAIN CONTENT ---------- */
+.app-main { flex: 1; padding-bottom: calc(80px + var(--safe-bottom)); min-height: 100vh; display: flex; flex-direction: column; }
+.app-content { flex: 1; padding: var(--space-4) var(--space-4) var(--space-6); max-width: 640px; margin: 0 auto; width: 100%; }
+
+/* ---------- PÁGINAS (Vistas) ---------- */
+.page { display: none; animation: fade-in var(--transition-base) ease-out; }
+.page.active { display: block; }
+.page-enter { animation: slide-up var(--transition-slow) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.page-exit { animation: fade-in var(--transition-fast) reverse; }
+
+/* ---------- NAVEGACIÓN INFERIOR (Bottom Nav) ---------- */
+.bottom-nav { display: flex; justify-content: space-around; padding: var(--space-2) 0; background: var(--bar-bg); border-top: 1px solid var(--line); position: fixed; bottom: 0; left: 0; right: 0; z-index: var(--z-fixed); border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.2); }
+html[data-tema="noche"] .bottom-nav { box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.6); }
+
+.nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--space-2) var(--space-3); color: var(--muted); font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border-radius: var(--radius-lg); transition: all var(--transition-fast); min-width: 60px; }
+.nav-item.active { color: var(--btn-primary); background: var(--color-accent-light); }
+.nav-item:not(.active):active { background: var(--chip); color: var(--ink); }
+.nav-icon { font-size: 1.25rem; line-height: 1; }
+
+/* ---------- FORMULARIOS ---------- */
+.form-section { margin-bottom: var(--space-6); }
+.form-section-title { font-family: var(--font-display); font-weight: 800; font-size: 1.125rem; color: var(--btn-primary); margin-bottom: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1.5px dashed var(--line); }
+.form-section-title-green { color: var(--color-leaf); }
+.form-row { display: flex; gap: var(--space-3); }
+.form-row > * { flex: 1; }
+
+/* ---------- LISTAS DE PEDIDOS / PRODUCTOS ---------- */
+.product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+@media (max-width: 480px) { .product-grid { grid-template-columns: 1fr; } }
+
+/* ---------- ESTADOS VACÍOS ---------- */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-10) var(--space-4); color: var(--muted); }
+.empty-icon { font-size: 4rem; margin-bottom: var(--space-4); opacity: 0.5; }
+.empty-title { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; color: var(--ink); margin-bottom: var(--space-2); }
+.empty-message { font-size: 0.9375rem; max-width: 280px; line-height: 1.6; }
+
+/* ---------- MENSAJES DE ESTADO ---------- */
+.status-banner { padding: var(--space-3) var(--space-4); border-radius: var(--radius-xl); font-weight: 700; font-size: 0.875rem; display: flex; align-items: center; gap: var(--space-2); }
+.status-info { background: var(--color-blue-light); color: var(--color-blue-dark); border: 1px solid var(--color-blue); }
+.status-success { background: var(--color-leaf-light); color: var(--color-leaf); border: 1px solid var(--color-leaf); }
+.status-warning { background: var(--color-gold-light); color: var(--color-gold-dark); border: 1px solid var(--color-gold); }
+.status-error { background: var(--color-accent-light); color: var(--color-accent-dark); border: 1px solid var(--color-accent); }
+
+/* ---------- SCROLL SNAP (para carruseles) ---------- */
+.snap-x { display: flex; gap: var(--space-3); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: var(--space-2); scrollbar-width: thin; }
+.snap-item { flex: 0 0 auto; scroll-snap-align: start; min-width: 160px; }
+
+/* ---------- RESPONSIVE BREAKPOINTS ---------- */
+@media (min-width: 640px) {
+  .app-content { padding-left: var(--space-6); padding-right: var(--space-6); }
+  .app-header-inner, .app-bottom-bar .bottom-bar-inner { padding-left: var(--space-6); padding-right: var(--space-6); }
+  .container { max-width: 640px; }
+}
+
+@media (min-width: 768px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .app-main { padding-bottom: 0; }
+  .app-bottom-bar { display: none; }
+  .bottom-nav { display: none; }
+  .app-content { padding-top: var(--space-8); padding-bottom: var(--space-12); }
+}
+
+/* ---------- PRINT ---------- */
+@media print {
+  .app-header, .app-bottom-bar, .bottom-nav, .modal-backdrop, .drawer, .toast, .btn { display: none !important; }
+  .app-main { padding-bottom: 0; }
+  .page { display: block !important; }
+  body { background: #fff; color: #000; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}

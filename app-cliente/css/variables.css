@@ -1,0 +1,178 @@
+/* ==========================================================================
+   MI BARRIO — Design Tokens (CSS Custom Properties)
+   Basado en los temas de index.html: clasico | bonito | noche
+   ========================================================================== */
+
+/* ---------- Paleta base (referencia) ---------- */
+:root {
+  /* Colores primarios */
+  --color-accent: #c8321f;
+  --color-accent-dark: #9e2314;
+  --color-accent-light: rgba(200, 50, 31, 0.10);
+
+  --color-gold: #f2a900;
+  --color-gold-dark: #8a5a00;
+  --color-gold-light: rgba(242, 169, 0, 0.16);
+
+  --color-blue: #2f6fd1;
+  --color-blue-dark: #1f4f9a;
+  --color-blue-light: rgba(47, 111, 209, 0.12);
+
+  --color-leaf: #2f7d4f;
+  --color-leaf-light: rgba(47, 125, 79, 0.11);
+
+  /* Neutrales */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Tipografía */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Sombras */
+  --shadow-sm: 0 2px 4px -2px rgba(90, 40, 10, 0.25);
+  --shadow-md: 0 8px 16px -8px rgba(90, 40, 10, 0.35);
+  --shadow-lg: 0 14px 34px -18px rgba(90, 40, 10, 0.45);
+  --shadow-xl: 0 20px 40px -20px rgba(90, 40, 10, 0.5);
+
+  /* Radio de borde */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 26px;
+  --radius-full: 999px;
+
+  /* Espaciado (escala 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Transiciones */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Z-index */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+}
+
+/* ==========================================================================
+   TEMAS — Se activan con <html data-tema="..."> [data-nuevo]
+   clasico = sin data-nuevo (diseño original)
+   bonito  = data-tema="bonito" + data-nuevo
+   noche   = data-tema="noche" + data-nuevo
+   ========================================================================== */
+
+/* ---------- TEMA CLÁSICO (por defecto, sin data-nuevo) ---------- */
+html:not([data-nuevo]) {
+  --bg: #fcf8f2;
+  --bg-secondary: #f5ebe0;
+  --card: #ffffff;
+  --card-hover: #faf8f5;
+  --ink: #2b1d14;
+  --muted: #7a6a5c;
+  --muted-light: #a89a8b;
+  --line: #ecdfce;
+  --chip: #f4e9d9;
+  --input-bg: #faf8f5;
+  --input-border: #e8ddd0;
+  --bar-bg: rgba(252, 248, 242, 0.95);
+  --btn-primary: var(--color-accent);
+  --btn-primary-hover: var(--color-accent-dark);
+  --btn-primary-text: #ffffff;
+  --btn-secondary: var(--chip);
+  --btn-secondary-hover: #ebe0d1;
+  --btn-secondary-text: var(--ink);
+  --badge-new: var(--color-leaf);
+  --badge-prep: var(--color-gold);
+  --badge-delivery: var(--color-blue);
+  --badge-done: var(--muted);
+  --badge-cancel: var(--color-accent);
+  --badge-paid: var(--color-leaf);
+  --shadow-card: var(--shadow-lg);
+  --map-tile-filter: none;
+}
+
+/* ---------- TEMA BONITO (cálido) ---------- */
+html[data-nuevo][data-tema="bonito"] {
+  --bg: #fbf4ea;
+  --bg-secondary: #f6e6cf;
+  --card: #ffffff;
+  --card-hover: #fffaf3;
+  --ink: #2b1d14;
+  --muted: #7a6a5c;
+  --muted-light: #a89a8b;
+  --line: #ecdfce;
+  --chip: #f4e9d9;
+  --input-bg: #fffaf3;
+  --input-border: #ecdfce;
+  --bar-bg: rgba(255, 255, 255, 0.93);
+  --btn-primary: var(--color-accent);
+  --btn-primary-hover: var(--color-accent-dark);
+  --btn-primary-text: #fff;
+  --btn-secondary: var(--chip);
+  --btn-secondary-hover: #f0e3d5;
+  --btn-secondary-text: var(--ink);
+  --badge-new: var(--color-leaf);
+  --badge-prep: var(--color-gold);
+  --badge-delivery: var(--color-blue);
+  --badge-done: var(--muted);
+  --badge-cancel: var(--color-accent);
+  --badge-paid: var(--color-leaf);
+  --shadow-card: var(--shadow-lg);
+  --map-tile-filter: none;
+}
+
+/* ---------- TEMA NOCHE (oscuro) ---------- */
+html[data-nuevo][data-tema="noche"] {
+  --bg: #14100d;
+  --bg-secondary: #2a1a12;
+  --card: #1f1914;
+  --card-hover: #271f19;
+  --ink: #f7efe4;
+  --muted: #bcad9d;
+  --muted-light: #8d8073;
+  --line: #3a2f27;
+  --chip: #33291f;
+  --input-bg: #2b221b;
+  --input-border: #3a2f27;
+  --bar-bg: rgba(24, 19, 15, 0.93);
+  --btn-primary: #ff6a3d;
+  --btn-primary-hover: #e0481c;
+  --btn-primary-text: #fff;
+  --btn-secondary: var(--chip);
+  --btn-secondary-hover: #3d3124;
+  --btn-secondary-text: var(--ink);
+  --badge-new: #4fcf86;
+  --badge-prep: #ffc23d;
+  --badge-delivery: #6aa6ff;
+  --badge-done: var(--muted-light);
+  --badge-cancel: #ff6a3d;
+  --badge-paid: #4fcf86;
+  --shadow-card: 0 16px 36px -18px rgba(0, 0, 0, 0.9);
+  --map-tile-filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+  color-scheme: dark;
+}
+
+/* ---------- Utilidades de tema ---------- */
+html[data-nuevo] {
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Forzar recarga de fuentes Google Fonts al cambiar tema */
+html[data-nuevo] .font-display { font-family: var(--font-display); }
+html[data-nuevo] .font-body { font-family: var(--font-body); }

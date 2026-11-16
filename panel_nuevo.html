@@ -160,6 +160,7 @@
                     <p id="contador" class="text-xs opacity-90">Cargando...</p>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <span id="version-panel" class="text-[10px] font-mono bg-white/10 px-2 py-1 rounded-lg opacity-80" title="Versión del panel que está corriendo esta pestaña. Si no coincide con la última publicada, recargá con Ctrl+Shift+R."></span>
                     <button id="btn-local" type="button" class="hidden text-xs font-extrabold px-3 py-1.5 rounded-lg" title="Abrir o cerrar el local">...</button>
                     <button id="btn-local-auto" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-2 py-1.5 rounded-lg" title="Volver al horario automático">↺ Auto</button>
                     <button id="btn-autoprint" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Imprimir la comanda sola en este equipo cuando entra un pedido nuevo">🖨️ Auto</button>
@@ -352,6 +353,13 @@
         const db = getFirestore(app);
 
         // ===== Configuración =====
+        // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
+        const VERSION_PANEL = '2026-11-11 #2 · ticket remoto';
+        (() => {
+            const el = document.getElementById('version-panel');
+            if (el) el.textContent = VERSION_PANEL;
+            console.info('[TPV] panel_nuevo versión:', VERSION_PANEL);
+        })();
         let NOMBRE_LOCAL = 'MI BARRIO';
         const MIN_ATENCION = 15;   
         const MIN_URGENTE = 30;    
@@ -833,7 +841,8 @@
                     } catch (e) {
                         mostrarError('No se pudo imprimir el ticket automático: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas nuevas.' : e.message));
                     }
-                    if (ganado) imprimirTicketAuto(ticket);
+                    if (ganado) { console.info('[TPV] ticket reclamado, imprimiendo:', id); imprimirTicketAuto(ticket); }
+                    else console.info('[TPV] el ticket ya estaba reclamado, no imprimo:', id);
                 }
             } finally { procesandoTickets = false; }
             if (colaTickets.size) setTimeout(procesarColaTickets, 2000);
@@ -853,7 +862,10 @@
                 const pagadosAhora = new Set(pedidos.filter(x => x.pagado).map(x => x.id));
                 if (ticketsVistos !== null && !esDelivery && autoImprimir) {
                     pedidos.forEach(x => {
-                        if (x.pagado === true && !x.ticketImpreso && x.cobradoEn && !ticketsVistos.has(x.id)) colaTickets.set(x.id, Date.now());
+                        if (x.pagado === true && !x.ticketImpreso && x.cobradoEn && !ticketsVistos.has(x.id)) {
+                            colaTickets.set(x.id, Date.now());
+                            console.info('[TPV] cobro detectado, a la cola de tickets:', x.id, numeroCorto(x));
+                        }
                     });
                 }
                 ticketsVistos = pagadosAhora;

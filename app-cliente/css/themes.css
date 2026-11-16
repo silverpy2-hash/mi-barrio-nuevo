@@ -1,0 +1,112 @@
+/* ==========================================================================
+   MI BARRIO — Theme Overrides & Specifics
+   Extensiones puntuales por tema que no caben en variables.css
+   ========================================================================== */
+
+/* ---------- TEMA CLÁSICO OVERRIDES ---------- */
+html:not([data-nuevo]) {
+  /* El tema clásico usa el diseño original de index.html sin modificaciones visuales modernas */
+  .hero { display: none; }
+  .numbered-section::before { display: none; }
+  .app-header::after { display: none; }
+  .app-header { background: #000; border-bottom: 4px solid #f2a900; }
+  .app-logo img { background: #000; }
+}
+
+/* ---------- TEMA BONITO ESPECÍFICOS ---------- */
+html[data-nuevo][data-tema="bonito"] {
+  /* Hero visible solo en temas nuevos */
+  .hero { display: block; }
+
+  /* Botón principal con brillo animado */
+  .btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-130%);
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+    animation: shine 3.6s ease-in-out infinite;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  @keyframes shine {
+    0%, 55% { transform: translateX(-130%); }
+    100% { transform: translateX(130%); }
+  }
+}
+
+/* ---------- TEMA NOCHE ESPECÍFICOS ---------- */
+html[data-nuevo][data-tema="noche"] {
+  .hero { display: block; }
+
+  /* Ajuste de imágenes en modo noche */
+  .app-logo img { filter: brightness(1.2) contrast(1.1); }
+
+  /* Map tiles oscuros */
+  .leaflet-container { filter: var(--map-tile-filter); }
+
+  /* Scrollbar oscuro */
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--line); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+}
+
+/* ---------- TRANSICIÓN DE TEMA ---------- */
+html[data-nuevo] *,
+html[data-nuevo] *::before,
+html[data-nuevo] *::after {
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
+}
+
+/* Evitar flash durante carga inicial */
+html[data-nuevo][style*="display: none"] { display: block !important; }
+
+/* ---------- UTILIDADES DE TEMA ---------- */
+/* Forzar tema específico (para testing) */
+.theme-clasico { --tema-forzado: clasico; }
+.theme-bonito { --tema-forzado: bonito; }
+.theme-noche { --tema-forzado: noche; }
+
+/* Clase para desactivar animaciones globalmente */
+.no-animations *,
+.no-animations *::before,
+.no-animations *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ---------- MODO ALTO CONTRASTE (accesibilidad) ---------- */
+@media (prefers-contrast: more) {
+  :root {
+    --btn-primary: #a00;
+    --btn-primary-hover: #800;
+    --color-accent: #a00;
+    --line: #000;
+    --muted: #333;
+  }
+  html[data-tema="noche"] {
+    --btn-primary: #ff4400;
+    --btn-primary-hover: #cc3300;
+    --color-accent: #ff4400;
+    --line: #fff;
+    --muted: #ccc;
+  }
+}
+
+/* ---------- MODO REDUCED MOTION ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary::after { animation: none; }
+  .hero { animation: none; }
+  .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 { animation-delay: 0; }
+  .page-enter { animation: none; }
+  .modal, .drawer { animation: none; }
+  .toast.show { animation: none; }
+}
+
+/* ---------- DARK MODE SISTEMA (fallback si no hay config/local) ---------- */
+@media (prefers-color-scheme: dark) {
+  html:not([data-tema]) {
+    /* Solo si no hay tema explícito guardado */
+    color-scheme: dark;
+  }
+}

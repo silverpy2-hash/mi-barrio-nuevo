@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="clasico">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#c8321f" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14100d" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Mi Barrio - Pedidos online de pizza, delivery y retiro">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mi Barrio">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+  <link rel="icon" type="image/svg+xml" sizes="any" href="assets/icons/icon-192.svg">
+  <link rel="icon" type="image/svg+xml" sizes="any" href="assets/icons/maskable.svg">
+  <link rel="mask-icon" href="assets/icons/maskable.svg" color="#c8321f">
+  <title>Mi Barrio - Pedidos</title>
+
+  <!-- Fuentes Google Fonts (cargadas dinámicamente por themes.css según tema) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Nunito:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'">
+
+  <!-- Leaflet CSS (Mapa gratuito) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+  <!-- CSS Mi Barrio (orden: variables → base → components → layout → themes) -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/themes.css">
+
+  <!-- Script para aplicar tema ANTES de pintar (evita flash) -->
+  <script>
+    (function() {
+      var STORAGE_KEY = 'mb_tema_cliente';
+      var VALID_TEMAS = ['clasico', 'bonito', 'noche'];
+      function applyTheme(t) {
+        if (VALID_TEMAS.indexOf(t) < 0) t = 'clasico';
+        var html = document.documentElement;
+        html.setAttribute('data-tema', t);
+        if (t === 'clasico') {
+          html.removeAttribute('data-nuevo');
+        } else {
+          html.setAttribute('data-nuevo', '');
+        }
+        try { localStorage.setItem(STORAGE_KEY, t); } catch (e) {}
+      }
+      // Cargar tema guardado o por defecto 'clasico'
+      var saved = null;
+      try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+      applyTheme(saved || 'clasico');
+      // Exponer para uso posterior
+      window.aplicarTemaCliente = applyTheme;
+    })();
+  </script>
+</head>
+<body class="font-body">
+
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="app-header" role="banner">
+    <div class="app-header-inner">
+      <div class="app-logo">
+        <img src="assets/logo.svg" alt="Mi Barrio" width="40" height="40">
+        <span class="app-logo-text font-display">Mi Barrio</span>
+      </div>
+      <div class="app-header-actions">
+        <!-- Botón tema (opcional, para testing) -->
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" id="btn-tema" aria-label="Cambiar tema" title="Cambiar tema">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       MAIN CONTENT
+       ============================================================ -->
+  <main class="app-main" role="main">
+
+    <!-- Banner de local cerrado (se muestra via JS) -->
+    <div id="banner-cerrado" class="closed-banner hidden" role="alert" aria-live="assertive">
+      <svg class="closed-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+      <span id="cerrado-texto">Nos encontramos cerrados</span>
+    </div>
+
+    <!-- Vista: INICIO / HERO -->
+    <section id="page-inicio" class="page active" aria-label="Inicio">
+      <div class="app-content">
+        <div class="hero" id="hero-bienvenida" aria-hidden="true">
+          <h1 class="hero-title font-display">Armá tu pizza a tu gusto</h1>
+          <p class="hero-subtitle">Elegí el tamaño y los sabores. Tu pedido sale directo por WhatsApp.</p>
+          <div class="hero-chips">
+            <span class="chip">🛵 Delivery según distancia</span>
+            <span class="chip">💵 Efectivo o transferencia</span>
+            <span class="chip">📲 Confirmación por WhatsApp</span>
+          </div>
+        </div>
+
+        <!-- Aviso mesa (QR) -->
+        <div id="aviso-mesa" class="hidden status-banner status-info mx-auto max-w-xl" role="status">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span id="mesa-texto">🪑 Pedido para la mesa</span>
+        </div>
+
+        <!-- Botones principales -->
+        <div class="space-y-3 mt-6">
+          <button type="button" class="btn btn-primary btn-block btn-lg" id="btn-nuevo-pedido" data-page="menu">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            🍕 Hacer un pedido
+          </button>
+
+          <button type="button" class="btn btn-secondary btn-block" id="btn-mis-pedidos" data-page="orders" disabled>
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 9h6v6H9z"/></svg>
+            📋 Mis pedidos <span class="badge badge-default">Próximamente</span>
+          </button>
+
+          <button type="button" class="btn btn-ghost btn-block" id="btn-info" data-page="info">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            ℹ️ Horarios, delivery y contacto
+          </button>
+        </div>
+
+        <!-- Info rápida -->
+        <div class="mt-8 grid grid-cols-2 gap-3 text-center">
+          <article class="card p-4">
+            <div class="text-3xl font-black text-accent font-display" id="stat-pizzas">0</div>
+            <div class="text-xs text-muted uppercase tracking-wide">Sabores disponibles</div>
+          </article>
+          <article class="card p-4">
+            <div class="text-3xl font-black text-gold font-display" id="stat-tamanos">0</div>
+            <div class="text-xs text-muted uppercase tracking-wide">Tamaños</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista: MENÚ / ARMAR PEDIDO -->
+    <section id="page-menu" class="page" aria-label="Armar pedido">
+      <div class="app-content">
+        <!-- Stepper de progreso -->
+        <nav class="stepper" aria-label="Pasos del pedido" id="stepper-pedido">
+          <div class="stepper-item active" data-step="1">
+            <div class="stepper-circle" aria-hidden="true">1</div>
+            <div class="stepper-label">Tamaño</div>
+          </div>
+          <div class="stepper-item" data-step="2">
+            <div class="stepper-circle" aria-hidden="true">2</div>
+            <div class="stepper-label">Sabores</div>
+          </div>
+          <div class="stepper-item" data-step="3">
+            <div class="stepper-circle" aria-hidden="true">3</div>
+            <div class="stepper-label">Extras</div>
+          </div>
+          <div class="stepper-item" data-step="4">
+            <div class="stepper-circle" aria-hidden="true">4</div>
+            <div class="stepper-label">Datos</div>
+          </div>
+        </nav>
+
+        <!-- Paso 1: Tamaño -->
+        <fieldset id="step-tamano" class="card animate-slide-up" aria-labelledby="step1-title">
+          <legend class="sr-only">Seleccionar tamaño de pizza</legend>
+          <div class="card-header">
+            <h2 id="step1-title" class="card-title">🍕 Seleccioná el tamaño</h2>
+          </div>
+          <div class="card-body">
+            <div class="grid grid-cols-2 gap-3" id="grid-tamanos" role="radiogroup" aria-label="Tamaños de pizza">
+              <!-- Se inyecta por JS desde config/menu -->
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Paso 2: Sabores -->
+        <fieldset id="step-sabores" class="card animate-slide-up hidden" aria-labelledby="step2-title">
+          <legend class="sr-only">Seleccionar sabores</legend>
+          <div class="card-header">
+            <h2 id="step2-title" class="card-title">👨‍🍳 Elegí los sabores</h2>
+            <div class="flex items-center justify-between mt-2">
+              <span id="contador-sabores" class="text-sm font-semibold text-muted">Seleccionados: 0 / 2</span>
+            </div>
+          </div>
+          <div class="card-body space-y-5" id="sabores-categorias">
+            <!-- Gourmet -->
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-gold bg-gold-light px-2 py-1 rounded mb-2">⭐ Gourmet</h3>
+              <div class="grid grid-cols-2 gap-2" id="grid-gourmet" role="group" aria-label="Sabores Gourmet"></div>
+            </div>
+            <!-- Especiales -->
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-blue bg-blue-light px-2 py-1 rounded mb-2">✨ Especiales</h3>
+              <div class="grid grid-cols-2 gap-2" id="grid-especial" role="group" aria-label="Sabores Especiales"></div>
+            </div>
+            <!-- Clásicos -->
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-leaf bg-leaf-light px-2 py-1 rounded mb-2">🍃 Clásicos</h3>
+              <div class="grid grid-cols-2 gap-2" id="grid-clasico" role="group" aria-label="Sabores Clásicos"></div>
+            </div>
+          </div>
+
+          <!-- Borde relleno (dinámico según tamaño) -->
+          <div id="contenedor-borde" class="p-4 bg-accent-light border border-accent/30 rounded-xl hidden"></div>
+
+          <!-- Botón para volver a cambiar el tamaño -->
+          <div class="pt-2">
+            <button type="button" class="btn btn-secondary btn-block" id="btn-cambiar-tamano">
+              ← Cambiar tamaño
+            </button>
+          </div>
+
+          <div class="pt-2">
+            <button type="button" class="btn btn-primary btn-block" id="btn-agregar-pizza" disabled>
+              ➕ Agregar esta pizza
+            </button>
+            <p class="text-xs text-center text-muted mt-2">Si no querés más pizzas, continuá con extras.</p>
+          </div>
+        </fieldset>
+
+        <!-- Paso 3: Extras -->
+        <fieldset id="step-extras" class="card animate-slide-up hidden" aria-labelledby="step3-title">
+          <legend class="sr-only">Agregar extras</legend>
+          <div class="card-header">
+            <h2 id="step3-title" class="card-title">➕ Adicionales y bebidas</h2>
+          </div>
+
+          <!-- Resumen de pizzas ya agregadas (con opción de quitar) -->
+          <div class="card-body pb-0 hidden" id="pedido-actual-wrap">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold">🍕 Tu pedido</h3>
+              <span id="pedido-contador" class="text-xs text-muted">0 pizzas</span>
+            </div>
+            <div class="space-y-2" id="pedido-actual"></div>
+          </div>
+
+          <div class="card-body">
+            <div class="space-y-3" id="lista-extras">
+              <!-- Se inyecta por JS desde config/menu -->
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Paso 4: Datos del cliente -->
+        <fieldset id="step-datos" class="card animate-slide-up hidden" aria-labelledby="step4-title">
+          <legend class="sr-only">Datos para el delivery</legend>
+          <div class="card-header">
+            <h2 id="step4-title" class="card-title">👤 Datos para el delivery</h2>
+          </div>
+          <div class="card-body space-y-4">
+            <div class="input-group">
+              <label class="input-label" for="input-nombre">Nombre completo</label>
+              <input type="text" id="input-nombre" class="input" placeholder="Ej. Juan Pérez" autocomplete="name" required>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="input-celular">Celular (WhatsApp)</label>
+              <input type="tel" id="input-celular" class="input" placeholder="Ej. 0981 123 456" inputmode="tel" autocomplete="tel" required>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="input-direccion">Dirección / Referencia</label>
+              <input type="text" id="input-direccion" class="input" placeholder="Ej. Calle Principal e/ 14 de Mayo" autocomplete="address-line1" required>
+            </div>
+
+            <!-- Mapa -->
+            <div class="input-group">
+              <div class="flex justify-between items-center mb-1">
+                <label class="input-label mb-0">📍 Ubicación exacta en el mapa</label>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-mi-ubicacion" aria-label="Usar mi ubicación actual">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                  Mi ubicación
+                </button>
+              </div>
+              <p class="text-xs text-muted mb-2">Mové el marcador rojo sobre tu casa exacta para que el delivery te encuentre.</p>
+              <div id="mapa-cliente" class="map-container" role="application" aria-label="Mapa para seleccionar ubicación"></div>
+              <input type="hidden" id="input-latitud">
+              <input type="hidden" id="input-longitud">
+              <div id="delivery-info-cliente" class="mt-2 text-xs font-semibold text-muted">🛵 Calculando costo de delivery...</div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="input-notas">Notas (opcional)</label>
+              <textarea id="input-notas" class="textarea" placeholder="Ej. Timbre no funciona, llamar al celular" rows="2"></textarea>
+            </div>
+
+            <!-- Forma de pago -->
+            <div class="input-group">
+              <label class="input-label">¿Cómo vas a pagar?</label>
+              <div class="segmented" role="radiogroup" aria-label="Forma de pago" id="pago-opciones">
+                <button type="button" class="segmented-btn active" data-pago="efectivo" role="radio" aria-checked="true">💵 Efectivo</button>
+                <button type="button" class="segmented-btn" data-pago="transferencia" role="radio" aria-checked="false">🏦 Transferencia</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer flex-col gap-3">
+            <div class="flex justify-between items-center w-full">
+              <div>
+                <div class="text-xs text-muted uppercase tracking-wide">Total estimado</div>
+                <div id="total-final" class="text-2xl font-black text-accent font-display">0 Gs</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-block btn-lg" id="btn-confirmar-pedido">
+              🚀 Confirmar y enviar por WhatsApp
+            </button>
+          </div>
+        </fieldset>
+      </div>
+
+      <!-- Navegación entre pasos (botones anterior/siguiente) -->
+      <div class="fixed bottom-0 left-0 right-0 z-fixed bg-bar p-4 border-t border-line hidden" id="step-nav">
+        <div class="max-w-xl mx-auto flex justify-between gap-3">
+          <button type="button" class="btn btn-secondary flex-1" id="btn-paso-anterior">← Anterior</button>
+          <button type="button" class="btn btn-primary flex-1" id="btn-paso-siguiente">Siguiente →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista: CARRITO / RESUMEN (opcional, se puede integrar en step-datos) -->
+    <section id="page-cart" class="page" aria-label="Tu pedido">
+      <div class="app-content">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2 class="card-title">🛒 Tu pedido</h2>
+          </div>
+          <div class="card-body" id="cart-items">
+            <div class="empty-state">
+              <div class="empty-icon">🍕</div>
+              <h3 class="empty-title">Tu pedido está vacío</h3>
+              <p class="empty-message">Agregá pizzas y extras para ver el resumen aquí.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body space-y-3" id="cart-summary">
+            <div class="flex justify-between text-sm">
+              <span class="text-muted">Subtotal</span>
+              <span id="cart-subtotal" class="font-bold">0 Gs</span>
+            </div>
+            <div class="flex justify-between text-sm hidden" id="cart-delivery-row">
+              <span class="text-muted">🛵 Delivery</span>
+              <span id="cart-delivery" class="font-bold text-gold">0 Gs</span>
+            </div>
+            <div class="flex justify-between text-sm hidden" id="cart-descuento-row">
+              <span class="text-muted">Descuento</span>
+              <span id="cart-descuento" class="font-bold text-accent">0 Gs</span>
+            </div>
+            <div class="divider-dashed"></div>
+            <div class="flex justify-between">
+              <span class="font-black text-lg">TOTAL</span>
+              <span id="cart-total" class="font-black text-xl text-accent font-display">0 Gs</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button type="button" class="btn btn-primary btn-block btn-lg" id="btn-cart-continuar">Continuar →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista: PEDIDOS (placeholder para V2) -->
+    <section id="page-orders" class="page" aria-label="Mis pedidos">
+      <div class="app-content">
+        <div class="card">
+          <div class="card-body text-center py-10">
+            <div class="empty-icon">📋</div>
+            <h3 class="empty-title">Mis pedidos</h3>
+            <p class="empty-message">Esta función estará disponible en la próxima versión. Por ahora, tus pedidos llegan por WhatsApp y email.</p>
+            <button type="button" class="btn btn-primary mt-4" data-page="inicio">← Volver al inicio</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista: INFO (horarios, delivery, contacto) -->
+    <section id="page-info" class="page" aria-label="Información">
+      <div class="app-content space-y-4">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🕐 Horarios de atención</h2>
+          </div>
+          <div class="card-body" id="info-horarios">
+            <div class="empty-state">
+              <div class="empty-icon">🕐</div>
+              <h3 class="empty-title">Cargando horarios...</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🛵 Zonas y costos de delivery</h2>
+          </div>
+          <div class="card-body" id="info-delivery">
+            <div class="empty-state">
+              <div class="empty-icon">🛵</div>
+              <h3 class="empty-title">Cargando zonas...</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📞 Contacto</h2>
+          </div>
+          <div class="card-body space-y-3">
+            <a href="tel:+595986368904" class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Llamar al local</div>
+                <div class="list-item-subtitle">+595 986 368 904</div>
+              </div>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </a>
+            <a href="https://wa.me/595986368904" target="_blank" rel="noopener" class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">WhatsApp</div>
+                <div class="list-item-subtitle">Escribinos directo</div>
+              </div>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </a>
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Dirección</div>
+                <div class="list-item-subtitle">Caaguazú, Paraguay</div>
+              </div>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-ghost btn-block" data-page="inicio">← Volver al inicio</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================
+       FOOTER / BARRA INFERIOR FIJA (Total + Botón principal)
+       ============================================================ -->
+  <footer class="app-bottom-bar" id="bottom-bar" role="contentinfo" aria-label="Total del pedido">
+    <div class="bottom-bar-inner">
+      <div class="bottom-bar-total">
+        <span class="bottom-bar-label">Total estimado</span>
+        <span id="bottom-total" class="bottom-bar-amount font-display">0 Gs</span>
+      </div>
+      <button type="button" class="btn btn-primary btn-lg shrink-0" id="btn-bottom-continuar" style="min-width: 160px;">
+        Continuar →
+      </button>
+    </div>
+  </footer>
+
+  <!-- ============================================================
+       MODAL: CONFIRMACIÓN DE PEDIDO
+       ============================================================ -->
+  <div class="modal-backdrop hidden" id="modal-confirmar" role="dialog" aria-modal="true" aria-labelledby="modal-confirmar-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title font-display" id="modal-confirmar-title">🍕 Confirmar pedido</h2>
+        <button type="button" class="modal-close" id="modal-confirmar-cerrar" aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-confirmar-body">
+        <!-- Resumen del pedido se inyecta aquí -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="modal-confirmar-cancelar">Volver a editar</button>
+        <button type="button" class="btn btn-primary" id="modal-confirmar-enviar">✅ Sí, enviar por WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOAST NOTIFICATIONS
+       ============================================================ -->
+  <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+  <!-- ============================================================
+       LEAFLET JS (Mapa)
+       ============================================================ -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- ============================================================
+       FIREBASE SDK (ES Modules)
+       ============================================================ -->
+  <script type="module" src="js/firebase.js"></script>
+  <script type="module" src="js/config-listener.js"></script>
+  <script type="module" src="js/menu-store.js"></script>
+  <script type="module" src="js/cart.js"></script>
+  <script type="module" src="js/delivery.js"></script>
+  <script type="module" src="js/order.js"></script>
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js').catch(function(err) {
+          console.log('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
