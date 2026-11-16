@@ -52,6 +52,7 @@ function cacheElements() {
   els.contadorSabores = document.getElementById('contador-sabores');
   els.btnAgregarPizza = document.getElementById('btn-agregar-pizza');
   els.btnCambiarTamano = document.getElementById('btn-cambiar-tamano');
+  els.btnAgregarMasPizzas = document.getElementById('btn-agregar-mas-pizzas');
   els.listaExtras = document.getElementById('lista-extras');
 
   // Datos cliente
@@ -69,6 +70,7 @@ function cacheElements() {
   // Totales
   els.totalFinal = document.getElementById('total-final');
   els.bottomTotal = document.getElementById('bottom-total');
+  els.bottomBarTotal = document.querySelector('.bottom-bar-total');
   els.btnConfirmarPedido = document.getElementById('btn-confirmar-pedido');
   els.btnBottomContinuar = document.getElementById('btn-bottom-continuar');
   els.bottomBar = document.getElementById('bottom-bar');
@@ -146,6 +148,16 @@ function navegarPaso(paso) {
   // Mostrar/ocultar navegación de pasos
   els.stepNav.classList.toggle('hidden', pasoActual === 1);
 
+  // En el paso 4 la acción final ocupa la barra inferior (donde estaba "Continuar →")
+  if (els.btnBottomContinuar) {
+    const esPaso4 = pasoActual === 4;
+    els.btnBottomContinuar.textContent = esPaso4 ? '🚀 Confirmar y enviar por WhatsApp' : 'Continuar →';
+    els.btnBottomContinuar.classList.toggle('flex-1', esPaso4);
+    els.bottomBarTotal?.classList.toggle('hidden', esPaso4);
+    // Evita duplicar la acción: en el paso 4 solo se usa el botón inferior
+    els.btnConfirmarPedido?.classList.toggle('hidden', esPaso4);
+  }
+
   // Actualizar botón siguiente
   if (pasoActual === 4) {
     els.btnPasoSiguiente.textContent = 'Confirmar';
@@ -157,9 +169,15 @@ function navegarPaso(paso) {
     els.btnPasoSiguiente.classList.add('btn-secondary');
   }
 
+  // En el paso 4 la única acción final es "Confirmar y enviar por WhatsApp"
+  els.btnPasoSiguiente.classList.toggle('hidden', pasoActual === 4);
+
   // Reevaluar el estado del botón "Siguiente" según el paso en el que estamos
   const validadores = [validarPaso1, validarPaso2, validarPaso3, validarPaso4];
   validadores[pasoActual - 1]();
+
+  // Inicializar el mapa al entrar al paso de datos (solo delivery)
+  if (pasoActual === 4 && getTipoPedido() === 'delivery') initMapa();
 }
 
 // Renderizar tamaños
@@ -502,14 +520,19 @@ function bindEvents() {
       if (saboresSeleccionados.length) agregarPizzaActual();
       navegarPaso(3);
     }
-    else if (pasoActual === 3) { navegarPaso(4); if (getTipoPedido() === 'delivery') initMapa(); }
+    else if (pasoActual === 3) { navegarPaso(4); }
     else if (pasoActual === 4) { abrirModalConfirmar(); }
   });
 
   // Agregar pizza
   els.btnAgregarPizza?.addEventListener('click', () => {
     agregarPizzaActual();
-    navegarPaso(1); // Volver a tamaños para siguiente pizza
+    navegarPaso(3); // Ir directo a extras para continuar el pedido
+  });
+
+  // Añadir más pizzas (volver a tamaños desde extras)
+  els.btnAgregarMasPizzas?.addEventListener('click', () => {
+    navegarPaso(1);
   });
 
   // Cambiar tamaño (volver al paso 1 desde sabores)

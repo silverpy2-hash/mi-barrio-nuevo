@@ -271,7 +271,7 @@
 .counter-value { min-width: 44px; text-align: center; font-weight: 900; font-size: 1rem; color: var(--ink); }
 
 /* ---------- MAPA (Leaflet) ---------- */
-.map-container { width: 100%; height: 250px; border-radius: var(--radius-xl); border: 1.5px solid var(--line); box-shadow: var(--shadow-card); overflow: hidden; }
+.map-container { position: relative; z-index: 0; width: 100%; height: 250px; border-radius: var(--radius-xl); border: 1.5px solid var(--line); box-shadow: var(--shadow-card); overflow: hidden; }
 html[data-tema="noche"] .map-container .leaflet-tile-pane { filter: var(--map-tile-filter); }
 
 /* ---------- AVISO CIERRE ---------- */
