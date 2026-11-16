@@ -211,7 +211,8 @@
                     <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Cliente</div>
                     <input id="nuevo-nombre" list="dl-nombres" autocomplete="off" type="text" maxlength="60" placeholder="Nombre (o mesa)" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
                     <input id="nuevo-celular" list="dl-cels" autocomplete="off" type="tel" inputmode="tel" maxlength="20" placeholder="Celular (opcional) Ej. 0981 123 456" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
-                    <input id="nuevo-direccion" type="text" maxlength="500" placeholder="Dirección o link de Google Maps (obligatorio para delivery)" class="hidden w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                    <input id="nuevo-direccion" type="text" maxlength="500" placeholder="Link de Google Maps" aria-label="Ubicación de Google Maps" class="hidden w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
+                    <input id="nuevo-referencia" type="text" maxlength="500" placeholder="Referencia escrita (opcional)" aria-label="Referencia escrita" class="hidden w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
                     <input id="nuevo-notas" type="text" maxlength="150" placeholder="Notas (opcional)" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
                 </div>
 
@@ -295,8 +296,10 @@
                 <input id="cli-nombre" type="text" maxlength="60" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
                 <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Celular</label>
                 <input id="cli-celular" type="tel" inputmode="tel" maxlength="20" placeholder="Ej. 0981 123 456" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
-                <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Ubicación (dirección o link de Google Maps)</label>
+                <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Referencia escrita</label>
                 <input id="cli-direccion" type="text" maxlength="500" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
+                <div><label class="block text-xs font-semibold text-neutral-500 mb-1">Link de Google Maps</label>
+                <input id="cli-mapa" type="text" maxlength="500" class="w-full bg-white border border-neutral-300 rounded-xl px-3 py-2 text-sm"></div>
                 <button id="cli-guardar" type="button" class="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded-xl">💾 Guardar cliente</button>
                 <button id="cli-eliminar" type="button" class="hidden w-full bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2.5 rounded-xl text-sm">🗑️ Eliminar cliente</button>
             </div>
@@ -992,7 +995,7 @@
   ${c.celular ? `<div>Tel: <strong>${esc(telBonito(c.celular))}</strong></div>` : ''}
   ${c.direccion ? `<div style="word-break:break-all">${esc(c.direccion)}</div>` : ''}
   ${c.notas ? `<div>NOTA: ${esc(c.notas)}</div>` : ''}
-  ${gps}
+  ${!gps && c.mapa ? `<div style="word-break:break-all">${esc(c.mapa)}</div>` : gps}
   <hr>
   ${pizzas}
   ${extras ? '<hr>' + extras : ''}
@@ -1371,6 +1374,7 @@
             $('nuevo-mesa-box').classList.toggle('hidden', nuevo.tipo !== 'local');
             pintarMesasNuevo();
             $('nuevo-direccion').classList.toggle('hidden', nuevo.tipo !== 'delivery');
+            $('nuevo-referencia').classList.toggle('hidden', nuevo.tipo !== 'delivery');
             $('nuevo-nombre').placeholder = nuevo.tipo === 'local' ? 'Nombre (opcional)' : (nuevo.tipo === 'retiro' ? 'Nombre (si no, queda "Mostrador")' : 'Nombre del cliente');
 
             // constructor de pizza
@@ -1432,7 +1436,9 @@
         }
 
         function nuevoLimpiar() {
-            ['nuevo-nombre', 'nuevo-celular', 'nuevo-direccion', 'nuevo-notas', 'nuevo-descuento'].forEach(id => { $(id).value = ''; });
+            ['nuevo-nombre', 'nuevo-celular', 'nuevo-direccion', 'nuevo-referencia', 'nuevo-notas', 'nuevo-descuento'].forEach(id => { $(id).value = ''; });
+            camposAutoCliente = {};
+            consultaCliente++;
             nuevo.sabores = []; nuevo.borde = false; nuevo.pizzas = []; nuevo.extras = {}; nuevo.pago = ''; nuevo.envio = 0; nuevo.agregarA = null;
             nuevo.distanciaKm = null; nuevo.deliveryFuera = false; nuevo.envioManual = false;
             nuevo.mesa = null; nuevo.entrada = 'nuevo';
@@ -1456,8 +1462,12 @@
             if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
             const extras = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
             if (!n.pizzas.length && !extras.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
-            const direccion = n.tipo === 'delivery' ? $('nuevo-direccion').value.trim() : '';
-            if (n.tipo === 'delivery' && !direccion) { nuevoMsg('nuevo-error', 'Para delivery escribí la dirección.'); return; }
+            const ubicacion = n.tipo === 'delivery' ? $('nuevo-direccion').value.trim() : '';
+            const direccion = n.tipo === 'delivery' ? $('nuevo-referencia').value.trim() : '';
+            const link = linkMaps(ubicacion);
+            const coords = coordsDeMaps(link || (/^-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$/.test(ubicacion) ? ubicacion : ''));
+            const mapa = link || (coords ? linkDeCoords(coords) : '');
+            if (n.tipo === 'delivery' && !mapa) { nuevoMsg('nuevo-error', 'Para delivery pegá el link de Google Maps.'); return; }
             if (n.tipo === 'local') {
                 if (!mesasListas) { nuevoMsg('nuevo-error', 'Todavía se están cargando las mesas. Esperá un segundo.'); return; }
                 if (!mesas.length) { nuevoMsg('nuevo-error', 'No hay mesas configuradas. Cargalas en Configuración → 🪑 Mesas.'); return; }
@@ -1481,7 +1491,8 @@
             const lineas = ['*PEDIDO ' + TIPOS[n.tipo].label.toUpperCase() + ' (cargado en el panel)*', 'Cliente: ' + nombre];
             if (n.tipo === 'local') lineas.push('🪑 Mesa: ' + n.mesa);
             if (celular) lineas.push('Celular: ' + telBonito(celular));
-            if (direccion) lineas.push('Dirección: ' + direccion);
+            if (mapa) lineas.push('Ubicación: ' + mapa);
+            if (direccion) lineas.push('Referencia: ' + direccion);
             pizzas.forEach((z, i) => lineas.push('• Pizza ' + (i + 1) + ' ' + z.nombre + ': ' + z.sabores.join(', ') + (z.borde ? ' · Borde relleno' : '') + ' - ' + gs(z.precio)));
             extras.forEach(x => lineas.push('• ' + x.item + ' x' + x.cantidad));
             if (notas) lineas.push('Notas: ' + notas);
@@ -1489,7 +1500,6 @@
             if (desc > 0) lineas.push('Descuento: ' + gs(desc));
             lineas.push('TOTAL: ' + gs(total));
 
-            const coords = n.tipo === 'delivery' ? coordsDeMaps(direccion) : null;
             const datos = {
                 local: 'mi-barrio',
                 estado: n.entrada,
@@ -1502,7 +1512,7 @@
                 descuento: desc,
                 costoDelivery: env,
                 distanciaKm: n.distanciaKm ? Number(n.distanciaKm.toFixed(2)) : null,
-                cliente: { nombre: nombre, direccion: direccion, celular: celular, notas: notas, lat: coords ? coords.lat : null, lng: coords ? coords.lng : null, mapa: coords ? 'https://maps.google.com/?q=' + coords.lat + ',' + coords.lng : '' },
+                cliente: { nombre: nombre, direccion: direccion, celular: celular, notas: notas, lat: coords ? coords.lat : null, lng: coords ? coords.lng : null, mapa: mapa },
                 pizzas: pizzas,
                 extras: extras,
                 total: total,
@@ -1519,10 +1529,10 @@
                 await runTransaction(db, async (tx) => {
                     const c = await tx.get(refContador());
                     datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
+                    await recordarCliente(tx, datos, Date.now());
                     tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
                     tx.set(ref, datos);
                 });
-                recordarCliente({ cliente: datos.cliente, total: total });
                 nuevoLimpiar();
                 renderNuevo();
                 $('modal-nuevo').classList.add('hidden');
@@ -1915,15 +1925,15 @@
             asignando = true;
             try {
                 for (const p of faltan) {
-                    const hecho = await runTransaction(db, async (tx) => {
+                    await runTransaction(db, async (tx) => {
                         const [c, d] = await Promise.all([tx.get(refContador()), tx.get(doc(db, 'pedidos', p.id))]);
-                        if (!d.exists() || d.data().numero) return false;
+                        if (!d.exists() || d.data().numero) return;
+                        const pedido = d.data();
+                        await recordarCliente(tx, pedido, creadoMs(pedido));
                         const n = ((c.exists() && c.data().ultimo) || 0) + 1;
                         tx.set(refContador(), { ultimo: n }, { merge: true });
                         tx.update(d.ref, { numero: n });
-                        return true;
                     });
-                    if (hecho) recordarCliente(p);
                 }
             } catch (e) { mostrarError('No se pudo numerar los pedidos: ' + e.message); }
             asignando = false;
@@ -1940,23 +1950,96 @@
                 if (!$('modal-caja').classList.contains('hidden') && tabCaja === 'clientes') renderCaja();
             }, () => {});
         }
-        async function recordarCliente(p) {
+        function linkMaps(texto) {
+            for (const palabra of String(texto || '').trim().split(/\s+/)) {
+                const token = palabra.replace(/[.,;)]+$/, '');
+                const m = /^(?:https?:\/\/)?([^/?#]+)([^?#]*)/i.exec(token);
+                if (!m) continue;
+                const host = m[1].toLowerCase(), ruta = m[2];
+                if (/^maps\.google\.(?:com(?:\.[a-z]{2})?|[a-z]{2})$/.test(host) ||
+                    (/^(?:www\.)?google\.(?:com(?:\.[a-z]{2})?|[a-z]{2})$/.test(host) && /^\/maps(?:\/|$)/.test(ruta)) ||
+                    (host === 'maps.app.goo.gl' && ruta.length > 1) ||
+                    (host === 'goo.gl' && ruta.startsWith('/maps/'))) {
+                    return /^https?:\/\//i.test(token) ? token : 'https://' + token;
+                }
+            }
+            return '';
+        }
+        function linkDeCoords({ lat, lng }) {
+            return 'https://maps.google.com/?q=' + lat + ',' + lng;
+        }
+        function ubicacionCliente(c) {
+            const lat = Number(c.lat), lng = Number(c.lng);
+            const tienePin = c.lat != null && c.lng != null && c.lat !== '' && c.lng !== '' &&
+                (lat || lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+            return linkMaps(c.mapa) || (tienePin ? linkDeCoords({ lat, lng }) : linkMaps(c.direccion));
+        }
+        async function recordarCliente(tx, p, creado) {
             const c = p.cliente || {}, cel = waNumero(c.celular);
             if (cel.length !== 12 || !c.nombre) return;
+            const ref = doc(db, 'clientes', cel);
+            const ficha = (await tx.get(ref)).data() || {};
             const d = { nombre: c.nombre, celular: cel, ultimo: serverTimestamp(), pedidos: increment(1), gastado: increment(Number(p.total || 0)) };
-            if (c.direccion) d.direccion = c.direccion;
-            try { await setDoc(doc(db, 'clientes', cel), d, { merge: true }); } catch (e) {}
+            const mapa = ubicacionCliente(c);
+            if (mapa && creado >= (ficha.mapaPedidoMs || 0)) {
+                d.mapa = mapa;
+                d.mapaPedidoMs = creado;
+            }
+            const referencia = String(c.direccion || '').trim();
+            if (referencia && !linkMaps(referencia) && creado >= (ficha.referenciaPedidoMs || 0)) {
+                const anterior = linkMaps(ficha.direccion);
+                if (anterior && !ficha.mapa && !d.mapa) d.mapa = anterior;
+                d.direccion = referencia;
+                d.referenciaPedidoMs = creado;
+            }
+            tx.set(ref, d, { merge: true });
         }
-        function autoCliente(porCel) {
-            const nom = $('nuevo-nombre').value.trim().toLowerCase(), cel = waNumero($('nuevo-celular').value);
-            const c = porCel ? clientesMem.find(x => x.id === cel) : clientesMem.find(x => String(x.nombre).toLowerCase() === nom);
-            if (!c) return;
-            if (!$('nuevo-nombre').value.trim()) $('nuevo-nombre').value = c.nombre;
-            if (!$('nuevo-celular').value.trim()) $('nuevo-celular').value = celLocal(c);
-            if (c.direccion && !$('nuevo-direccion').value.trim()) $('nuevo-direccion').value = c.direccion;
+        let camposAutoCliente = {}, consultaCliente = 0;
+        function completarCliente(c) {
+            const referencia = linkMaps(c.direccion) ? '' : (c.direccion || '');
+            const valores = {
+                'nuevo-nombre': c.nombre,
+                'nuevo-celular': celLocal(c),
+                'nuevo-direccion': ubicacionCliente(c),
+                'nuevo-referencia': referencia
+            };
+            for (const [id, valor] of Object.entries(valores)) {
+                if (valor && !$(id).value.trim()) {
+                    $(id).value = valor;
+                    if (id !== 'nuevo-celular') camposAutoCliente[id] = valor;
+                    if (id === 'nuevo-direccion') programarDeliveryNuevo();
+                }
+            }
         }
-        $('nuevo-nombre').addEventListener('change', () => autoCliente(false));
-        $('nuevo-celular').addEventListener('input', () => { if (waNumero($('nuevo-celular').value).length === 12) autoCliente(true); });
+        $('nuevo-nombre').addEventListener('change', () => {
+            const nombre = $('nuevo-nombre').value.trim().toLowerCase();
+            const c = clientesMem.find(x => String(x.nombre).toLowerCase() === nombre);
+            if (c && (!$('nuevo-celular').value.trim() || waNumero($('nuevo-celular').value) === c.id)) completarCliente(c);
+        });
+        $('nuevo-celular').addEventListener('input', async () => {
+            const cel = waNumero($('nuevo-celular').value), consulta = ++consultaCliente;
+            for (const [id, valor] of Object.entries(camposAutoCliente)) {
+                if ($(id).value === valor) {
+                    $(id).value = '';
+                    if (id === 'nuevo-direccion') {
+                        nuevo.envioManual = false;
+                        deliveryNuevoSeq++;
+                        programarDeliveryNuevo();
+                    }
+                }
+            }
+            camposAutoCliente = {};
+            if (cel.length !== 12) return;
+            const c = clientesMem.find(x => x.id === cel);
+            try {
+                const ficha = await getDoc(doc(db, 'clientes', cel));
+                if (consulta === consultaCliente && ficha.exists()) completarCliente(ficha.data());
+            } catch (e) {
+                if (consulta !== consultaCliente) return;
+                if (c) completarCliente(c);
+                else mostrarError('No se pudo buscar el cliente: ' + e.message);
+            }
+        });
 
         // ===== Cierre avanzado: arqueo, top sabores, hora pico, resumen del historial y CSV =====
         let contadoTmp = '', rangoHist = 30;
@@ -2318,7 +2401,8 @@
             $('cli-titulo').textContent = c ? '✏️ Editar cliente' : '➕ Nuevo cliente';
             $('cli-nombre').value = c ? (c.nombre || '') : '';
             $('cli-celular').value = c ? celLocal(c) : '';
-            $('cli-direccion').value = c ? (c.direccion || '') : '';
+            $('cli-direccion').value = c && !linkMaps(c.direccion) ? (c.direccion || '') : '';
+            $('cli-mapa').value = c ? ubicacionCliente(c) : '';
             $('cli-eliminar').classList.toggle('hidden', !c);
             $('cli-error').classList.add('hidden');
             $('modal-cliente').classList.remove('hidden');
@@ -2328,15 +2412,17 @@
             if (!editCli) return;
             const err = (t) => { $('cli-error').textContent = t; $('cli-error').classList.remove('hidden'); };
             const nombre = $('cli-nombre').value.trim(), cel = waNumero($('cli-celular').value), direccion = $('cli-direccion').value.trim();
+            const ubicacion = $('cli-mapa').value.trim(), mapa = linkMaps(ubicacion);
+            if (ubicacion && !mapa) return err('Pegá un link válido de Google Maps.');
             if (!nombre) { err('Escribí el nombre.'); return; }
             if (cel.length !== 12) { err('Revisá el celular. Ejemplo: 0981 123 456'); return; }
             if (cel !== editCli.id && clientesMem.some(x => x.id === cel)) { err('Ya existe un cliente con ese celular.'); return; }
             const viejo = editCli.id ? clientesMem.find(x => x.id === editCli.id) : null;
             try {
                 if (viejo && viejo.id === cel) {
-                    await setDoc(doc(db, 'clientes', cel), { nombre: nombre, celular: cel, direccion: direccion }, { merge: true });
+                    await setDoc(doc(db, 'clientes', cel), { nombre: nombre, celular: cel, direccion: direccion, mapa }, { merge: true });
                 } else {
-                    const datos = { nombre: nombre, celular: cel, direccion: direccion, pedidos: viejo ? Number(viejo.pedidos || 0) : 0, gastado: viejo ? Number(viejo.gastado || 0) : 0, ultimo: (viejo && viejo.ultimo) || serverTimestamp() };
+                    const datos = { nombre: nombre, celular: cel, direccion: direccion, mapa, pedidos: viejo ? Number(viejo.pedidos || 0) : 0, gastado: viejo ? Number(viejo.gastado || 0) : 0, ultimo: (viejo && viejo.ultimo) || serverTimestamp() };
                     const b = writeBatch(db);
                     b.set(doc(db, 'clientes', cel), datos);
                     if (viejo) b.delete(doc(db, 'clientes', viejo.id));
@@ -2505,23 +2591,26 @@ function pintaForm() {
         <p id="cfc-error" class="hidden text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2"></p>
         <label class="text-xs block">Nombre<input id="cfc-nombre" type="text" maxlength="60" value="${esc(c ? c.nombre : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
         <label class="text-xs block">Celular<input id="cfc-celular" type="tel" inputmode="tel" maxlength="20" placeholder="Ej. 0981 123 456" value="${esc(c ? celLocal(c) : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
-        <label class="text-xs block">Ubicación (dirección o link de Google Maps)<input id="cfc-direccion" type="text" maxlength="500" value="${esc(c ? c.direccion || '' : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs block">Referencia escrita<input id="cfc-direccion" type="text" maxlength="500" value="${esc(c && !linkMaps(c.direccion) ? c.direccion || '' : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
+        <label class="text-xs block">Link de Google Maps<input id="cfc-mapa" type="text" maxlength="500" value="${esc(c ? ubicacionCliente(c) : '')}" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"></label>
         <div class="flex gap-2"><button type="button" id="cfc-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white">💾 Guardar</button><button type="button" id="cfc-cancelar" class="${BTN} bg-neutral-100">Cancelar</button>${c ? `<button type="button" id="cfc-eliminar" class="${BTN} bg-red-100 text-red-700">🗑️</button>` : ''}</div></div>`;
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 async function guardarCliente() {
     const err = (t) => { $('cfc-error').textContent = t; $('cfc-error').classList.remove('hidden'); };
     const nombre = $('cfc-nombre').value.trim(), cel = waNumero($('cfc-celular').value), direccion = $('cfc-direccion').value.trim();
+    const ubicacion = $('cfc-mapa').value.trim(), mapa = linkMaps(ubicacion);
+    if (ubicacion && !mapa) return err('Pegá un link válido de Google Maps.');
     if (!nombre) return err('Escribí el nombre.');
     if (cel.length !== 12) return err('Revisá el celular. Ejemplo: 0981 123 456');
     if (cel !== edCli.id && clientes.some(x => x.id === cel)) return err('Ya existe un cliente con ese celular.');
     const viejo = edCli.id ? clientes.find(x => x.id === edCli.id) : null;
     try {
         if (viejo && viejo.id === cel) {
-            await setDoc(doc(db, 'clientes', cel), { nombre, celular: cel, direccion }, { merge: true });
+            await setDoc(doc(db, 'clientes', cel), { nombre, celular: cel, direccion, mapa }, { merge: true });
         } else {
             const b = writeBatch(db);
-            b.set(doc(db, 'clientes', cel), { nombre, celular: cel, direccion, pedidos: viejo ? Number(viejo.pedidos || 0) : 0, gastado: viejo ? Number(viejo.gastado || 0) : 0, ultimo: (viejo && viejo.ultimo) || serverTimestamp() });
+            b.set(doc(db, 'clientes', cel), { nombre, celular: cel, direccion, mapa, pedidos: viejo ? Number(viejo.pedidos || 0) : 0, gastado: viejo ? Number(viejo.gastado || 0) : 0, ultimo: (viejo && viejo.ultimo) || serverTimestamp() });
             if (viejo) b.delete(doc(db, 'clientes', viejo.id));
             await b.commit();
         }
