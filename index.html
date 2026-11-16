@@ -346,17 +346,38 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
                 <!-- Módulo de Mapa Gratuito -->
                 <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500">📍 Ubicación Exacta en el Mapa</label>
-                        <button type="button" onclick="centrarEnUbicacionActual()" class="text-xs bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-lg hover:bg-red-200 transition">
-                            📍 Usar mi ubicación actual
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-1">📍 Ubicación Exacta en el Mapa</label>
+                    
+                    <!-- Casilla obligatoria para recoger ubicación -->
+                    <div id="caja-ubicacion" class="mb-3 p-3 bg-amber-50 border-2 border-amber-400 rounded-xl">
+                        <button type="button" onclick="recogerUbicacionObligatoria()" id="btn-recoger-ubicacion" class="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
+                            📍 Tocar aquí para marcar mi ubicación
                         </button>
+                        <p class="text-xs text-amber-700 mt-2 text-center font-semibold">⚠️ OBLIGATORIO: Debes marcar tu ubicación para poder enviar el pedido</p>
                     </div>
-                    <p class="text-xs text-neutral-400 mb-2">Mueve el marcador rojo sobre tu casa exacta para que el delivery te encuentre sin margen de error.</p>
+                    
+                    <!-- Confirmación cuando ya recogió la ubicación -->
+                    <div id="ubicacion-confirmada" class="hidden mb-3 p-3 bg-green-50 border-2 border-green-500 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">✅</span>
+                                <div>
+                                    <span class="font-bold text-green-700 block">Ubicación marcada correctamente</span>
+                                    <span id="texto-ubicacion-confirmada" class="text-xs text-green-600"></span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="recogerUbicacionObligatoria()" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-lg transition">
+                                📍 Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-neutral-400 mb-2">También puedes mover el marcador rojo sobre tu casa exacta.</p>
                     <!-- Contenedor del Mapa -->
                     <div id="map" class="border border-neutral-300 shadow-inner"></div>
                     <input type="hidden" id="latitud">
                     <input type="hidden" id="longitud">
+                    <input type="hidden" id="ubicacion-recogida" value="0">
                     <div id="delivery-info" class="mt-2 text-xs font-semibold text-neutral-500">🛵 Calculando costo de delivery...</div>
                 </div>
 
@@ -617,11 +638,13 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             marker.on('dragend', function(event) {
                 const position = marker.getLatLng();
                 actualizarCoordenadas(position.lat, position.lng);
+                marcarUbicacionRecogida();
             });
 
             map.on('click', function(event) {
                 marker.setLatLng(event.latlng);
                 actualizarCoordenadas(event.latlng.lat, event.latlng.lng);
+                marcarUbicacionRecogida();
             });
 
             actualizarCoordenadas(defaultLat, defaultLng);
@@ -713,6 +736,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             deliveryFuera = (c === null);
             pintarDelivery();
             calcularTotal();
+            // Actualizar texto de confirmación de ubicación
+            const textoConf = document.getElementById('texto-ubicacion-confirmada');
+            if (textoConf && document.getElementById('ubicacion-recogida').value === '1') {
+                textoConf.textContent = 'Distancia: ' + km.toFixed(1) + ' km — Costo: ' + (deliveryCosto || 0).toLocaleString('es-PY') + ' Gs';
+            }
         }
 
         function programarDelivery() {
@@ -732,6 +760,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                         map.setView([lat, lng], 16);
                         marker.setLatLng([lat, lng]);
                         actualizarCoordenadas(lat, lng);
+                        marcarUbicacionRecogida();
                     },
                     (err) => {
                         alert("⚠️ No se pudo obtener tu ubicación actual. Arrastra el marcador en el mapa.");
@@ -741,6 +770,84 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 );
             } else {
                 alert("⚠️ Tu navegador no soporta geolocalización.");
+            }
+        }
+
+        // Función para recoger ubicación (casilla obligatoria)
+        function recogerUbicacionObligatoria() {
+            const btn = document.getElementById('btn-recoger-ubicacion');
+            if (btn) {
+                btn.textContent = '⏳ Obteniendo ubicación...';
+                btn.disabled = true;
+            }
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        map.setView([lat, lng], 16);
+                        marker.setLatLng([lat, lng]);
+                        actualizarCoordenadas(lat, lng);
+                        marcarUbicacionRecogida();
+                        if (btn) {
+                            btn.textContent = '📍 Tocar aquí para marcar mi ubicación';
+                            btn.disabled = false;
+                        }
+                    },
+                    (err) => {
+                        alert("⚠️ No se pudo obtener tu ubicación. Permite el acceso a la ubicación en tu navegador o mueve el marcador manualmente en el mapa.");
+                        if (btn) {
+                            btn.textContent = '📍 Tocar aquí para marcar mi ubicación';
+                            btn.disabled = false;
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                );
+            } else {
+                alert("⚠️ Tu navegador no soporta geolocalización. Mueve el marcador en el mapa.");
+                if (btn) {
+                    btn.textContent = '📍 Tocar aquí para marcar mi ubicación';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        // Marcar que el usuario ya recogió/confirmó su ubicación
+        function marcarUbicacionRecogida() {
+            document.getElementById('ubicacion-recogida').value = '1';
+            document.getElementById('caja-ubicacion').classList.add('hidden');
+            document.getElementById('ubicacion-confirmada').classList.remove('hidden');
+            
+            // Mostrar distancia en la confirmación
+            const textoConf = document.getElementById('texto-ubicacion-confirmada');
+            if (textoConf && deliveryKm != null) {
+                textoConf.textContent = 'Distancia: ' + deliveryKm.toFixed(1) + ' km';
+            }
+            
+            actualizarBotonEnviar();
+        }
+
+        // Actualizar estado del botón de enviar
+        function actualizarBotonEnviar() {
+            const btn = document.getElementById('btn-enviar');
+            const ubicacionOk = document.getElementById('ubicacion-recogida').value === '1';
+            
+            if (window.MESA_ACTUAL) {
+                // Para mesas no se requiere ubicación
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+            
+            if (!ubicacionOk) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.innerHTML = '⚠️ Primero marca tu ubicación';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.innerHTML = '🚀 Confirmar y Enviar';
             }
         }
 
@@ -1136,6 +1243,13 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (!window.MESA_ACTUAL) {
                 if (!nombre || !direccion) { alert("⚠️ Por favor, ingresa tu nombre y dirección completa de entrega."); return; }
                 if (!celular) { alert("⚠️ Ingresá un número de celular válido de Paraguay. Ejemplo: 0981 123 456"); return; }
+                // Verificar que el usuario haya recogido su ubicación con el botón obligatorio
+                const ubicacionRecogida = document.getElementById('ubicacion-recogida').value === '1';
+                if (!ubicacionRecogida) { 
+                    alert("⚠️ IMPORTANTE: Debes tocar el botón '📍 Tocar aquí para marcar mi ubicación' para que podamos calcular el costo del delivery correctamente."); 
+                    document.getElementById('caja-ubicacion').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return; 
+                }
                 if (!lat || !lng) { alert("⚠️ Marcá tu ubicación exacta en el mapa para calcular el delivery."); return; }
                 // Si todavía no se calculó la distancia (sin internet, etc.), estimamos por ruta
                 if (deliveryKm == null) {
@@ -1268,6 +1382,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         // Armar el borde de la pizza Grande apenas carga (sin esperar al mapa)
         cargarIngredientes();
         actualizarInterfaz();
+        // Inicializar estado del botón de enviar (bloqueado hasta que marque ubicación)
+        setTimeout(actualizarBotonEnviar, 100);
     </script>
     <!-- Firebase: guarda cada pedido en la base de datos (además del WhatsApp) -->
     <script type="module">
