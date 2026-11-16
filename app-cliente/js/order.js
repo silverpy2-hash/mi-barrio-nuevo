@@ -100,6 +100,11 @@ export async function crearYEnviarPedido(datosCliente, formaPago) {
       const docRef = await conTimeout(addDoc(getPedidosCollection(), payload), TIMEOUT_GUARDADO, 'guardar pedido');
       pedidoId = docRef.id;
       guardadoEnPanel = true;
+      // Guardar datos del cliente en localStorage para autocompletado futuro
+      try {
+        const clienteData = { nombre: payload.cliente.nombre, celular: payload.cliente.celular, direccion: payload.cliente.direccion, lat: payload.lat, lng: payload.lng };
+        localStorage.setItem('mb_cliente_v1', JSON.stringify(clienteData));
+      } catch(e) {}
       console.log('[Order] Pedido guardado en Firebase:', pedidoId);
     } catch (fbErr) {
       if (fbErr && fbErr.code === 'permission-denied') {

@@ -882,6 +882,18 @@ export function initUI() {
     renderSabores();
     renderBorde();
     renderExtras();
+    // Autocompletado de datos del cliente desde localStorage
+    try {
+      const clienteData = localStorage.getItem('mb_cliente_v1');
+      if (clienteData) {
+        const data = JSON.parse(clienteData);
+        if (data.nombre) els.inputNombre.value = data.nombre;
+        if (data.celular) els.inputCelular.value = data.celular;
+        if (data.lat !== undefined && data.lat !== null) els.inputLatitud.value = String(data.lat);
+        if (data.lng !== undefined && data.lng !== null) els.inputLongitud.value = String(data.lng);
+        if (data.direccion) els.inputDireccion.value = data.direccion;
+      }
+    } catch (e) {}
     actualizarTotales();
     validarPaso1();
     navegarA('menu');
