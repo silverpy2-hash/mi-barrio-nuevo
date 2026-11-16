@@ -4,7 +4,7 @@
    ========================================================================== */
 
 import { iniciarConfigListeners } from './config-listener.js';
-import { initUI } from './ui.js';
+import { initUI, reiniciarPedido, navegarA } from './ui.js';
 
 // Estado de inicialización
 let modulosListos = {
@@ -75,7 +75,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    // 6. Prevenir zoom en inputs en iOS
+    // 6. Al volver a la app desde la caché del navegador (bfcache),
+    //    descartar el pedido anterior y arrancar en 0.
+    window.addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      const esMesa = parseInt(new URLSearchParams(window.location.search).get('mesa'), 10) > 0;
+      reiniciarPedido();
+      navegarA(esMesa ? 'menu' : 'inicio');
+    });
+
+    // 7. Prevenir zoom en inputs en iOS
     document.addEventListener('touchstart', () => {}, { passive: true });
 
     console.log('[App] Bootstrap completado');

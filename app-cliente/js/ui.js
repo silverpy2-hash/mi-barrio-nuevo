@@ -383,6 +383,7 @@ function renderCarrito() {
 // Validaciones por paso
 function validarPaso1() {
   els.btnPasoSiguiente.disabled = !tamanoSeleccionado;
+  els.btnBottomContinuar.disabled = !tamanoSeleccionado;
 }
 
 function validarPaso2() {
@@ -391,11 +392,13 @@ function validarPaso2() {
   const puedeSeguir = pizzaValida || getPizzas().length > 0;
   els.btnAgregarPizza.disabled = !pizzaValida;
   els.btnPasoSiguiente.disabled = !puedeSeguir;
+  els.btnBottomContinuar.disabled = !puedeSeguir;
 }
 
 function validarPaso3() {
   // Extras opcional, siempre válido
   els.btnPasoSiguiente.disabled = false;
+  els.btnBottomContinuar.disabled = false;
 }
 
 function validarPaso4() {
@@ -516,9 +519,7 @@ function bindEvents() {
     if (pasoActual === 1) { if (!els.btnPasoSiguiente.disabled) navegarPaso(2); }
     else if (pasoActual === 2) {
       if (els.btnPasoSiguiente.disabled) return;
-      // Solo se agrega una pizza si hay sabores elegidos; si no, se continúa con lo ya pedido
-      if (saboresSeleccionados.length) agregarPizzaActual();
-      navegarPaso(3);
+      continuarDesdeSabores();
     }
     else if (pasoActual === 3) { navegarPaso(4); }
     else if (pasoActual === 4) { abrirModalConfirmar(); }
@@ -526,8 +527,7 @@ function bindEvents() {
 
   // Agregar pizza
   els.btnAgregarPizza?.addEventListener('click', () => {
-    agregarPizzaActual();
-    navegarPaso(3); // Ir directo a extras para continuar el pedido
+    continuarDesdeSabores();
   });
 
   // Añadir más pizzas (volver a tamaños desde extras)
@@ -593,6 +593,11 @@ function bindEvents() {
   // Botones confirmar
   els.btnConfirmarPedido?.addEventListener('click', abrirModalConfirmar);
   els.btnBottomContinuar?.addEventListener('click', () => {
+    if (pasoActual === 2) {
+      if (els.btnBottomContinuar.disabled) return;
+      continuarDesdeSabores();
+      return;
+    }
     if (pasoActual < 4) navegarPaso(pasoActual + 1);
     else abrirModalConfirmar();
   });
@@ -613,6 +618,17 @@ function agregarPizzaActual() {
   validarPaso2();
   actualizarTotales();
   mostrarToast('Pizza agregada al pedido', 'success');
+}
+
+// Avanzar de sabores a extras: agrega la pizza configurada y continúa
+function continuarDesdeSabores() {
+  if (saboresSeleccionados.length) {
+    agregarPizzaActual();
+  } else if (!getPizzas().length) {
+    mostrarToast('Elegí al menos un sabor para tu pizza.', 'error');
+    return;
+  }
+  navegarPaso(3);
 }
 
 // Abrir modal confirmar
@@ -705,7 +721,7 @@ function aplicarModoPedido() {
 }
 
 // Reiniciar pedido completo (nuevo pedido)
-function reiniciarPedido() {
+export function reiniciarPedido() {
   const esMesa = aplicarModoPedido();
 
   // Reset UI state

@@ -3,9 +3,9 @@
    Estrategia: Cache First para assets estáticos, Network First para config/menu
    ========================================================================== */
 
-const CACHE_NAME = 'mi-barrio-v5';
-const STATIC_CACHE = 'mi-barrio-static-v5';
-const DYNAMIC_CACHE = 'mi-barrio-dynamic-v5';
+const CACHE_NAME = 'mi-barrio-v6';
+const STATIC_CACHE = 'mi-barrio-static-v6';
+const DYNAMIC_CACHE = 'mi-barrio-dynamic-v6';
 
 // Archivos estáticos a cachear al instalar
 const STATIC_ASSETS = [

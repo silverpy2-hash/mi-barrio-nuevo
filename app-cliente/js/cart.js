@@ -1,6 +1,6 @@
 /* ==========================================================================
    MI BARRIO — Cart Store
-   Carrito de compras en memoria + persistencia en localStorage
+   Carrito de compras en memoria (sin persistencia entre visitas)
    ========================================================================== */
 
 import { suscribir as suscribirMenu, getPrecioPizza, getPrecioExtra, getNombreExtra, getNombreTamano, getNombreCortoTamano, getPrecioBorde } from './menu-store.js';
@@ -20,8 +20,6 @@ const suscriptores = new Set();
 function notificar() {
   const state = getState();
   suscriptores.forEach(fn => fn(state));
-  // Persistir
-  persistir();
 }
 
 export function suscribir(fn) {
@@ -30,40 +28,7 @@ export function suscribir(fn) {
   return () => suscriptores.delete(fn);
 }
 
-// Persistencia en localStorage
-function persistir() {
-  try {
-    const data = {
-      pizzas,
-      extrasCantidades,
-      mesaActual,
-      tipoPedido,
-      descuento,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.warn('[Cart] Error persistiendo:', e);
-  }
-}
-
-function hidratar() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const data = JSON.parse(raw);
-      // Validar estructura básica
-      if (Array.isArray(data.pizzas)) pizzas = data.pizzas;
-      if (data.extrasCantidades && typeof data.extrasCantidades === 'object') extrasCantidades = data.extrasCantidades;
-      if (typeof data.mesaActual === 'number' || data.mesaActual === null) mesaActual = data.mesaActual;
-      if (['delivery', 'retiro', 'local'].includes(data.tipoPedido)) tipoPedido = data.tipoPedido;
-      if (typeof data.descuento === 'number') descuento = Math.max(0, data.descuento);
-    }
-  } catch (e) {
-    console.warn('[Cart] Error hidratando, limpiando:', e);
-    limpiar();
-  }
-}
+// Sin persistencia: el carrito arranca en 0 en cada visita o recarga.
 
 // Getters
 function getState() {
@@ -271,8 +236,8 @@ export function generarMensajeWhatsApp(datosCliente, deliveryCosto = 0, distanci
   return msg;
 }
 
-// Inicializar al cargar
-hidratar();
+// Inicializar al cargar: se descarta cualquier carrito guardado previamente
+try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* sin persistencia */ }
 
 // Escuchar cambios de menú para recalcular precios de pizzas existentes
 suscribirMenu(() => {
