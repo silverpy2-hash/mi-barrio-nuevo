@@ -909,9 +909,25 @@ export function initUI() {
   // Verificar parámetro ?mesa= (ya lo hace config:mesas listener)
 
   console.log('[UI] Inicializado');
+  verificarSesionCliente();
 }
 
 // Helpers de exportación para uso en otros módulos
+function verificarSesionCliente() {
+  try {
+    const usuario = localStorage.getItem('mb_usuario_v1');
+    if (usuario) {
+      const data = JSON.parse(usuario);
+      mostrarInterfazUsuario(data);
+      actualizarBotonPedidos();
+    } else {
+      mostrarPantallaLogin();
+    }
+  } catch (e) {
+    mostrarPantallaLogin();
+  }
+}
+
 export function getPasoActual() { return pasoActual; }
 export function getTamanoSeleccionado() { return tamanoSeleccionado; }
 export function getSaboresSeleccionados() { return [...saboresSeleccionados]; }

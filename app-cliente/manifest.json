@@ -2,7 +2,7 @@
   "name": "Mi Barrio - Pedidos de Pizza",
   "short_name": "Mi Barrio",
   "description": "Pizzería Mi Barrio - Pedidos online con delivery y retiro",
-  "start_url": "/",
+  "start_url": "/app-cliente/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#fcf8f2",
