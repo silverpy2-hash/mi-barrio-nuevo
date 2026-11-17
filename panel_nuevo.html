@@ -356,6 +356,10 @@
             color: #0b1728 !important;
             border-color: #f4c430;
             box-shadow: 0 6px 14px -6px rgba(244, 196, 48, .55);
+            padding: 13px 14px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 850;
         }
         body[data-tema-panel="moderno"] .acciones-grupo-m #btn-nuevo:hover {
             background: #ffd75e !important;
@@ -767,13 +771,10 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Pedidos activos: desplegados y con la información principal adelante */
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .pedido-head {
-            pointer-events: none;
-            cursor: default;
-        }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .flecha-pedido { display: none; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido {
+        /* Todos los pedidos se pliegan con la flecha, también los activos.
+           El detalle solo se estiliza cuando está visible: si la tarjeta tiene
+           la clase hidden, ninguna regla debe forzarlo abierto. */
+        body[data-tema-panel="moderno"] .detalle-pedido:not(.hidden) {
             display: flex !important;
             flex-direction: column;
             gap: 10px;
@@ -856,25 +857,31 @@
             border-color: #0f172a;
         }
 
-        /* Pedidos finalizados: compactos y con menos detalle */
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .pedido-head { padding: 9px 14px; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .pedido-cliente { font-size: 13.5px; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .pedido-tipo {
+        /* Tarjetas plegadas: solo número, cliente, modalidad, estado, pago y total */
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .pedido-head { padding: 9px 14px; }
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .pedido-cliente { font-size: 13.5px; }
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .pedido-tipo {
             font-size: 9px;
             padding: 2px 6px;
         }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen {
-            padding: 0 14px 9px;
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .moderno-resumen {
+            padding: 2px 14px 10px;
+            gap: 0 12px;
             border-top: 0;
             background: transparent;
         }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen-extra { display: none; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-lbl { display: none; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-val { font-size: 10.5px; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-total { padding-left: 0; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-total .mr-val {
-            font-size: 12.5px;
-            color: #475569;
+        /* La hora y el detalle del pedido no se repiten en la tarjeta plegada. */
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .mr-hora,
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .mr-pedido { display: none; }
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .mr-lbl { font-size: 8px; }
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .mr-val { font-size: 10.5px; }
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .mr-total {
+            padding-left: 0;
+            margin-left: auto;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-abierto="0"] .mr-total .mr-val {
+            font-size: 13px;
+            color: #0f172a;
         }
         body[data-tema-panel="moderno"] #lista > p {
             background: #fff;
@@ -1317,7 +1324,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-17 #3 · moderno rediseñado';
+        const VERSION_PANEL = '2026-11-17 #4 · moderno: menú Más';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -1481,12 +1488,13 @@
                 mas.classList.remove('hidden');
                 cont.appendChild(mas);
             } else if (tema === 'moderno') {
-                // Secundarios al menú "Más" y acciones agrupadas por bloque.
-                const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
+                // Cocina y Venta rápida también van al menú "Más": Acciones principales
+                // queda solo con Pedido y Caja. Los botones se reutilizan tal cual.
+                const secundarios = ['btn-cocina', 'btn-rapida', 'version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
                 secundarios.forEach(id => { const n = porId(id); if (n) cuerpo.appendChild(n); });
                 const grupos = [
                     ['Estado del local', ['btn-local']],
-                    ['Acciones principales', ['btn-cocina', 'btn-rapida', 'btn-nuevo', 'btn-caja']],
+                    ['Acciones principales', ['btn-nuevo', 'btn-caja']],
                     ['Herramientas', ['btn-mas']]
                 ];
                 accionesOriginales.forEach(n => { if (n.parentElement === cont) n.remove(); });
@@ -1712,6 +1720,7 @@
                 gastos = [];
                 if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
                 pedidos = []; vistos = null; recien = new Set(); filtro = 'todos';
+                abiertos.clear(); estadoPrevio.clear();
                 $('lista').innerHTML = '';
                 $('panel').classList.add('hidden');
                 $('modal-caja').classList.add('hidden');
@@ -1997,6 +2006,24 @@
                         setTimeout(() => { recien = new Set(); render(); }, 10000);
                     }
                 }
+                // Plegado (solo tema Moderno): se abre solo el pedido que llega nuevo
+                // y se pliega el que pasa a Entregado. El resto conserva lo que eligió
+                // el usuario aunque Firestore vuelva a pintar la lista.
+                if (vistos !== null && document.body.dataset.temaPanel === 'moderno') {
+                    pedidos.forEach(x => {
+                        const antes = estadoPrevio.get(x.id);
+                        const ahora = estadoDe(x);
+                        if (antes === undefined) {
+                            if (ACTIVOS.includes(ahora)) abiertos.add(x.id);
+                        } else if (antes !== 'entregado' && ahora === 'entregado') {
+                            abiertos.delete(x.id);
+                        }
+                    });
+                }
+                pedidos.forEach(x => estadoPrevio.set(x.id, estadoDe(x)));
+                // Poda de estados de pedidos ya archivados/borrados.
+                const idsPedidos = new Set(pedidos.map(x => x.id));
+                for (const k of estadoPrevio.keys()) { if (!idsPedidos.has(k)) estadoPrevio.delete(k); }
                 vistos = new Set(pedidos.map(p => p.id));
                 asignarNumeros();
                 render();
@@ -2241,6 +2268,7 @@
         }
 
         const abiertos = new Set();   // pedidos desplegados (por defecto todos resumidos)
+        const estadoPrevio = new Map(); // id -> último estado visto, para detectar cambios
 
         function tarjeta(p) {
             const c = p.cliente || {};
@@ -2320,7 +2348,7 @@
             ].filter(Boolean).join(' · ');
 
             return `
-            <article data-estado="${e}" data-activo="${activo ? '1' : '0'}" data-tipo="${esc(p.tipo && TIPOS[p.tipo] ? p.tipo : 'delivery')}" class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
+            <article data-estado="${e}" data-activo="${activo ? '1' : '0'}" data-abierto="${abierto ? '1' : '0'}" data-tipo="${esc(p.tipo && TIPOS[p.tipo] ? p.tipo : 'delivery')}" class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
                 <div data-accion="toggle" data-id="${idAttr}" class="pedido-head flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer select-none">
                     <div class="pedido-head-main min-w-0 flex items-center gap-2 flex-wrap">
                         <span class="pedido-num inline-block text-xs font-black px-2 py-0.5 rounded-lg bg-neutral-900 text-white">${esc(numeroCorto(p))}</span>
@@ -2336,11 +2364,11 @@
                     </div>
                 </div>
                 <div class="moderno-resumen">
-                    <span class="mr-item">
+                    <span class="mr-item mr-hora">
                         <span class="mr-lbl">Hora</span>
                         <span class="mr-val">🕒 ${esc(fechaCorta(ms))}</span>
                     </span>
-                    <span class="mr-item moderno-resumen-extra">
+                    <span class="mr-item moderno-resumen-extra mr-pago">
                         <span class="mr-lbl">Pago</span>
                         <span class="mr-val">${esc(pagoTxt)}</span>
                     </span>
