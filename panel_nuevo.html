@@ -260,16 +260,55 @@
 
         /* --- TEMA MODERNO --- */
         /* Piezas que solo se ven en Moderno; en el resto quedan ocultas. */
-        .moderno-resumen { display: none; }
+        .moderno-resumen,
+        .moderno-operaciones { display: none; }
 
+        body[data-tema-panel="moderno"] { background: #eef2f7; }
+
+        /* --- Encabezado lateral: identidad y estado --- */
         body[data-tema-panel="moderno"] #header-panel {
-            background: #0f172a !important;
-            border-color: #1e293b;
+            background: #0b1728 !important;
+            border-color: #14233a;
         }
-        body[data-tema-panel="moderno"] #titulo-panel { font-size: 15px; line-height: 1.25; }
-        body[data-tema-panel="moderno"] #contador { font-size: 11px; }
+        body[data-tema-panel="moderno"] #header-panel > div:first-child {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 12px 16px;
+        }
+        body[data-tema-panel="moderno"] #header-panel > div:first-child > div:first-child {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        body[data-tema-panel="moderno"] #header-panel > div:first-child > div:first-child::before {
+            content: 'MI BARRIO · TPV';
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: .18em;
+            color: #f4c430;
+        }
+        body[data-tema-panel="moderno"] #titulo-panel {
+            font-size: 16px;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: -.01em;
+            color: #fff;
+        }
+        body[data-tema-panel="moderno"] #contador {
+            font-size: 11px;
+            line-height: 1.35;
+            color: #93a4bd;
+            opacity: 1;
+        }
 
-        /* Bloques de la barra lateral (Estado / Acciones / Herramientas) */
+        /* --- Bloques de la barra lateral --- */
+        body[data-tema-panel="moderno"] #acciones-panel {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
         body[data-tema-panel="moderno"] .acciones-grupo-m {
             display: flex;
             flex-wrap: wrap;
@@ -282,76 +321,454 @@
             font-size: 9px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: .09em;
-            color: rgba(255, 255, 255, .45);
-            padding-left: 2px;
+            letter-spacing: .14em;
+            color: #7086a3;
+            padding: 2px 4px 0;
         }
         /* Si el bloque no tiene botones visibles (p. ej. repartidor), no ocupa lugar. */
         body[data-tema-panel="moderno"] .acciones-grupo-m:not(:has(> button:not(.hidden), > a:not(.hidden))) {
             display: none;
         }
+        body[data-tema-panel="moderno"] .acciones-grupo-m > button,
+        body[data-tema-panel="moderno"] .acciones-grupo-m > a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: auto;
+            text-align: left;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #c3d0e2 !important;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: none;
+            transition: background .15s ease, color .15s ease, border-color .15s ease;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m > button:hover,
+        body[data-tema-panel="moderno"] .acciones-grupo-m > a:hover {
+            background: rgba(255, 255, 255, .06);
+            color: #fff !important;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-nuevo {
+            background: #f4c430 !important;
+            color: #0b1728 !important;
+            border-color: #f4c430;
+            box-shadow: 0 6px 14px -6px rgba(244, 196, 48, .55);
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-nuevo:hover {
+            background: #ffd75e !important;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-rapida {
+            background: rgba(244, 196, 48, .1) !important;
+            color: #ffe08a !important;
+            border-color: rgba(244, 196, 48, .28);
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-rapida:hover {
+            background: rgba(244, 196, 48, .18) !important;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-cocina,
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-caja {
+            background: #13233a !important;
+            color: #dbe6f5 !important;
+            border-color: #1d3250;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-cocina:hover,
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-caja:hover {
+            background: #182c48 !important;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-mas {
+            background: transparent !important;
+            color: #8ea3c0 !important;
+            border: 1px dashed #2a415f;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-m #btn-mas:hover {
+            background: rgba(255, 255, 255, .06) !important;
+            color: #fff !important;
+        }
 
-        /* Filtros: pastillas en móvil, lista en escritorio */
+        /* Estado del local: dos líneas legibles, sin texto pegado */
+        body[data-tema-panel="moderno"] #acciones-panel #btn-local {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 1px;
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #1d3250;
+            background: #13233a !important;
+            box-shadow: none;
+            line-height: 1.15;
+        }
+        body[data-tema-panel="moderno"] #btn-local .local-estado {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .04em;
+        }
+        body[data-tema-panel="moderno"] #btn-local.bg-green-600 {
+            border-color: rgba(74, 222, 128, .35);
+        }
+        body[data-tema-panel="moderno"] #btn-local.bg-green-600 .local-estado { color: #4ade80; }
+        body[data-tema-panel="moderno"] #btn-local.bg-neutral-900 {
+            border-color: rgba(248, 113, 113, .3);
+        }
+        body[data-tema-panel="moderno"] #btn-local.bg-neutral-900 .local-estado { color: #f87171; }
+        body[data-tema-panel="moderno"] #btn-local .local-modo {
+            display: block;
+            max-width: 100%;
+            font-size: 9.5px;
+            font-weight: 600;
+            color: #8ea3c0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* --- Filtros con badges individuales --- */
+        body[data-tema-panel="moderno"] #filtros {
+            gap: 3px;
+            padding: 0 16px 14px;
+        }
         body[data-tema-panel="moderno"] #filtros [data-filtro] {
-            border: 1px solid rgba(255, 255, 255, .08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 9px;
+            border: 1px solid transparent;
+            background: transparent !important;
+            color: #b7c6db !important;
+            font-size: 12px;
+            font-weight: 650;
+            text-align: left;
+            transition: background .15s ease, color .15s ease;
         }
+        body[data-tema-panel="moderno"] #filtros [data-filtro]:hover {
+            background: rgba(255, 255, 255, .06) !important;
+            color: #fff !important;
+        }
+        body[data-tema-panel="moderno"] #filtros .filtro-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 19px;
+            padding: 0 6px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, .1);
+            color: #cbd5e1;
+            font-size: 10px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            opacity: 1 !important;
+        }
+        /* Tinte por estado: el contador se lee de un vistazo. */
+        body[data-tema-panel="moderno"] #filtros [data-filtro="nuevo"] .filtro-num { background: rgba(74, 222, 128, .16); color: #86efac; }
+        body[data-tema-panel="moderno"] #filtros [data-filtro="preparacion"] .filtro-num { background: rgba(251, 191, 36, .16); color: #fcd34d; }
+        body[data-tema-panel="moderno"] #filtros [data-filtro="en_camino"] .filtro-num { background: rgba(96, 165, 250, .18); color: #93c5fd; }
+        body[data-tema-panel="moderno"] #filtros [data-filtro="entregado"] .filtro-num { background: rgba(148, 163, 184, .18); color: #cbd5e1; }
+        body[data-tema-panel="moderno"] #filtros [data-filtro="cancelado"] .filtro-num { background: rgba(248, 113, 113, .16); color: #fca5a5; }
         body[data-tema-panel="moderno"] #filtros [data-filtro].bg-white {
-            background: #fff !important;
-            color: #0f172a !important;
-            border-color: #fff;
+            background: rgba(244, 196, 48, .12) !important;
+            color: #ffe08a !important;
+            border-color: rgba(244, 196, 48, .28);
+            box-shadow: inset 3px 0 0 #f4c430;
+        }
+        body[data-tema-panel="moderno"] #filtros [data-filtro].bg-white .filtro-num {
+            background: #f4c430;
+            color: #0b1728;
         }
 
-        /* Tarjetas: base, acento por estado y hover */
-        body[data-tema-panel="moderno"] #lista {
-            grid-template-columns: minmax(0, 1fr);
+        /* --- Menú "Más" --- */
+        body[data-tema-panel="moderno"] #menu-mas {
+            background: #101f35 !important;
+            border: 1px solid #1d3250;
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+        }
+        body[data-tema-panel="moderno"] #menu-mas > div:first-child { color: #8ea3c0; }
+        body[data-tema-panel="moderno"] #menu-mas #version-panel {
+            background: #0d1a2c !important;
+            color: #7f94b0 !important;
+            border: 1px solid #1d3250;
+            opacity: 1;
+        }
+        body[data-tema-panel="moderno"] #menu-mas-cuerpo > button {
+            background: #162944 !important;
+            color: #dbe6f5 !important;
+            border: 1px solid #1f3553;
+            border-radius: 10px;
+            font-size: 11.5px;
+            padding: 9px 10px;
+        }
+        body[data-tema-panel="moderno"] #menu-mas-cuerpo > button:hover {
+            background: #1c3454 !important;
+        }
+
+        /* --- Encabezado de operaciones (3 tarjetas de datos reales) --- */
+        body[data-tema-panel="moderno"] .moderno-operaciones:not([hidden]) {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
         }
-        body[data-tema-panel="moderno"] #lista > article {
+        .op-head {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .op-head h2 {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        .op-head p { font-size: 11px; color: #64748b; }
+        .op-fecha {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: capitalize;
+            white-space: nowrap;
+        }
+        .op-card {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            padding: 13px 15px 14px;
+            background: #fff;
+            border: 1px solid #e3e9f2;
             border-radius: 16px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+        }
+        .op-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .op-icon {
+            display: grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            background: #eef2f7;
+            font-size: 14px;
+            flex: none;
+        }
+        .op-card--prep .op-icon { background: #fef3c7; }
+        .op-card--cobrado .op-icon { background: #fde68a; }
+        .op-label {
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: #64748b;
+            white-space: nowrap;
             overflow: hidden;
-            border-left-width: 4px;
-            transition: transform .15s ease, box-shadow .15s ease;
+            text-overflow: ellipsis;
         }
-        body[data-tema-panel="moderno"] #lista > article:not(.border-green-500) {
-            border-color: #e2e8f0;
+        .op-valor {
+            margin-top: 6px;
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -.02em;
+            line-height: 1.05;
+            color: #0f172a;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+        .op-sub {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (max-width: 700px) {
+            body[data-tema-panel="moderno"] .moderno-operaciones:not([hidden]) {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+            .op-card--cobrado { grid-column: 1 / -1; }
+            .op-valor { font-size: 23px; }
+            .op-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+        }
+
+        /* --- Tarjetas de pedidos --- */
+        body[data-tema-panel="moderno"] #lista article [data-accion="toggle"] { min-height: 0; }
+        body[data-tema-panel="moderno"] #lista {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 14px;
+            align-items: start;
+        }
+        body[data-tema-panel="moderno"] #lista > article {
+            position: relative;
+            border-radius: 18px;
+            border: 1px solid #e3e9f2;
+            border-left: 3px solid #cbd5e1;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+            overflow: hidden;
+            transition: box-shadow .16s ease, transform .16s ease, border-color .16s ease;
+        }
+        body[data-tema-panel="moderno"] #lista > article.border-green-500 { border-color: #22c55e; }
         body[data-tema-panel="moderno"] #lista > article[data-estado="nuevo"] { border-left-color: #16a34a; }
         body[data-tema-panel="moderno"] #lista > article[data-estado="preparacion"] { border-left-color: #f59e0b; }
         body[data-tema-panel="moderno"] #lista > article[data-estado="en_camino"] { border-left-color: #2563eb; }
         body[data-tema-panel="moderno"] #lista > article[data-estado="entregado"] { border-left-color: #94a3b8; }
-        body[data-tema-panel="moderno"] #lista > article[data-estado="cancelado"] { border-left-color: #ef4444; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="cancelado"] {
+            border-left-color: #ef4444;
+            opacity: 1;
+            background: #fbfcfd;
+        }
         body[data-tema-panel="moderno"] #lista > article:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px -20px rgba(15, 23, 42, .45);
         }
-        body[data-tema-panel="moderno"] #lista > article > div[data-accion="toggle"] {
-            padding: 10px 12px;
+        body[data-tema-panel="moderno"] #lista > article .pedido-head {
+            padding: 12px 14px;
+            flex-wrap: wrap;
+            row-gap: 6px;
+            align-items: center;
         }
+        body[data-tema-panel="moderno"] .pedido-head-main {
+            flex: 1 1 12rem;
+            gap: 7px !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-num {
+            font-size: 12px;
+            padding: 4px 9px;
+            border-radius: 8px;
+            background: #0f172a !important;
+            color: #fff !important;
+            letter-spacing: .02em;
+            font-variant-numeric: tabular-nums;
+        }
+        body[data-tema-panel="moderno"] .pedido-cliente {
+            max-width: min(20rem, 100%);
+            font-size: 14.5px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+            color: #0f172a;
+        }
+        body[data-tema-panel="moderno"] .pedido-tipo,
+        body[data-tema-panel="moderno"] .pedido-mesa {
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: .05em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #eef2f7 !important;
+            color: #475569 !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-mesa {
+            background: #fef3c7 !important;
+            color: #92400e !important;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-tipo="delivery"] .pedido-tipo {
+            background: #e0e7ff !important;
+            color: #3730a3 !important;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-tipo="retiro"] .pedido-tipo {
+            background: #e2e8f0 !important;
+            color: #334155 !important;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-tipo="local"] .pedido-tipo {
+            background: #ffedd5 !important;
+            color: #9a3412 !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-head-badges {
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        body[data-tema-panel="moderno"] .pedido-estado {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: .05em;
+            padding: 4px 9px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+        }
+        body[data-tema-panel="moderno"] .pedido-estado::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="nuevo"] .pedido-estado { background: #dcfce7; color: #166534; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="preparacion"] .pedido-estado { background: #fef3c7; color: #92400e; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="en_camino"] .pedido-estado { background: #dbeafe; color: #1e40af; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="entregado"] .pedido-estado { background: #e2e8f0; color: #334155; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="cancelado"] .pedido-estado { background: #fee2e2; color: #991b1b; }
+        body[data-tema-panel="moderno"] .pedido-pago-estado {
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: .04em;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        body[data-tema-panel="moderno"] .pedido-pago-estado.bg-green-100 { background: #dcfce7 !important; color: #166534 !important; }
+        body[data-tema-panel="moderno"] .pedido-pago-estado.bg-amber-100 { background: #fef3c7 !important; color: #92400e !important; }
+        body[data-tema-panel="moderno"] .flecha-pedido { font-size: 10px; color: #94a3b8; }
 
-        /* Línea de resumen (hora, pago, resumen corto y total) */
+        /* Línea de resumen: hora, pago, pedido y total */
         body[data-tema-panel="moderno"] .moderno-resumen {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 4px 10px;
-            padding: 7px 12px;
-            border-top: 1px dashed #e2e8f0;
+            gap: 6px 18px;
+            padding: 9px 14px;
+            border-top: 1px solid #eef2f7;
             background: #f8fafc;
-            font-size: 11px;
-            color: #475569;
         }
-        body[data-tema-panel="moderno"] .moderno-resumen .mr-total {
-            margin-left: auto;
-            font-size: 13px;
-            font-weight: 900;
-            color: #b91c1c;
+        body[data-tema-panel="moderno"] .mr-item {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+        }
+        body[data-tema-panel="moderno"] .mr-lbl {
+            font-size: 8.5px;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: #94a3b8;
+        }
+        body[data-tema-panel="moderno"] .mr-val {
+            font-size: 11.5px;
+            font-weight: 650;
+            color: #334155;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 15rem;
         }
-        body[data-tema-panel="moderno"] .moderno-resumen-extra:empty { display: none; }
+        body[data-tema-panel="moderno"] .mr-total {
+            margin-left: auto;
+            align-items: flex-end;
+            text-align: right;
+            padding-left: 12px;
+        }
+        body[data-tema-panel="moderno"] .mr-total .mr-val {
+            font-size: 15px;
+            font-weight: 900;
+            color: #0f172a;
+            font-variant-numeric: tabular-nums;
+        }
 
-        /* Pedidos activos: siempre desplegados y con más detalle */
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] > div[data-accion="toggle"] {
+        /* Pedidos activos: desplegados y con la información principal adelante */
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .pedido-head {
             pointer-events: none;
             cursor: default;
         }
@@ -360,48 +777,142 @@
             display: flex !important;
             flex-direction: column;
             gap: 10px;
-            padding: 10px 12px 12px;
+            padding: 0 14px 14px;
+            border-top: 0;
         }
-        /* Las acciones principales van primero para no tener que buscarlas. */
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido > * {
-            order: 1;
+        /* El espacio lo maneja el gap: sin márgenes duplicados de space-y. */
+        body[data-tema-panel="moderno"] .detalle-pedido > * {
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido > div:last-child {
-            order: 0;
+        body[data-tema-panel="moderno"] .detalle-pedido .pedido-acciones {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+            gap: 6px;
+            order: -1;
             padding-top: 0;
+            margin-top: 0;
         }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido > div:first-child .text-xl {
-            font-size: 18px;
+        body[data-tema-panel="moderno"] .pedido-acciones > button,
+        body[data-tema-panel="moderno"] .pedido-acciones > a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 10px !important;
+            padding: 9px 10px !important;
+            font-size: 11.5px !important;
+            font-weight: 750 !important;
+            line-height: 1.2;
+        }
+        body[data-tema-panel="moderno"] .pedido-acciones > .accion-principal,
+        body[data-tema-panel="moderno"] .pedido-acciones > [data-accion="cobrar"] {
+            grid-column: 1 / -1;
+            font-size: 12.5px !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-acciones > [data-accion="cobrar"] {
+            background: #0f172a !important;
+            color: #fde68a !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-cabecera { align-items: center; }
+        /* El total ya se muestra en la línea de resumen: no se repite en el detalle. */
+        body[data-tema-panel="moderno"] .pedido-cabecera .pedido-total { display: none; }
+        body[data-tema-panel="moderno"] .pedido-pizzas { gap: 6px !important; }
+        body[data-tema-panel="moderno"] .pedido-pizzas .pedido-pizza {
+            background: #f8fafc !important;
+            border: 1px solid #eef2f7;
+            border-radius: 11px !important;
+            padding: 8px 10px !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-pizzas .pedido-pizza .font-bold {
+            font-size: 12.5px;
+            color: #0f172a;
+        }
+        body[data-tema-panel="moderno"] .pedido-pagos {
+            gap: 6px !important;
+            padding-top: 2px;
+        }
+        body[data-tema-panel="moderno"] .pedido-pagos > span {
+            width: 100%;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: #94a3b8 !important;
+        }
+        body[data-tema-panel="moderno"] .pedido-pagos [data-accion="pago"] {
+            font-size: 10.5px !important;
+            font-weight: 700;
+            padding: 5px 9px !important;
+            border-radius: 7px !important;
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0;
+        }
+        body[data-tema-panel="moderno"] .pedido-pagos [data-accion="pago"]:hover { background: #e2e8f0 !important; }
+        body[data-tema-panel="moderno"] .pedido-pagos [data-accion="pago"].bg-neutral-800 {
+            background: #0f172a !important;
+            color: #fde68a !important;
+            border-color: #0f172a;
         }
 
         /* Pedidos finalizados: compactos y con menos detalle */
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] > div[data-accion="toggle"] {
-            padding: 8px 12px;
-            gap: 6px;
-        }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] > div[data-accion="toggle"] .inline-block {
-            font-size: 10px;
-            padding-top: 1px;
-            padding-bottom: 1px;
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .pedido-head { padding: 9px 14px; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .pedido-cliente { font-size: 13.5px; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .pedido-tipo {
+            font-size: 9px;
+            padding: 2px 6px;
         }
         body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen {
-            padding: 5px 12px;
+            padding: 0 14px 9px;
             border-top: 0;
             background: transparent;
-            font-size: 10px;
         }
         body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen-extra { display: none; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen .mr-total { font-size: 12px; color: #475569; }
-        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .detalle-pedido { padding: 10px 12px 12px; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-lbl { display: none; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-val { font-size: 10.5px; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-total { padding-left: 0; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .mr-total .mr-val {
+            font-size: 12.5px;
+            color: #475569;
+        }
+        body[data-tema-panel="moderno"] #lista > p {
+            background: #fff;
+            border: 1px dashed #cdd8e6;
+            border-radius: 16px;
+            padding: 34px 20px;
+            color: #64748b;
+            font-size: 13px;
+        }
 
         body[data-tema-panel="moderno"] #modal-config { background: #eef2f7; }
 
         @media (max-width: 1023px) {
-            /* Móvil y tablet: barra arriba y una sola columna */
-            body[data-tema-panel="moderno"] #lista { grid-template-columns: minmax(0, 1fr); }
-            body[data-tema-panel="moderno"] .acciones-grupo-label-m { margin-top: 4px; }
+            /* Móvil y tablet: una columna, barra arriba y filtros en fila */
+            body[data-tema-panel="moderno"] #filtros {
+                padding: 0 16px 12px;
+                gap: 6px;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+            body[data-tema-panel="moderno"] #filtros [data-filtro] {
+                width: auto;
+                flex: 0 0 auto;
+                border-color: rgba(255, 255, 255, .08);
+                background: rgba(255, 255, 255, .04) !important;
+            }
+            body[data-tema-panel="moderno"] #filtros [data-filtro].bg-white {
+                background: rgba(244, 196, 48, .14) !important;
+                border-color: rgba(244, 196, 48, .3);
+                box-shadow: none;
+            }
+            body[data-tema-panel="moderno"] .acciones-grupo-label-m { margin-top: 2px; }
+            body[data-tema-panel="moderno"] .acciones-grupo-m { gap: 5px; }
+            body[data-tema-panel="moderno"] #panel > main { padding: 14px 12px 24px; }
+            body[data-tema-panel="moderno"] #lista {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 12px;
+            }
         }
 
         @media (min-width: 1024px) {
@@ -419,87 +930,60 @@
                 overflow-y: auto;
                 border-radius: 0;
                 box-shadow: none;
-                border-right: 1px solid #1e293b;
+                border-right: 1px solid #14233a;
+                scrollbar-width: thin;
+                scrollbar-color: #2a415f transparent;
+            }
+            body[data-tema-panel="moderno"] #header-panel::-webkit-scrollbar { width: 8px; }
+            body[data-tema-panel="moderno"] #header-panel::-webkit-scrollbar-thumb {
+                background: #2a415f;
+                border-radius: 8px;
             }
             body[data-tema-panel="moderno"] #header-panel > div:first-child {
-                flex-direction: column;
-                align-items: stretch;
-                padding: 14px 16px;
+                padding: 16px 16px 12px;
                 gap: 12px;
             }
             body[data-tema-panel="moderno"] #header-panel > div:first-child > div:first-child {
-                padding-bottom: 10px;
-                border-bottom: 1px solid rgba(255, 255, 255, .1);
-            }
-            body[data-tema-panel="moderno"] #acciones-panel {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, .08);
             }
             body[data-tema-panel="moderno"] .acciones-grupo-m {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 5px;
+                gap: 4px;
             }
             body[data-tema-panel="moderno"] .acciones-grupo-m > button,
             body[data-tema-panel="moderno"] .acciones-grupo-m > a {
                 width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                text-align: left;
                 padding: 9px 11px;
-                border-radius: 11px;
-                font-size: 12px;
-                font-weight: 700;
-            }
-            body[data-tema-panel="moderno"] .acciones-grupo-m #btn-mas {
-                background: rgba(255, 255, 255, .1) !important;
-                color: #fff !important;
-            }
-            body[data-tema-panel="moderno"] #acciones-panel #btn-local {
-                box-shadow: none;
-                padding: 10px 11px;
             }
             body[data-tema-panel="moderno"] #filtros {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 4px;
                 overflow: visible;
                 padding: 0 16px 16px;
             }
             body[data-tema-panel="moderno"] #filtros::before {
-                content: 'Filtros de pedidos';
+                content: 'FILTROS DE PEDIDOS';
                 font-size: 9px;
                 font-weight: 800;
-                text-transform: uppercase;
-                letter-spacing: .09em;
-                color: rgba(255, 255, 255, .45);
-                padding: 2px 2px 4px;
+                letter-spacing: .14em;
+                color: #7086a3;
+                padding: 4px 4px 3px;
             }
-            body[data-tema-panel="moderno"] #filtros [data-filtro] {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
-                text-align: left;
-                padding: 8px 12px;
-                border-radius: 10px;
-                font-size: 12px;
-            }
+            body[data-tema-panel="moderno"] #filtros [data-filtro] { width: 100%; }
             body[data-tema-panel="moderno"] #menu-mas {
                 width: auto;
                 margin: 0 16px 12px;
             }
             body[data-tema-panel="moderno"] #menu-mas-cuerpo { grid-template-columns: 1fr; }
             body[data-tema-panel="moderno"] #panel > main {
-                padding: 16px 18px;
+                padding: 20px 24px 28px;
                 max-width: none !important;
             }
             body[data-tema-panel="moderno"] #lista {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 12px;
+                gap: 14px;
             }
         }
 
@@ -630,6 +1114,31 @@
         </header>
 
         <main class="w-full max-w-[1800px] mx-auto px-4 py-5 space-y-4">
+            <!-- Resumen de operaciones (solo tema Moderno) -->
+            <section id="moderno-operaciones" class="moderno-operaciones" aria-label="Resumen de operaciones" hidden>
+                <div class="op-head">
+                    <div>
+                        <h2>Operaciones</h2>
+                        <p>Resumen en vivo de la caja actual</p>
+                    </div>
+                    <span id="op-fecha" class="op-fecha"></span>
+                </div>
+                <article class="op-card">
+                    <div class="op-top"><span class="op-icon" aria-hidden="true">🧾</span><span class="op-label">Pedidos activos</span></div>
+                    <div id="op-pedidos" class="op-valor">0</div>
+                    <div id="op-pedidos-sub" class="op-sub">—</div>
+                </article>
+                <article class="op-card op-card--prep">
+                    <div class="op-top"><span class="op-icon" aria-hidden="true">👨‍🍳</span><span class="op-label">En preparación</span></div>
+                    <div id="op-preparacion" class="op-valor">0</div>
+                    <div id="op-preparacion-sub" class="op-sub">—</div>
+                </article>
+                <article class="op-card op-card--cobrado">
+                    <div class="op-top"><span class="op-icon" aria-hidden="true">💰</span><span class="op-label">Cobrado hoy</span></div>
+                    <div id="op-cobrado" class="op-valor">0 Gs</div>
+                    <div id="op-cobrado-sub" class="op-sub">—</div>
+                </article>
+            </section>
             <button id="aviso-sonido" type="button" class="hidden w-full text-sm font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">
                 🔕 Tocá acá para activar el aviso sonoro de pedidos nuevos
             </button>
@@ -808,7 +1317,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-17 #2 · moderno mejorado';
+        const VERSION_PANEL = '2026-11-17 #3 · moderno rediseñado';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -1294,7 +1803,8 @@
             const sub = e.modo === 'manual' ? 'Manual' + (e.hasta ? ' · hasta ' + fmtHora(e.hasta) : '') : (e.modo === 'auto' ? 'Automático' : 'Sin horario');
             const b = $('btn-local');
             b.className = 'text-xs font-extrabold px-3 py-1.5 rounded-lg leading-tight text-left text-white ring-2 ring-white/70 ' + (e.abierto ? 'bg-green-600 hover:bg-green-700' : 'bg-neutral-900 hover:bg-black');
-            b.innerHTML = (e.abierto ? '🟢 ABIERTO' : '🔴 CERRADO') + '<span class="block text-[10px] font-semibold opacity-80">' + esc(sub) + '</span>';
+            b.innerHTML = '<span class="local-estado">' + (e.abierto ? '🟢 ABIERTO' : '🔴 CERRADO') + '</span>' +
+                '<span class="local-modo block text-[10px] font-semibold opacity-80">' + esc(sub) + '</span>';
             $('btn-local-auto').classList.toggle('hidden', !(e.modo === 'manual' && localCfg.auto && hayHorarios(localCfg.horarios)));
             const nAg = localCfg.agotados.length;
             $('btn-agotados').textContent = '🚫 Agotados' + (nAg ? ' (' + nAg + ')' : '');
@@ -1658,7 +2168,7 @@
             });
             $('filtros').innerHTML = FILTROS.map(([clave, texto]) => {
                 const activo = clave === filtro;
-                return `<button type="button" data-filtro="${clave}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition ${activo ? 'bg-white text-red-700' : 'bg-white/20 text-white hover:bg-white/30'}">${texto} <span class="opacity-80">${cuenta[clave]}</span></button>`;
+                return `<button type="button" data-filtro="${clave}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition ${activo ? 'bg-white text-red-700' : 'bg-white/20 text-white hover:bg-white/30'}">${texto} <span class="opacity-80 filtro-num">${cuenta[clave]}</span></button>`;
             }).join('');
 
             const nuevos = cuenta.nuevo;
@@ -1667,6 +2177,67 @@
                 ? 'Todavía no hay pedidos'
                 : activos + ' en curso · ' + nuevos + ' nuevo' + (nuevos === 1 ? '' : 's');
             document.title = (nuevos > 0 ? '(' + nuevos + ') ' : '') + 'Pedidos - Mi Barrio';
+        }
+
+        // ===== Resumen de operaciones (solo se muestra en el tema Moderno) =====
+        // Todos los valores salen de datos que ya tiene el TPV:
+        // - pedidos activos / en preparación: estados reales de `pedidos`.
+        // - cobrado hoy: pedidos pagados con fecha de cobro (`cobradoEn`) de hoy,
+        //   o pagados al crearse (su `creado` es la fecha del pago). Se excluyen
+        //   los cancelados y los que no tienen ninguna fecha válida.
+        //   Las horas se comparan en la zona de Paraguay.
+        function diaPy(ms) {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: TZ_LOCAL, year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(new Date(ms));
+        }
+        function msCobro(v) {
+            if (!v) return 0;
+            if (typeof v.toMillis === 'function') return v.toMillis();
+            if (typeof v.toDate === 'function') return v.toDate().getTime();
+            const n = Number(v);
+            return Number.isFinite(n) ? n : 0;
+        }
+        function actualizarResumenModerno() {
+            const cont = $('moderno-operaciones');
+            if (!cont) return;
+            // El atributo hidden evita que el bloque deje márgenes en los otros temas.
+            cont.hidden = esDelivery || document.body.dataset.temaPanel !== 'moderno';
+            if (cont.hidden) return;
+
+            let nuevos = 0, preparacion = 0, enCamino = 0;
+            pedidos.forEach(p => {
+                const e = estadoDe(p);
+                if (e === 'nuevo') nuevos++;
+                else if (e === 'preparacion') preparacion++;
+                else if (e === 'en_camino') enCamino++;
+            });
+
+            const hoy = diaPy(Date.now());
+            let cobrado = 0, cobros = 0;
+            pedidos.forEach(p => {
+                if (p.pagado !== true || estadoDe(p) === 'cancelado') return;
+                const ms = p.cobradoEn ? msCobro(p.cobradoEn) : msCobro(p.creado);
+                if (!ms || diaPy(ms) !== hoy) return;
+                cobrado += Number(p.total || 0);
+                cobros++;
+            });
+
+            $('op-pedidos').textContent = String(nuevos + preparacion + enCamino);
+            $('op-pedidos-sub').textContent = nuevos
+                ? nuevos + (nuevos === 1 ? ' nuevo sin tomar' : ' nuevos sin tomar')
+                : 'Sin pedidos nuevos';
+            $('op-preparacion').textContent = String(preparacion);
+            $('op-preparacion-sub').textContent = enCamino
+                ? enCamino + (enCamino === 1 ? ' pedido en camino' : ' pedidos en camino')
+                : 'Nada en camino';
+            $('op-cobrado').textContent = gs(cobrado);
+            $('op-cobrado-sub').textContent = cobros
+                ? cobros + (cobros === 1 ? ' cobro confirmado hoy' : ' cobros confirmados hoy')
+                : 'Sin cobros confirmados hoy';
+            $('op-fecha').textContent = new Date().toLocaleDateString('es-PY', {
+                weekday: 'long', day: '2-digit', month: 'long'
+            });
         }
 
         const abiertos = new Set();   // pedidos desplegados (por defecto todos resumidos)
@@ -1680,7 +2251,7 @@
             const nuevoAviso = recien.has(p.id);
 
             const pizzas = (p.pizzas || []).map((z, i) => `
-                <div class="bg-neutral-50 rounded-xl px-3 py-2 text-sm">
+                <div class="pedido-pizza bg-neutral-50 rounded-xl px-3 py-2 text-sm">
                     <div class="font-bold">🍕 Pizza ${i + 1} – ${esc(z.nombre)}</div>
                     <div class="text-neutral-700">${esc((z.sabores || []).join(', '))}${z.borde ? ' · <strong>Borde relleno</strong>' : ''}</div>
                     <div class="text-xs text-neutral-500">${gs(z.precio)}</div>
@@ -1700,10 +2271,10 @@
             let botones = '';
             if (!esDelivery) {
                 if (sig) {
-                    botones += `<button type="button" data-accion="estado" data-estado="${sig}" data-id="${idAttr}" class="flex-1 min-w-[10rem] bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 rounded-xl active:scale-[0.98] transition">${btnSig}</button>`;
+                    botones += `<button type="button" data-accion="estado" data-estado="${sig}" data-id="${idAttr}" class="accion-principal flex-1 min-w-[10rem] bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 rounded-xl active:scale-[0.98] transition">${btnSig}</button>`;
                 }
                 if (ant) {
-                    botones += `<button type="button" data-accion="estado" data-estado="${ant}" data-id="${idAttr}" class="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold px-3 py-2.5 rounded-xl">⬅ ${esc(ESTADOS[ant].label)}</button>`;
+                    botones += `<button type="button" data-accion="estado" data-estado="${ant}" data-id="${idAttr}" class="accion-secundaria text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold px-3 py-2.5 rounded-xl">⬅ ${esc(ESTADOS[ant].label)}</button>`;
                 }
             }
             
@@ -1721,7 +2292,7 @@
             const pagoActual = PAGOS[p.pago] ? p.pago : '';
             let pagoHtml = '';
             if (!esDelivery && e !== 'cancelado') {
-                pagoHtml = `<div class="flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold text-neutral-500">Pago:</span>` +
+                pagoHtml = `<div class="pedido-pagos flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold text-neutral-500">Pago:</span>` +
                     Object.entries(PAGOS).map(([k, v]) => `<button type="button" data-accion="pago" data-pago="${k}" data-id="${idAttr}" class="text-xs font-bold px-2.5 py-1 rounded-lg ${pagoActual === k ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}">${v.icono} ${v.label}</button>`).join('') + `</div>`;
             } else if (esDelivery && pagoActual) {
                 pagoHtml = `<div class="text-sm font-bold">${PAGOS[pagoActual].icono} Pago: ${PAGOS[pagoActual].label}</div>`;
@@ -1749,29 +2320,41 @@
             ].filter(Boolean).join(' · ');
 
             return `
-            <article data-estado="${e}" data-activo="${activo ? '1' : '0'}" class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
-                <div data-accion="toggle" data-id="${idAttr}" class="flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer select-none">
-                    <div class="min-w-0 flex items-center gap-2 flex-wrap">
-                        <span class="inline-block text-xs font-black px-2 py-0.5 rounded-lg bg-neutral-900 text-white">${esc(numeroCorto(p))}</span>
-                        <span class="font-extrabold truncate max-w-[11rem]">${esc(c.nombre)}</span>
-                        <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">${tipoInfo.icono} ${esc(tipoInfo.label.toUpperCase())}${origenTxt}</span>
-                        ${p.mesa ? `<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">🪑 Mesa ${esc(p.mesa)}</span>` : ''}
+            <article data-estado="${e}" data-activo="${activo ? '1' : '0'}" data-tipo="${esc(p.tipo && TIPOS[p.tipo] ? p.tipo : 'delivery')}" class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
+                <div data-accion="toggle" data-id="${idAttr}" class="pedido-head flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer select-none">
+                    <div class="pedido-head-main min-w-0 flex items-center gap-2 flex-wrap">
+                        <span class="pedido-num inline-block text-xs font-black px-2 py-0.5 rounded-lg bg-neutral-900 text-white">${esc(numeroCorto(p))}</span>
+                        <span class="pedido-cliente font-extrabold truncate max-w-[11rem]">${esc(c.nombre)}</span>
+                        <span class="pedido-tipo inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">${tipoInfo.icono} ${esc(tipoInfo.label.toUpperCase())}${origenTxt}</span>
+                        ${p.mesa ? `<span class="pedido-mesa inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">🪑 Mesa ${esc(p.mesa)}</span>` : ''}
                         <span class="solo-avanzado hidden text-[11px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700">${p.pago && PAGOS[p.pago] ? PAGOS[p.pago].icono : '💰'} ${esc(gs(p.total))}</span>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
-                        ${p.pagado ? '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">✅ PAGADO</span>' : (e !== 'cancelado' && !esDelivery ? '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">💰 POR COBRAR</span>' : '')}
+                    <div class="pedido-head-badges flex items-center gap-2 shrink-0">
+                        <span class="pedido-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
+                        ${p.pagado ? '<span class="pedido-pago-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">✅ PAGADO</span>' : (e !== 'cancelado' && !esDelivery ? '<span class="pedido-pago-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">💰 POR COBRAR</span>' : '')}
                         <span class="flecha-pedido text-neutral-400 text-xs">${abierto ? '▲' : '▼'}</span>
                     </div>
                 </div>
                 <div class="moderno-resumen">
-                    <span>🕒 ${esc(fechaCorta(ms))}</span>
-                    <span class="moderno-resumen-extra">${esc(pagoTxt)}</span>
-                    <span class="moderno-resumen-extra">${resumenPedido ? '🍕 ' + esc(resumenPedido) : ''}</span>
-                    <span class="mr-total">${esc(gs(p.total))}</span>
+                    <span class="mr-item">
+                        <span class="mr-lbl">Hora</span>
+                        <span class="mr-val">🕒 ${esc(fechaCorta(ms))}</span>
+                    </span>
+                    <span class="mr-item moderno-resumen-extra">
+                        <span class="mr-lbl">Pago</span>
+                        <span class="mr-val">${esc(pagoTxt)}</span>
+                    </span>
+                    <span class="mr-item moderno-resumen-extra mr-pedido">
+                        <span class="mr-lbl">Pedido</span>
+                        <span class="mr-val">${resumenPedido ? '🍕 ' + esc(resumenPedido) : '—'}</span>
+                    </span>
+                    <span class="mr-item mr-total">
+                        <span class="mr-lbl">Total</span>
+                        <span class="mr-val">${esc(gs(p.total))}</span>
+                    </span>
                 </div>
                 <div class="${abierto ? '' : 'hidden'} detalle-pedido px-4 pb-4 pt-3 space-y-3 border-t border-neutral-100">
-                    <div class="flex items-start justify-between gap-2">
+                    <div class="pedido-cabecera flex items-start justify-between gap-2">
                         <div>
                             ${c.celular ? `
                             <div class="flex flex-wrap items-center gap-2">
@@ -1781,7 +2364,7 @@
                             </div>` : ''}
                             <div class="text-xs text-neutral-500 mt-1">${esc(numeroCorto(p))} · ${esc(fechaCorta(ms))}</div>
                         </div>
-                        <div class="text-xl font-black text-red-700 shrink-0">${gs(p.total)}</div>
+                        <div class="pedido-total text-xl font-black text-red-700 shrink-0">${gs(p.total)}</div>
                     </div>
                     ${activo ? `<div data-tiempo="${ms}" class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg ${claseTiempo(ms)}">⏱ ${esc(hace(ms))}</div>` : ''}
                     <div class="text-sm space-y-1">
@@ -1789,11 +2372,11 @@
                         ${c.notas ? `<div>📝 ${esc(c.notas)}</div>` : ''}
                         ${mapa ? `<a href="${esc(mapa)}" target="_blank" rel="noopener" class="inline-block text-xs bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-lg hover:bg-red-200">🗺️ Ver ubicación en el mapa</a>` : ''}
                     </div>
-                    <div class="space-y-2">${pizzas}</div>
+                    <div class="pedido-pizzas space-y-2">${pizzas}</div>
                     ${extras ? `<ul class="text-sm list-disc list-inside text-neutral-700">${extras}</ul>` : ''}
                     ${p.costoDelivery ? `<div class="text-sm">🛵 Delivery: <strong>${gs(p.costoDelivery)}</strong></div>` : ''}
                     ${pagoHtml}
-                    <div class="flex flex-wrap gap-2 pt-1">${botones}</div>
+                    <div class="pedido-acciones flex flex-wrap gap-2 pt-1">${botones}</div>
                 </div>
             </article>`;
         }
@@ -1801,6 +2384,7 @@
         function render() {
             if (!$('vista-cocina').classList.contains('hidden')) renderCocina();
             actualizarFiltros();
+            actualizarResumenModerno();
 
             // SI ES DELIVERY: Filtra estrictamente los que están 'en_camino'
             const visibles = pedidos.filter(p => {
@@ -3539,6 +4123,7 @@ $('cfg-vista').addEventListener('click', async (e) => {
         const t = bp.dataset.temaPanelOpt;
         const nombre = (TEMAS_PANEL.find(x => x[0] === t) || [])[1] || t;
         aplicarTemaPanel(t, true);
+        actualizarResumenModerno();
         toast('🖥️ Tema del panel: ' + nombre);
         return;
     }
