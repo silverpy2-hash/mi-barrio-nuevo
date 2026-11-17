@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.pedido_delivery.twa",
+        "sha256_cert_fingerprints": ["9A:AF:F1:66:FF:32:0B:D6:19:0C:86:24:40:51:BC:45:83:F6:CA:79:02:4B:8A:DA:9E:5A:10:FF:97:9D:8E:51"]
+      }
+    }]
