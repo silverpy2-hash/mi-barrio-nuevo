@@ -259,35 +259,156 @@
         body[data-tema-panel="simple"] #cfg-vista { max-width: 900px; }
 
         /* --- TEMA MODERNO --- */
+        /* Piezas que solo se ven en Moderno; en el resto quedan ocultas. */
+        .moderno-resumen { display: none; }
+
         body[data-tema-panel="moderno"] #header-panel {
             background: #0f172a !important;
             border-color: #1e293b;
         }
+        body[data-tema-panel="moderno"] #titulo-panel { font-size: 15px; line-height: 1.25; }
+        body[data-tema-panel="moderno"] #contador { font-size: 11px; }
+
+        /* Bloques de la barra lateral (Estado / Acciones / Herramientas) */
+        body[data-tema-panel="moderno"] .acciones-grupo-m {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
+        body[data-tema-panel="moderno"] .acciones-grupo-label-m {
+            width: 100%;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            color: rgba(255, 255, 255, .45);
+            padding-left: 2px;
+        }
+        /* Si el bloque no tiene botones visibles (p. ej. repartidor), no ocupa lugar. */
+        body[data-tema-panel="moderno"] .acciones-grupo-m:not(:has(> button:not(.hidden), > a:not(.hidden))) {
+            display: none;
+        }
+
+        /* Filtros: pastillas en móvil, lista en escritorio */
         body[data-tema-panel="moderno"] #filtros [data-filtro] {
             border: 1px solid rgba(255, 255, 255, .08);
         }
         body[data-tema-panel="moderno"] #filtros [data-filtro].bg-white {
             background: #fff !important;
             color: #0f172a !important;
+            border-color: #fff;
+        }
+
+        /* Tarjetas: base, acento por estado y hover */
+        body[data-tema-panel="moderno"] #lista {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
         }
         body[data-tema-panel="moderno"] #lista > article {
-            border-radius: 18px;
+            border-radius: 16px;
             box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+            overflow: hidden;
+            border-left-width: 4px;
             transition: transform .15s ease, box-shadow .15s ease;
         }
         body[data-tema-panel="moderno"] #lista > article:not(.border-green-500) {
             border-color: #e2e8f0;
         }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="nuevo"] { border-left-color: #16a34a; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="preparacion"] { border-left-color: #f59e0b; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="en_camino"] { border-left-color: #2563eb; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="entregado"] { border-left-color: #94a3b8; }
+        body[data-tema-panel="moderno"] #lista > article[data-estado="cancelado"] { border-left-color: #ef4444; }
         body[data-tema-panel="moderno"] #lista > article:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
         }
+        body[data-tema-panel="moderno"] #lista > article > div[data-accion="toggle"] {
+            padding: 10px 12px;
+        }
+
+        /* Línea de resumen (hora, pago, resumen corto y total) */
+        body[data-tema-panel="moderno"] .moderno-resumen {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 10px;
+            padding: 7px 12px;
+            border-top: 1px dashed #e2e8f0;
+            background: #f8fafc;
+            font-size: 11px;
+            color: #475569;
+        }
+        body[data-tema-panel="moderno"] .moderno-resumen .mr-total {
+            margin-left: auto;
+            font-size: 13px;
+            font-weight: 900;
+            color: #b91c1c;
+            white-space: nowrap;
+        }
+        body[data-tema-panel="moderno"] .moderno-resumen-extra:empty { display: none; }
+
+        /* Pedidos activos: siempre desplegados y con más detalle */
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] > div[data-accion="toggle"] {
+            pointer-events: none;
+            cursor: default;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .flecha-pedido { display: none; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido {
+            display: flex !important;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px 12px 12px;
+        }
+        /* Las acciones principales van primero para no tener que buscarlas. */
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido > * {
+            order: 1;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido > div:last-child {
+            order: 0;
+            padding-top: 0;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="1"] .detalle-pedido > div:first-child .text-xl {
+            font-size: 18px;
+        }
+
+        /* Pedidos finalizados: compactos y con menos detalle */
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] > div[data-accion="toggle"] {
+            padding: 8px 12px;
+            gap: 6px;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] > div[data-accion="toggle"] .inline-block {
+            font-size: 10px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen {
+            padding: 5px 12px;
+            border-top: 0;
+            background: transparent;
+            font-size: 10px;
+        }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen-extra { display: none; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .moderno-resumen .mr-total { font-size: 12px; color: #475569; }
+        body[data-tema-panel="moderno"] #lista > article[data-activo="0"] .detalle-pedido { padding: 10px 12px 12px; }
+
         body[data-tema-panel="moderno"] #modal-config { background: #eef2f7; }
+
+        @media (max-width: 1023px) {
+            /* Móvil y tablet: barra arriba y una sola columna */
+            body[data-tema-panel="moderno"] #lista { grid-template-columns: minmax(0, 1fr); }
+            body[data-tema-panel="moderno"] .acciones-grupo-label-m { margin-top: 4px; }
+        }
+
         @media (min-width: 1024px) {
             /* :not(.hidden) para que el panel siga oculto al cerrar sesión */
             body[data-tema-panel="moderno"] #panel:not(.hidden) {
                 display: grid;
-                grid-template-columns: 300px minmax(0, 1fr);
+                grid-template-columns: 270px minmax(0, 1fr);
                 align-items: start;
             }
             body[data-tema-panel="moderno"] #header-panel {
@@ -303,44 +424,82 @@
             body[data-tema-panel="moderno"] #header-panel > div:first-child {
                 flex-direction: column;
                 align-items: stretch;
-                padding: 20px;
-                gap: 16px;
+                padding: 14px 16px;
+                gap: 12px;
             }
             body[data-tema-panel="moderno"] #header-panel > div:first-child > div:first-child {
-                padding-bottom: 12px;
+                padding-bottom: 10px;
                 border-bottom: 1px solid rgba(255, 255, 255, .1);
             }
             body[data-tema-panel="moderno"] #acciones-panel {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 8px;
+                gap: 10px;
             }
-            body[data-tema-panel="moderno"] #acciones-panel > button,
-            body[data-tema-panel="moderno"] #acciones-panel > a {
+            body[data-tema-panel="moderno"] .acciones-grupo-m {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 5px;
+            }
+            body[data-tema-panel="moderno"] .acciones-grupo-m > button,
+            body[data-tema-panel="moderno"] .acciones-grupo-m > a {
                 width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
                 text-align: left;
+                padding: 9px 11px;
+                border-radius: 11px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            body[data-tema-panel="moderno"] .acciones-grupo-m #btn-mas {
+                background: rgba(255, 255, 255, .1) !important;
+                color: #fff !important;
+            }
+            body[data-tema-panel="moderno"] #acciones-panel #btn-local {
+                box-shadow: none;
+                padding: 10px 11px;
             }
             body[data-tema-panel="moderno"] #filtros {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 4px;
                 overflow: visible;
-                padding: 0 20px 20px;
+                padding: 0 16px 16px;
+            }
+            body[data-tema-panel="moderno"] #filtros::before {
+                content: 'Filtros de pedidos';
+                font-size: 9px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: .09em;
+                color: rgba(255, 255, 255, .45);
+                padding: 2px 2px 4px;
             }
             body[data-tema-panel="moderno"] #filtros [data-filtro] {
                 width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
                 text-align: left;
+                padding: 8px 12px;
+                border-radius: 10px;
+                font-size: 12px;
             }
             body[data-tema-panel="moderno"] #menu-mas {
                 width: auto;
-                margin: 0 20px 20px;
+                margin: 0 16px 12px;
             }
             body[data-tema-panel="moderno"] #menu-mas-cuerpo { grid-template-columns: 1fr; }
             body[data-tema-panel="moderno"] #panel > main {
-                padding: 24px;
+                padding: 16px 18px;
                 max-width: none !important;
             }
             body[data-tema-panel="moderno"] #lista {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
             }
         }
 
@@ -649,7 +808,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-17 #1 · temas del panel';
+        const VERSION_PANEL = '2026-11-17 #2 · moderno mejorado';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -800,14 +959,40 @@
             if (!cont || !mas || !menu || !cuerpo || !accionesOriginales) return;
             menu.classList.add('hidden');
             mas.setAttribute('aria-expanded', 'false');
+            // Busca por referencia aunque el botón esté fuera del documento.
+            const porId = (id) => accionesOriginales.find(n => n.id === id) || $(id);
             limpiarAccionesPanel();
             accionesOriginales.forEach(n => cont.appendChild(n));
+            // Al desarmar bloques, el botón "Más" puede quedar suelto: lo devolvemos.
+            if (mas.parentElement !== cont) cont.appendChild(mas);
 
-            if (tema === 'simple' || tema === 'moderno') {
+            if (tema === 'simple') {
                 const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
                 secundarios.forEach(id => { const n = $(id); if (n) cuerpo.appendChild(n); });
                 mas.classList.remove('hidden');
                 cont.appendChild(mas);
+            } else if (tema === 'moderno') {
+                // Secundarios al menú "Más" y acciones agrupadas por bloque.
+                const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
+                secundarios.forEach(id => { const n = porId(id); if (n) cuerpo.appendChild(n); });
+                const grupos = [
+                    ['Estado del local', ['btn-local']],
+                    ['Acciones principales', ['btn-cocina', 'btn-rapida', 'btn-nuevo', 'btn-caja']],
+                    ['Herramientas', ['btn-mas']]
+                ];
+                accionesOriginales.forEach(n => { if (n.parentElement === cont) n.remove(); });
+                grupos.forEach(([label, ids]) => {
+                    const g = document.createElement('div');
+                    g.dataset.grupoAcciones = label;
+                    g.className = 'acciones-grupo-m';
+                    const l = document.createElement('span');
+                    l.className = 'acciones-grupo-label-m';
+                    l.textContent = label;
+                    g.appendChild(l);
+                    ids.forEach(id => { const n = porId(id); if (n) g.appendChild(n); });
+                    cont.appendChild(g);
+                });
+                mas.classList.remove('hidden');
             } else if (tema === 'avanzado') {
                 const grupos = [
                     ['Pedidos', ['btn-nuevo', 'btn-rapida', 'btn-cocina', 'btn-caja']],
@@ -823,7 +1008,7 @@
                     l.className = 'acciones-grupo-label';
                     l.textContent = label;
                     g.appendChild(l);
-                    ids.forEach(id => { const n = $(id); if (n) g.appendChild(n); });
+                    ids.forEach(id => { const n = porId(id); if (n) g.appendChild(n); });
                     cont.appendChild(g);
                 });
                 accionesOriginales.forEach(n => { if (!n.parentElement) cont.appendChild(n); });
@@ -1552,9 +1737,19 @@
             const abierto = abiertos.has(p.id);
             const tipoInfo = TIPOS[p.tipo] || TIPOS.delivery;
             const origenTxt = (!sinReparto && p.origen === 'panel') ? ' · teléfono' : '';
+            // Datos de presentación para la línea de resumen del tema Moderno.
+            const pagoTxt = p.pago && PAGOS[p.pago] ? PAGOS[p.pago].icono + ' ' + PAGOS[p.pago].label : 'Sin pago';
+            const nPizzas = (p.pizzas || []).length;
+            const nExtras = (p.extras || []).length;
+            const saboresCortos = (p.pizzas || []).reduce((acc, z) => acc.concat(z.sabores || []), []).slice(0, 2).join(' / ');
+            const resumenPedido = [
+                nPizzas ? nPizzas + (nPizzas === 1 ? ' pizza' : ' pizzas') : '',
+                saboresCortos,
+                nExtras ? nExtras + (nExtras === 1 ? ' extra' : ' extras') : ''
+            ].filter(Boolean).join(' · ');
 
             return `
-            <article class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
+            <article data-estado="${e}" data-activo="${activo ? '1' : '0'}" class="bg-white rounded-2xl shadow-sm border ${nuevoAviso ? 'border-green-500 ring-4 ring-green-300' : 'border-neutral-200'} ${e === 'cancelado' ? 'opacity-70' : ''}">
                 <div data-accion="toggle" data-id="${idAttr}" class="flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer select-none">
                     <div class="min-w-0 flex items-center gap-2 flex-wrap">
                         <span class="inline-block text-xs font-black px-2 py-0.5 rounded-lg bg-neutral-900 text-white">${esc(numeroCorto(p))}</span>
@@ -1566,10 +1761,16 @@
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
                         ${p.pagado ? '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">✅ PAGADO</span>' : (e !== 'cancelado' && !esDelivery ? '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">💰 POR COBRAR</span>' : '')}
-                        <span class="text-neutral-400 text-xs">${abierto ? '▲' : '▼'}</span>
+                        <span class="flecha-pedido text-neutral-400 text-xs">${abierto ? '▲' : '▼'}</span>
                     </div>
                 </div>
-                <div class="${abierto ? '' : 'hidden'} px-4 pb-4 pt-3 space-y-3 border-t border-neutral-100">
+                <div class="moderno-resumen">
+                    <span>🕒 ${esc(fechaCorta(ms))}</span>
+                    <span class="moderno-resumen-extra">${esc(pagoTxt)}</span>
+                    <span class="moderno-resumen-extra">${resumenPedido ? '🍕 ' + esc(resumenPedido) : ''}</span>
+                    <span class="mr-total">${esc(gs(p.total))}</span>
+                </div>
+                <div class="${abierto ? '' : 'hidden'} detalle-pedido px-4 pb-4 pt-3 space-y-3 border-t border-neutral-100">
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             ${c.celular ? `
