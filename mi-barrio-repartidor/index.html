@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b1728">
+    <meta name="description" content="Entregas en camino de Mi Barrio para repartidores. Solo lectura: número, cliente, dirección, total y cobro.">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Mi Barrio · Repartidor</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js?v=1"></script>
+</head>
+<body>
+
+    <header class="topbar">
+        <div>
+            <div class="topbar-texto">
+                <div class="marca">MI BARRIO · REPARTIDOR</div>
+                <h1 class="titulo">🛵 Pedidos en camino</h1>
+            </div>
+            <button id="btn-salir" type="button" class="btn-salir hidden">🚪 Salir</button>
+        </div>
+    </header>
+
+    <main class="contenedor">
+
+        <!-- ===== Inicio de sesión ===== -->
+        <section id="vista-login">
+            <form id="form-login" class="login-tarjeta" autocomplete="on">
+                <div class="login-icono" aria-hidden="true">🛵</div>
+                <h2 class="login-titulo">Entrar como repartidor</h2>
+                <p class="login-ayuda">Usá la cuenta que te dio el local (correo con “delivery”).</p>
+
+                <label class="campo">
+                    <span>Correo</span>
+                    <input id="login-email" type="email" name="email" inputmode="email" autocomplete="username" required placeholder="delivery@mibarrio...">
+                </label>
+                <label class="campo">
+                    <span>Contraseña</span>
+                    <input id="login-clave" type="password" name="password" autocomplete="current-password" required placeholder="••••••••">
+                </label>
+
+                <div id="login-error" class="login-error hidden" role="alert"></div>
+
+                <button id="login-entrar" type="submit" class="btn-entrar">Entrar</button>
+                <p class="login-pie">Solo lectura. El estado del pedido se cambia desde el TPV del local.</p>
+            </form>
+        </section>
+
+        <!-- ===== Lista de entregas (solo en camino) ===== -->
+        <section id="vista-lista" class="hidden" aria-live="polite">
+            <div id="aviso-error" class="aviso error hidden" role="alert"></div>
+
+            <div id="vacio" class="estado-vacio hidden">
+                <div class="vacio-icono" aria-hidden="true">😴</div>
+                <h2>No hay pedidos en camino</h2>
+                <p>Cuando el local pase un pedido a “En camino”, aparece acá al instante.</p>
+            </div>
+
+            <div id="lista" class="lista-entregas"></div>
+        </section>
+
+    </main>
+</body>
+</html>
