@@ -260,8 +260,7 @@
 
         /* --- TEMA MODERNO --- */
         /* Piezas que solo se ven en Moderno; en el resto quedan ocultas. */
-        .moderno-resumen,
-        .moderno-operaciones { display: none; }
+        .moderno-resumen { display: none; }
 
         body[data-tema-panel="moderno"] { background: #eef2f7; }
 
@@ -511,98 +510,6 @@
         }
         body[data-tema-panel="moderno"] #menu-mas-cuerpo > button:hover {
             background: #1c3454 !important;
-        }
-
-        /* --- Encabezado de operaciones (3 tarjetas de datos reales) --- */
-        body[data-tema-panel="moderno"] .moderno-operaciones:not([hidden]) {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-        }
-        .op-head {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        .op-head h2 {
-            font-size: 15px;
-            font-weight: 800;
-            letter-spacing: -.01em;
-            color: #0f172a;
-            line-height: 1.2;
-        }
-        .op-head p { font-size: 11px; color: #64748b; }
-        .op-fecha {
-            font-size: 11px;
-            font-weight: 700;
-            color: #475569;
-            text-transform: capitalize;
-            white-space: nowrap;
-        }
-        .op-card {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-            padding: 13px 15px 14px;
-            background: #fff;
-            border: 1px solid #e3e9f2;
-            border-radius: 16px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
-        }
-        .op-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
-        .op-icon {
-            display: grid;
-            place-items: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 9px;
-            background: #eef2f7;
-            font-size: 14px;
-            flex: none;
-        }
-        .op-card--prep .op-icon { background: #fef3c7; }
-        .op-card--cobrado .op-icon { background: #fde68a; }
-        .op-label {
-            font-size: 9.5px;
-            font-weight: 800;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            color: #64748b;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .op-valor {
-            margin-top: 6px;
-            font-size: 26px;
-            font-weight: 900;
-            letter-spacing: -.02em;
-            line-height: 1.05;
-            color: #0f172a;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .op-sub {
-            font-size: 11px;
-            font-weight: 600;
-            color: #64748b;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        @media (max-width: 700px) {
-            body[data-tema-panel="moderno"] .moderno-operaciones:not([hidden]) {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
-            .op-card--cobrado { grid-column: 1 / -1; }
-            .op-valor { font-size: 23px; }
-            .op-head { flex-direction: column; align-items: flex-start; gap: 2px; }
         }
 
         /* --- Tarjetas de pedidos --- */
@@ -915,7 +822,7 @@
             }
             body[data-tema-panel="moderno"] .acciones-grupo-label-m { margin-top: 2px; }
             body[data-tema-panel="moderno"] .acciones-grupo-m { gap: 5px; }
-            body[data-tema-panel="moderno"] #panel > main { padding: 14px 12px 24px; }
+            body[data-tema-panel="moderno"] #panel > main { padding: 16px 12px 24px; }
             body[data-tema-panel="moderno"] #lista {
                 grid-template-columns: minmax(0, 1fr);
                 gap: 12px;
@@ -985,7 +892,7 @@
             }
             body[data-tema-panel="moderno"] #menu-mas-cuerpo { grid-template-columns: 1fr; }
             body[data-tema-panel="moderno"] #panel > main {
-                padding: 20px 24px 28px;
+                padding: 16px 24px 28px;
                 max-width: none !important;
             }
             body[data-tema-panel="moderno"] #lista {
@@ -1121,31 +1028,6 @@
         </header>
 
         <main class="w-full max-w-[1800px] mx-auto px-4 py-5 space-y-4">
-            <!-- Resumen de operaciones (solo tema Moderno) -->
-            <section id="moderno-operaciones" class="moderno-operaciones" aria-label="Resumen de operaciones" hidden>
-                <div class="op-head">
-                    <div>
-                        <h2>Operaciones</h2>
-                        <p>Resumen en vivo de la caja actual</p>
-                    </div>
-                    <span id="op-fecha" class="op-fecha"></span>
-                </div>
-                <article class="op-card">
-                    <div class="op-top"><span class="op-icon" aria-hidden="true">🧾</span><span class="op-label">Pedidos activos</span></div>
-                    <div id="op-pedidos" class="op-valor">0</div>
-                    <div id="op-pedidos-sub" class="op-sub">—</div>
-                </article>
-                <article class="op-card op-card--prep">
-                    <div class="op-top"><span class="op-icon" aria-hidden="true">👨‍🍳</span><span class="op-label">En preparación</span></div>
-                    <div id="op-preparacion" class="op-valor">0</div>
-                    <div id="op-preparacion-sub" class="op-sub">—</div>
-                </article>
-                <article class="op-card op-card--cobrado">
-                    <div class="op-top"><span class="op-icon" aria-hidden="true">💰</span><span class="op-label">Cobrado hoy</span></div>
-                    <div id="op-cobrado" class="op-valor">0 Gs</div>
-                    <div id="op-cobrado-sub" class="op-sub">—</div>
-                </article>
-            </section>
             <button id="aviso-sonido" type="button" class="hidden w-full text-sm font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">
                 🔕 Tocá acá para activar el aviso sonoro de pedidos nuevos
             </button>
@@ -1324,7 +1206,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-17 #4 · moderno: menú Más';
+        const VERSION_PANEL = '2026-11-17 #5 · sin resumen operaciones';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -2206,67 +2088,6 @@
             document.title = (nuevos > 0 ? '(' + nuevos + ') ' : '') + 'Pedidos - Mi Barrio';
         }
 
-        // ===== Resumen de operaciones (solo se muestra en el tema Moderno) =====
-        // Todos los valores salen de datos que ya tiene el TPV:
-        // - pedidos activos / en preparación: estados reales de `pedidos`.
-        // - cobrado hoy: pedidos pagados con fecha de cobro (`cobradoEn`) de hoy,
-        //   o pagados al crearse (su `creado` es la fecha del pago). Se excluyen
-        //   los cancelados y los que no tienen ninguna fecha válida.
-        //   Las horas se comparan en la zona de Paraguay.
-        function diaPy(ms) {
-            return new Intl.DateTimeFormat('en-CA', {
-                timeZone: TZ_LOCAL, year: 'numeric', month: '2-digit', day: '2-digit'
-            }).format(new Date(ms));
-        }
-        function msCobro(v) {
-            if (!v) return 0;
-            if (typeof v.toMillis === 'function') return v.toMillis();
-            if (typeof v.toDate === 'function') return v.toDate().getTime();
-            const n = Number(v);
-            return Number.isFinite(n) ? n : 0;
-        }
-        function actualizarResumenModerno() {
-            const cont = $('moderno-operaciones');
-            if (!cont) return;
-            // El atributo hidden evita que el bloque deje márgenes en los otros temas.
-            cont.hidden = esDelivery || document.body.dataset.temaPanel !== 'moderno';
-            if (cont.hidden) return;
-
-            let nuevos = 0, preparacion = 0, enCamino = 0;
-            pedidos.forEach(p => {
-                const e = estadoDe(p);
-                if (e === 'nuevo') nuevos++;
-                else if (e === 'preparacion') preparacion++;
-                else if (e === 'en_camino') enCamino++;
-            });
-
-            const hoy = diaPy(Date.now());
-            let cobrado = 0, cobros = 0;
-            pedidos.forEach(p => {
-                if (p.pagado !== true || estadoDe(p) === 'cancelado') return;
-                const ms = p.cobradoEn ? msCobro(p.cobradoEn) : msCobro(p.creado);
-                if (!ms || diaPy(ms) !== hoy) return;
-                cobrado += Number(p.total || 0);
-                cobros++;
-            });
-
-            $('op-pedidos').textContent = String(nuevos + preparacion + enCamino);
-            $('op-pedidos-sub').textContent = nuevos
-                ? nuevos + (nuevos === 1 ? ' nuevo sin tomar' : ' nuevos sin tomar')
-                : 'Sin pedidos nuevos';
-            $('op-preparacion').textContent = String(preparacion);
-            $('op-preparacion-sub').textContent = enCamino
-                ? enCamino + (enCamino === 1 ? ' pedido en camino' : ' pedidos en camino')
-                : 'Nada en camino';
-            $('op-cobrado').textContent = gs(cobrado);
-            $('op-cobrado-sub').textContent = cobros
-                ? cobros + (cobros === 1 ? ' cobro confirmado hoy' : ' cobros confirmados hoy')
-                : 'Sin cobros confirmados hoy';
-            $('op-fecha').textContent = new Date().toLocaleDateString('es-PY', {
-                weekday: 'long', day: '2-digit', month: 'long'
-            });
-        }
-
         const abiertos = new Set();   // pedidos desplegados (por defecto todos resumidos)
         const estadoPrevio = new Map(); // id -> último estado visto, para detectar cambios
 
@@ -2412,7 +2233,6 @@
         function render() {
             if (!$('vista-cocina').classList.contains('hidden')) renderCocina();
             actualizarFiltros();
-            actualizarResumenModerno();
 
             // SI ES DELIVERY: Filtra estrictamente los que están 'en_camino'
             const visibles = pedidos.filter(p => {
@@ -4151,7 +3971,6 @@ $('cfg-vista').addEventListener('click', async (e) => {
         const t = bp.dataset.temaPanelOpt;
         const nombre = (TEMAS_PANEL.find(x => x[0] === t) || [])[1] || t;
         aplicarTemaPanel(t, true);
-        actualizarResumenModerno();
         toast('🖥️ Tema del panel: ' + nombre);
         return;
     }
