@@ -71,7 +71,7 @@
 
         /* Tablet horizontal: botones y cabecera mejor distribuidos */
         @media (min-width: 700px) and (max-width: 1099px) {
-            #header-panel > div {
+            #header-panel > div:first-child {
                 padding-left: 20px !important;
                 padding-right: 20px !important;
             }
@@ -83,15 +83,15 @@
 
         /* Celular: mantener una sola columna y controles cómodos */
         @media (max-width: 699px) {
-            #header-panel > div {
+            #header-panel > div:first-child {
                 flex-wrap: wrap;
             }
-            #header-panel > div > div:last-child {
+            #header-panel > div:first-child > div:last-child {
                 width: 100%;
                 overflow-x: auto;
                 padding-bottom: 2px;
             }
-            #header-panel > div > div:last-child button {
+            #header-panel > div:first-child > div:last-child button {
                 flex-shrink: 0;
             }
             #lista {
@@ -130,6 +130,292 @@
         #login form {
             box-sizing: border-box;
         }
+
+        /* ============================================================
+           TEMAS DEL PANEL (TPV)
+           Todo lo de acá está limitado a Simple / Moderno / Avanzado.
+           El tema Clásico no recibe ninguna regla y queda igual que antes.
+           ============================================================ */
+
+        body[data-tema-panel="simple"] { background: #f8fafc; }
+        body[data-tema-panel="moderno"] { background: #eef2f7; }
+        body[data-tema-panel="avanzado"] { background: #f1f5f9; }
+
+        /* --- Menú de acciones secundarias --- */
+        #menu-mas {
+            width: calc(100% - 2rem);
+            max-width: 1800px;
+            margin: 0 auto .75rem;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, .18);
+        }
+        #menu-mas #version-panel {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            opacity: 1;
+        }
+        #menu-mas-cuerpo > button {
+            background: #f1f5f9 !important;
+            color: #334155 !important;
+            text-align: left;
+        }
+        #menu-mas-cuerpo > button:hover { background: #e2e8f0 !important; }
+        #menu-mas-cuerpo > button.bg-amber-300 {
+            background: #fcd34d !important;
+            color: #111827 !important;
+        }
+        #menu-mas-cuerpo > button.bg-green-600 {
+            background: #16a34a !important;
+            color: #fff !important;
+        }
+        #menu-mas-cuerpo > button.bg-neutral-900 {
+            background: #0f172a !important;
+            color: #fff !important;
+        }
+
+        /* --- Configuraciones plegables (Simple / Moderno) --- */
+        .cfg-plegable {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 12px 16px;
+        }
+        .cfg-plegable > summary {
+            cursor: pointer;
+            list-style: none;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .cfg-plegable > summary::-webkit-details-marker { display: none; }
+        .cfg-plegable > summary::after { content: '▾'; font-size: 14px; }
+        .cfg-plegable[open] > summary::after { content: '▴'; }
+        .cfg-plegable-body { padding-top: 10px; }
+
+        /* --- TEMA SIMPLE --- */
+        body[data-tema-panel="simple"] #header-panel {
+            background: #fff !important;
+            color: #0f172a !important;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+        }
+        body[data-tema-panel="simple"] #header-panel > div:first-child {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        body[data-tema-panel="simple"] #titulo-panel { color: #b91c1c; }
+        body[data-tema-panel="simple"] #contador { color: #64748b; opacity: 1; }
+        body[data-tema-panel="simple"] #acciones-panel { justify-content: flex-start; }
+        body[data-tema-panel="simple"] #acciones-panel #btn-mas {
+            background: #f1f5f9 !important;
+            color: #334155 !important;
+        }
+        body[data-tema-panel="simple"] #acciones-panel #btn-nuevo {
+            background: #b91c1c !important;
+            color: #fff !important;
+        }
+        body[data-tema-panel="simple"] #acciones-panel #btn-rapida {
+            background: #f59e0b !important;
+            color: #111827 !important;
+        }
+        body[data-tema-panel="simple"] #acciones-panel #btn-caja,
+        body[data-tema-panel="simple"] #acciones-panel #btn-cocina {
+            background: #0f172a !important;
+            color: #fff !important;
+        }
+        body[data-tema-panel="simple"] #filtros [data-filtro] {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            border-radius: 999px;
+        }
+        body[data-tema-panel="simple"] #filtros [data-filtro].bg-white {
+            background: #b91c1c !important;
+            color: #fff !important;
+        }
+        body[data-tema-panel="simple"] #lista {
+            grid-template-columns: minmax(0, 1fr) !important;
+            max-width: 940px;
+            margin: 0 auto;
+            gap: 16px;
+        }
+        body[data-tema-panel="simple"] #lista > article {
+            border-radius: 20px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+        }
+        body[data-tema-panel="simple"] #lista > article:not(.border-green-500) {
+            border-color: #e2e8f0;
+        }
+        body[data-tema-panel="simple"] #lista > article > div[data-accion="toggle"] {
+            padding: 14px 16px;
+        }
+        body[data-tema-panel="simple"] #lista article .text-xl { font-size: 1.35rem; }
+        body[data-tema-panel="simple"] #modal-config { background: #f8fafc; }
+        body[data-tema-panel="simple"] #cfg-vista { max-width: 900px; }
+
+        /* --- TEMA MODERNO --- */
+        body[data-tema-panel="moderno"] #header-panel {
+            background: #0f172a !important;
+            border-color: #1e293b;
+        }
+        body[data-tema-panel="moderno"] #filtros [data-filtro] {
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+        body[data-tema-panel="moderno"] #filtros [data-filtro].bg-white {
+            background: #fff !important;
+            color: #0f172a !important;
+        }
+        body[data-tema-panel="moderno"] #lista > article {
+            border-radius: 18px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        body[data-tema-panel="moderno"] #lista > article:not(.border-green-500) {
+            border-color: #e2e8f0;
+        }
+        body[data-tema-panel="moderno"] #lista > article:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+        }
+        body[data-tema-panel="moderno"] #modal-config { background: #eef2f7; }
+        @media (min-width: 1024px) {
+            /* :not(.hidden) para que el panel siga oculto al cerrar sesión */
+            body[data-tema-panel="moderno"] #panel:not(.hidden) {
+                display: grid;
+                grid-template-columns: 300px minmax(0, 1fr);
+                align-items: start;
+            }
+            body[data-tema-panel="moderno"] #header-panel {
+                position: sticky;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                overflow-y: auto;
+                border-radius: 0;
+                box-shadow: none;
+                border-right: 1px solid #1e293b;
+            }
+            body[data-tema-panel="moderno"] #header-panel > div:first-child {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 20px;
+                gap: 16px;
+            }
+            body[data-tema-panel="moderno"] #header-panel > div:first-child > div:first-child {
+                padding-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, .1);
+            }
+            body[data-tema-panel="moderno"] #acciones-panel {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            body[data-tema-panel="moderno"] #acciones-panel > button,
+            body[data-tema-panel="moderno"] #acciones-panel > a {
+                width: 100%;
+                text-align: left;
+            }
+            body[data-tema-panel="moderno"] #filtros {
+                flex-direction: column;
+                align-items: stretch;
+                overflow: visible;
+                padding: 0 20px 20px;
+            }
+            body[data-tema-panel="moderno"] #filtros [data-filtro] {
+                width: 100%;
+                text-align: left;
+            }
+            body[data-tema-panel="moderno"] #menu-mas {
+                width: auto;
+                margin: 0 20px 20px;
+            }
+            body[data-tema-panel="moderno"] #menu-mas-cuerpo { grid-template-columns: 1fr; }
+            body[data-tema-panel="moderno"] #panel > main {
+                padding: 24px;
+                max-width: none !important;
+            }
+            body[data-tema-panel="moderno"] #lista {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        /* --- TEMA AVANZADO --- */
+        body[data-tema-panel="avanzado"] #header-panel {
+            background: #111827 !important;
+            box-shadow: none;
+            border-bottom: 1px solid #1f2937;
+        }
+        body[data-tema-panel="avanzado"] #header-panel > div:first-child {
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+        body[data-tema-panel="avanzado"] #acciones-panel {
+            gap: 6px;
+            align-items: flex-end;
+        }
+        body[data-tema-panel="avanzado"] .acciones-grupo {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 0 6px;
+            border-left: 1px solid rgba(255, 255, 255, .15);
+        }
+        body[data-tema-panel="avanzado"] .acciones-grupo:first-child {
+            border-left: 0;
+            padding-left: 0;
+        }
+        body[data-tema-panel="avanzado"] .acciones-grupo-label {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            opacity: .55;
+            margin-right: 2px;
+        }
+        body[data-tema-panel="avanzado"] #acciones-panel button {
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 6px;
+        }
+        body[data-tema-panel="avanzado"] #filtros [data-filtro] {
+            padding: 4px 10px;
+            font-size: 10px;
+        }
+        body[data-tema-panel="avanzado"] #lista {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+        body[data-tema-panel="avanzado"] #lista > article { border-radius: 12px; }
+        body[data-tema-panel="avanzado"] #lista > article > div[data-accion="toggle"] {
+            padding: 8px 10px;
+        }
+        body[data-tema-panel="avanzado"] #lista article .px-4.pb-4.pt-3 {
+            padding: 8px !important;
+        }
+        body[data-tema-panel="avanzado"] #lista article .text-xl { font-size: 1rem; }
+        body[data-tema-panel="avanzado"] .solo-avanzado { display: inline-block !important; }
+        body[data-tema-panel="avanzado"] #modal-config { background: #f1f5f9; }
+        body[data-tema-panel="avanzado"] #cfg-vista { max-width: 1400px; }
+        @media (max-width: 1499px) {
+            body[data-tema-panel="avanzado"] #lista { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (max-width: 1099px) {
+            body[data-tema-panel="avanzado"] #lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 699px) {
+            body[data-tema-panel="avanzado"] #lista { grid-template-columns: minmax(0, 1fr); }
+            body[data-tema-panel="avanzado"] .acciones-grupo-label { display: none; }
+            body[data-tema-panel="avanzado"] .acciones-grupo {
+                border-left: 0;
+                padding: 0;
+            }
+        }
     </style>
 </head>
 <body class="bg-neutral-100 text-neutral-800 antialiased">
@@ -159,7 +445,7 @@
                     <h1 id="titulo-panel" class="font-extrabold tracking-wide">🍕 Pedidos entrantes</h1>
                     <p id="contador" class="text-xs opacity-90">Cargando...</p>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap justify-end">
+                <div id="acciones-panel" class="flex items-center gap-2 flex-wrap justify-end">
                     <span id="version-panel" class="text-[10px] font-mono bg-white/10 px-2 py-1 rounded-lg opacity-80" title="Versión del panel que está corriendo esta pestaña. Si no coincide con la última publicada, recargá con Ctrl+Shift+R."></span>
                     <button id="btn-local" type="button" class="hidden text-xs font-extrabold px-3 py-1.5 rounded-lg" title="Abrir o cerrar el local">...</button>
                     <button id="btn-local-auto" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-2 py-1.5 rounded-lg" title="Volver al horario automático">↺ Auto</button>
@@ -172,7 +458,13 @@
                     <button id="btn-caja" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">📊 Caja</button>
                     <button id="btn-sonido" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">🔔 Sonido</button>
                     <button id="btn-salir" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">Salir</button>
+                    <button id="btn-mas" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Más opciones" aria-expanded="false">⋯ Más</button>
                 </div>
+            </div>
+            <!-- Menú de acciones secundarias (Simple / Moderno) -->
+            <div id="menu-mas" class="hidden mx-4 mb-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-lg">
+                <div class="text-[11px] font-extrabold uppercase tracking-wider text-neutral-500 mb-2">Más opciones</div>
+                <div id="menu-mas-cuerpo" class="grid gap-2 sm:grid-cols-2"></div>
             </div>
             <!-- Filtros por estado (se ocultan si es delivery) -->
             <nav id="filtros" class="w-full max-w-[1800px] mx-auto px-4 pb-3 flex gap-2 overflow-x-auto whitespace-nowrap"></nav>
@@ -464,6 +756,133 @@
             return 'bg-green-100 text-green-700';
         }
 
+        // ===== Temas visuales del panel (TPV) =====
+        // El tema se guarda en este equipo (localStorage) para no cambiar la
+        // pantalla de los clientes ni la configuración global de Firestore.
+        const TEMAS_PANEL = [
+            ['clasico', 'Clásico', 'La vista actual del TPV, sin cambios.'],
+            ['simple', 'Simple', 'Menos botones a la vista, una sola columna y tarjetas grandes.'],
+            ['moderno', 'Moderno', 'Barra lateral en PC, tarjetas y filtros tipo panel.'],
+            ['avanzado', 'Avanzado', 'Todas las herramientas, agrupadas y en una vista compacta.']
+        ];
+        const TEMAS_PANEL_VALIDOS = TEMAS_PANEL.map(t => t[0]);
+        let accionesOriginales = null;
+
+        function capturarAccionesPanel() {
+            const cont = $('acciones-panel');
+            if (!cont) return;
+            accionesOriginales = [...cont.children].filter(n => n.id !== 'btn-mas');
+        }
+        function temaPanelActual() {
+            const t = document.body.dataset.temaPanel;
+            return TEMAS_PANEL_VALIDOS.includes(t) ? t : 'clasico';
+        }
+        function leerTemaPanel() {
+            try {
+                const t = localStorage.getItem('temaPanel');
+                return TEMAS_PANEL_VALIDOS.includes(t) ? t : 'clasico';
+            } catch (e) { return 'clasico'; }
+        }
+        function limpiarAccionesPanel() {
+            const cont = $('acciones-panel');
+            if (!cont || !accionesOriginales) return;
+            cont.querySelectorAll('[data-grupo-acciones]').forEach(w => {
+                while (w.firstChild) w.removeChild(w.firstChild);
+                w.remove();
+            });
+            accionesOriginales.forEach(n => { if (n && n.parentElement !== cont) cont.appendChild(n); });
+        }
+        function organizarAccionesPanel(tema) {
+            const cont = $('acciones-panel');
+            const mas = $('btn-mas');
+            const menu = $('menu-mas');
+            const cuerpo = $('menu-mas-cuerpo');
+            if (!cont || !mas || !menu || !cuerpo || !accionesOriginales) return;
+            menu.classList.add('hidden');
+            mas.setAttribute('aria-expanded', 'false');
+            limpiarAccionesPanel();
+            accionesOriginales.forEach(n => cont.appendChild(n));
+
+            if (tema === 'simple' || tema === 'moderno') {
+                const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
+                secundarios.forEach(id => { const n = $(id); if (n) cuerpo.appendChild(n); });
+                mas.classList.remove('hidden');
+                cont.appendChild(mas);
+            } else if (tema === 'avanzado') {
+                const grupos = [
+                    ['Pedidos', ['btn-nuevo', 'btn-rapida', 'btn-cocina', 'btn-caja']],
+                    ['Local', ['btn-local', 'btn-local-auto', 'btn-agotados', 'btn-autoprint']],
+                    ['Sistema', ['btn-config', 'btn-sonido', 'btn-salir', 'version-panel']]
+                ];
+                accionesOriginales.forEach(n => n.remove());
+                grupos.forEach(([label, ids]) => {
+                    const g = document.createElement('div');
+                    g.dataset.grupoAcciones = label;
+                    g.className = 'acciones-grupo';
+                    const l = document.createElement('span');
+                    l.className = 'acciones-grupo-label';
+                    l.textContent = label;
+                    g.appendChild(l);
+                    ids.forEach(id => { const n = $(id); if (n) g.appendChild(n); });
+                    cont.appendChild(g);
+                });
+                accionesOriginales.forEach(n => { if (!n.parentElement) cont.appendChild(n); });
+                mas.classList.add('hidden');
+                cont.appendChild(mas);
+            } else {
+                mas.classList.add('hidden');
+                cont.appendChild(mas);
+            }
+        }
+        function aplicarTemaPanel(tema, guardar) {
+            if (!TEMAS_PANEL_VALIDOS.includes(tema)) tema = 'clasico';
+            document.body.dataset.temaPanel = tema;
+            if (guardar !== false) {
+                try { localStorage.setItem('temaPanel', tema); } catch (e) {}
+            }
+            organizarAccionesPanel(tema);
+            if (typeof window.refrescarTemaConfig === 'function') window.refrescarTemaConfig();
+        }
+        function miniTemaPanel(k) {
+            const base = 'border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;background:#f8fafc;';
+            if (k === 'simple') {
+                return `<div style="${base}"><div style="height:12px;background:#b91c1c"></div><div style="padding:10px;display:grid;gap:6px"><div style="height:10px;width:50%;border-radius:6px;background:#cbd5e1;margin:0 auto"></div><div style="height:34px;border-radius:10px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:34px;border-radius:10px;background:#fff;border:1px solid #e2e8f0"></div></div></div>`;
+            }
+            if (k === 'moderno') {
+                return `<div style="${base}display:flex"><div style="width:34%;background:#0f172a;padding:8px;display:grid;gap:5px"><div style="height:8px;border-radius:4px;background:#334155"></div><div style="height:8px;border-radius:4px;background:#334155"></div><div style="height:8px;border-radius:4px;background:#334155"></div></div><div style="flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px"><div style="height:26px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:26px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:26px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:26px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div></div></div>`;
+            }
+            if (k === 'avanzado') {
+                return `<div style="${base}"><div style="height:14px;background:#111827;display:flex;gap:3px;padding:3px"><div style="width:12%;background:#374151;border-radius:3px"></div><div style="width:12%;background:#374151;border-radius:3px"></div><div style="width:12%;background:#374151;border-radius:3px"></div><div style="width:12%;background:#374151;border-radius:3px"></div></div><div style="padding:6px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px"><div style="height:28px;border-radius:4px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:28px;border-radius:4px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:28px;border-radius:4px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:28px;border-radius:4px;background:#fff;border:1px solid #e2e8f0"></div></div></div>`;
+            }
+            return `<div style="${base}"><div style="height:12px;background:#b91c1c"></div><div style="padding:8px;display:grid;gap:5px"><div style="height:24px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:24px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div></div></div>`;
+        }
+
+        capturarAccionesPanel();
+        aplicarTemaPanel(leerTemaPanel(), false);
+
+        $('btn-mas').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const m = $('menu-mas');
+            const abrir = m.classList.contains('hidden');
+            m.classList.toggle('hidden', !abrir);
+            $('btn-mas').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        });
+        $('menu-mas').addEventListener('click', (e) => {
+            if (e.target.closest('button, a')) {
+                setTimeout(() => {
+                    $('menu-mas').classList.add('hidden');
+                    $('btn-mas').setAttribute('aria-expanded', 'false');
+                }, 150);
+            }
+        });
+        document.addEventListener('click', (e) => {
+            const m = $('menu-mas');
+            if (!m || m.classList.contains('hidden')) return;
+            if (e.target.closest('#menu-mas') || e.target.closest('#btn-mas')) return;
+            m.classList.add('hidden');
+            $('btn-mas').setAttribute('aria-expanded', 'false');
+        });
+
         // ===== Aviso sonoro =====
         let audioCtx = null;
         let sonidoActivo = true;
@@ -574,6 +993,9 @@
                     $('titulo-panel').textContent = '🍕 Pedidos entrantes';
                     $('filtros').classList.remove('hidden');
                 }
+
+                // Reorganizar las acciones según el tema elegido en este equipo.
+                aplicarTemaPanel(temaPanelActual(), false);
 
                 $('login').classList.add('hidden');
                 $('panel').classList.remove('hidden');
@@ -1139,6 +1561,7 @@
                         <span class="font-extrabold truncate max-w-[11rem]">${esc(c.nombre)}</span>
                         <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">${tipoInfo.icono} ${esc(tipoInfo.label.toUpperCase())}${origenTxt}</span>
                         ${p.mesa ? `<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">🪑 Mesa ${esc(p.mesa)}</span>` : ''}
+                        <span class="solo-avanzado hidden text-[11px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700">${p.pago && PAGOS[p.pago] ? PAGOS[p.pago].icono : '💰'} ${esc(gs(p.total))}</span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
@@ -2498,14 +2921,22 @@ const CATS = [['gourmet', '⭐ Gourmet'], ['especial', '✨ Especiales'], ['clas
 const norm = (d) => clone({ negocio: d.negocio || DEF.negocio, tamanos: d.tamanos || DEF.tamanos, sabores: d.sabores || DEF.sabores, extras: d.extras || DEF.extras, envios: d.envios || DEF.envios });
 
 let tab = 'menu', draft = null, clientes = [], edCli = null, bus = '', cierres = null, rango = 30;
+let cfgMas = false;
 let stops = [];
 let hdraft = null;
 let ddraft = null;
 
 // ===== Navegación =====
 const TABS = [['menu', '💲 Menú y precios'], ['clientes', '👥 Clientes'], ['reportes', '📊 Reportes'], ['horario', '🕒 Horario'], ['delivery', '🛵 Delivery'], ['apariencia', '🎨 Apariencia'], ['mesas', '🪑 Mesas'], ['datos', '🧹 Datos']];
+const TABS_PRIM = ['menu', 'horario', 'delivery', 'apariencia'];
+function esTemaCompactoPanel() { return ['simple', 'moderno'].includes(document.body.dataset.temaPanel || 'clasico'); }
 function render() {
-    $('cfg-tabs').innerHTML = TABS.map(([k, t]) => `<button type="button" data-tab="${k}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${tab === k ? 'bg-white text-neutral-900' : 'bg-white/20 text-white hover:bg-white/30'}">${t}</button>`).join('');
+    const compacto = esTemaCompactoPanel();
+    const visibles = (!compacto || cfgMas) ? TABS : TABS.filter(([k]) => TABS_PRIM.includes(k) || k === tab);
+    const btnMas = compacto
+        ? `<button type="button" data-cfg-mas="${cfgMas ? '0' : '1'}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${cfgMas ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-amber-300 text-neutral-900 hover:bg-amber-200'}">${cfgMas ? '− Menos opciones' : '＋ Más opciones'}</button>`
+        : '';
+    $('cfg-tabs').innerHTML = visibles.map(([k, t]) => `<button type="button" data-tab="${k}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${tab === k ? 'bg-white text-neutral-900' : 'bg-white/20 text-white hover:bg-white/30'}">${t}</button>`).join('') + btnMas;
     if (tab === 'menu') vistaMenu();
     else if (tab === 'clientes') vistaClientes();
     else if (tab === 'reportes') vistaReportes();
@@ -2517,13 +2948,25 @@ function render() {
 }
 $('cfg-tabs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tab]');
-    if (!b) return;
-    tab = b.dataset.tab; render();
+    if (b) {
+        tab = b.dataset.tab; render();
+        return;
+    }
+    const m = e.target.closest('[data-cfg-mas]');
+    if (m) { cfgMas = m.dataset.cfgMas === '1'; render(); }
 });
+// Permite que el selector de tema del panel refresque esta pantalla.
+window.refrescarTemaConfig = () => {
+    if (!$('modal-config').classList.contains('hidden')) render();
+};
 
 // ===== 1. Menú y precios =====
 function inp(path, val, num, cls) {
     return `<input data-p="${path}" ${num ? 'data-n="1" type="number" inputmode="numeric" min="0"' : 'type="text" maxlength="60"'} value="${esc(val)}" class="${cls || 'w-full'} bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm">`;
+}
+function plegableCfg(titulo, contenido, abierto) {
+    if (!esTemaCompactoPanel()) return contenido;
+    return `<details class="cfg-plegable" ${abierto ? 'open' : ''}><summary>${titulo}</summary><div class="cfg-plegable-body">${contenido}</div></details>`;
 }
 function vistaMenu() {
     if (!draft) { $('cfg-vista').innerHTML = '<p class="text-center text-neutral-500 py-10">Cargando menú...</p>'; return; }
@@ -2543,12 +2986,17 @@ function vistaMenu() {
             <div class="flex gap-2"><input id="add-${c}" type="text" maxlength="40" placeholder="Nuevo sabor ${n.split(' ')[1].toLowerCase()}" class="flex-1 min-w-0 bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"><button type="button" data-add-sabor="${c}" class="${BTN} bg-neutral-800 text-white">＋</button></div>
         </div>`).join('');
     const ext = draft.extras.map((x, i) => `<div class="flex gap-2 items-center">${inp(`extras.${i}.nombre`, x.nombre, 0, 'flex-1 min-w-0')}${inp(`extras.${i}.precio`, x.precio, 1, 'w-28')}<button type="button" data-del-extra="${i}" class="text-red-600 font-bold px-2">✖</button></div>`).join('');
+    const extInner = `${ext}<button type="button" id="add-extra" class="${BTN} bg-neutral-800 text-white">＋ Agregar extra</button>`;
+    const sabFinal = plegableCfg('Variedades (sabores)', `<div class="space-y-3">${sab}</div>`, false);
+    const extFinal = esTemaCompactoPanel()
+        ? plegableCfg('Extras (papas, bebidas...)', `<div class="${CARD}">${extInner}</div>`, false)
+        : `<div class="${CARD}"><div class="${LBL}">Extras (papas, bebidas...)</div>${extInner}</div>`;
     $('cfg-vista').innerHTML = `
         <p class="text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3">Los cambios se guardan en Firebase: el TPV y la página de pedidos de los clientes los toman al instante.</p>
         <div class="${CARD}"><div class="${LBL}">Negocio</div><label class="text-xs">Nombre que sale en los tickets${inp('negocio', draft.negocio)}</label></div>
         <div class="${LBL} pt-2">Tamaños y precios</div>${tam}
-        <div class="${LBL} pt-2">Variedades (sabores)</div>${sab}
-        <div class="${CARD}"><div class="${LBL}">Extras (papas, bebidas...)</div>${ext}<button type="button" id="add-extra" class="${BTN} bg-neutral-800 text-white">＋ Agregar extra</button></div>
+        ${esTemaCompactoPanel() ? sabFinal : `<div class="${LBL} pt-2">Variedades (sabores)</div>${sab}`}
+        ${extFinal}
         <div class="flex gap-2 sticky bottom-3"><button type="button" id="m-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar menú</button><button type="button" id="m-reset" class="${BTN} bg-white border border-neutral-300 shadow-lg">↩️ Valores originales</button></div>`;
 }
 async function guardarMenu() {
@@ -2752,12 +3200,10 @@ function vistaHorario() {
             <div class="${LBL}">Atajo: el mismo horario todos los días</div>
             <div class="flex items-center gap-2 text-sm flex-wrap"><input id="h-all-a" type="time" value="18:00" class="${TIME_CLS}"><span>a</span><input id="h-all-c" type="time" value="23:30" class="${TIME_CLS}"><button type="button" id="h-all" class="${BTN} bg-neutral-800 text-white">Aplicar a todos</button></div>
         </div>
-        ${filas}
-        <div class="${CARD}">
-            <div class="${LBL}">Mensaje cuando estamos cerrados</div>
-            <input id="h-msg" type="text" maxlength="140" value="${esc(hdraft.mensaje)}" placeholder="Por el momento no estamos tomando pedidos. ¡Te esperamos pronto!" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm">
-            <p class="text-xs text-neutral-500">Debajo del mensaje, la página agrega sola "Abrimos hoy a las 18:00" cuando hay horario automático.</p>
-        </div>
+        ${esTemaCompactoPanel() ? plegableCfg('Horario por día', `<div class="space-y-3">${filas}</div>`, true) : filas}
+        ${esTemaCompactoPanel()
+            ? plegableCfg('Mensaje cuando estamos cerrados', `<div class="${CARD}"><input id="h-msg" type="text" maxlength="140" value="${esc(hdraft.mensaje)}" placeholder="Por el momento no estamos tomando pedidos. ¡Te esperamos pronto!" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"><p class="text-xs text-neutral-500">Debajo del mensaje, la página agrega sola "Abrimos hoy a las 18:00" cuando hay horario automático.</p></div>`, false)
+            : `<div class="${CARD}"><div class="${LBL}">Mensaje cuando estamos cerrados</div><input id="h-msg" type="text" maxlength="140" value="${esc(hdraft.mensaje)}" placeholder="Por el momento no estamos tomando pedidos. ¡Te esperamos pronto!" class="w-full bg-white border border-neutral-300 rounded-lg px-2 py-1.5 text-sm"><p class="text-xs text-neutral-500">Debajo del mensaje, la página agrega sola "Abrimos hoy a las 18:00" cuando hay horario automático.</p></div>`}
         <div class="flex gap-2 sticky bottom-3"><button type="button" id="h-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar horario</button></div>`;
     pintaEstadoHorario();
 }
@@ -2855,7 +3301,20 @@ function miniTema(c) {
 }
 function vistaApariencia() {
     const actual = (localCfg && localCfg.tema) || 'clasico';
+    const actualPanel = temaPanelActual();
+    const temasPanelHtml = TEMAS_PANEL.map(([k, nombre, desc]) => `
+        <div class="rounded-2xl border-2 p-3 space-y-2 ${actualPanel === k ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'}">
+            ${miniTemaPanel(k)}
+            <div class="flex items-center justify-between gap-2"><div class="font-bold">${nombre}</div>${actualPanel === k ? '<span class="text-[11px] font-extrabold text-green-700">✅ EN USO</span>' : ''}</div>
+            <p class="text-xs text-neutral-500">${desc}</p>
+            ${actualPanel === k ? '' : `<button type="button" data-tema-panel-opt="${k}" class="w-full text-xs font-bold px-3 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white">Usar este</button>`}
+        </div>`).join('');
     $('cfg-vista').innerHTML = `
+        <div class="${CARD}">
+            <div class="font-bold">🖥️ Tema del panel (TPV)</div>
+            <p class="text-xs text-neutral-500">Cambia cómo se ve este panel en este equipo. Se guarda automáticamente y no afecta la página de pedidos de los clientes.</p>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${temasPanelHtml}</div>
+        </div>
         <div class="${CARD}">
             <div class="font-bold">🎨 Tema de la página de pedidos</div>
             <p class="text-xs text-neutral-500">Es lo que ven tus clientes. Se cambia al instante, sin volver a subir archivos. Podés usar <b>Probar</b> para verlo en otra pestaña antes de activarlo: ahí solo lo ves vos.</p>
@@ -2871,13 +3330,17 @@ function vistaApariencia() {
                     </div>
                 </div>`).join('')}
             </div>
-        </div>
-        <div class="${CARD}">
-            <div class="font-bold">🖥️ Tema del panel de control</div>
-            <p class="text-xs text-neutral-500">Próxima pieza: el selector de tema para este panel (más cómodo en PC y celular) va a aparecer acá.</p>
         </div>`;
 }
 $('cfg-vista').addEventListener('click', async (e) => {
+    const bp = e.target.closest('[data-tema-panel-opt]');
+    if (bp) {
+        const t = bp.dataset.temaPanelOpt;
+        const nombre = (TEMAS_PANEL.find(x => x[0] === t) || [])[1] || t;
+        aplicarTemaPanel(t, true);
+        toast('🖥️ Tema del panel: ' + nombre);
+        return;
+    }
     const b = e.target.closest('[data-tema-cli]');
     if (!b) return;
     const t = b.dataset.temaCli;
@@ -2971,6 +3434,7 @@ $('cfg-vista').addEventListener('click', (e) => {
         function abrirConfig() {
             if (esDelivery) return;
             ddraft = null;
+            cfgMas = false;
             $('modal-config').classList.remove('hidden');
             stops.forEach(f => f()); stops = [];
             stops.push(onSnapshot(doc(db, 'config', 'menu'), (s) => { if (!draft) { draft = norm(s.exists() ? s.data() : DEF); if (tab === 'menu') render(); } }, () => {}));
@@ -2984,6 +3448,7 @@ $('cfg-vista').addEventListener('click', (e) => {
             $('modal-config').classList.add('hidden');
             stops.forEach(f => f()); stops = [];
             draft = null; cierres = null; edCli = null; hdraft = null; ddraft = null;
+            cfgMas = false;
         }
         $('btn-config').addEventListener('click', abrirConfig);
         $('cfg-cerrar').addEventListener('click', cerrarConfig);
