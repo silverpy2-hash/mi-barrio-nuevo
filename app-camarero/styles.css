@@ -1,0 +1,163 @@
+/* ==========================================================================
+   MI BARRIO — App Camarero · estilos móviles
+   ========================================================================== */
+:root {
+  --rojo: #b91c1c;
+  --rojo-osc: #991b1b;
+  --fondo: #f5f5f4;
+  --tarjeta: #ffffff;
+  --texto: #1c1917;
+  --suave: #78716c;
+  --borde: #e7e5e4;
+  --verde: #15803d;
+  --ambar: #b45309;
+  --azul: #1d4ed8;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { background: var(--fondo); }
+body {
+  margin: 0;
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.hidden { display: none !important; }
+.vista { min-height: 100vh; }
+
+/* ---------- Acceso ---------- */
+#vista-login {
+  display: grid; place-items: center; padding: 24px;
+  background: linear-gradient(160deg, #7f1d1d, #b91c1c 55%, #dc2626);
+}
+.login-caja {
+  width: 100%; max-width: 400px; background: var(--tarjeta);
+  border-radius: 24px; padding: 28px 22px; box-shadow: 0 18px 50px rgba(0,0,0,.3);
+}
+.marca { text-align: center; margin-bottom: 22px; }
+.marca-icono { font-size: 52px; }
+.marca h1 { margin: 4px 0 0; font-size: 28px; letter-spacing: -.03em; }
+.marca p { margin: 2px 0 0; color: var(--rojo); font-weight: 800; text-transform: uppercase; letter-spacing: .14em; font-size: 12px; }
+.login-form { display: grid; gap: 12px; }
+.login-form label { display: grid; gap: 5px; font-size: 13px; font-weight: 700; color: #57534e; }
+.login-form input, textarea {
+  width: 100%; padding: 14px; border: 1px solid var(--borde); border-radius: 14px;
+  font-size: 16px; background: #fff; color: var(--texto);
+}
+.login-form input:focus, textarea:focus { outline: 2px solid #fca5a5; border-color: var(--rojo); }
+.login-nota { text-align: center; color: var(--suave); font-size: 12px; line-height: 1.5; margin: 18px 0 0; }
+
+/* ---------- Cabecera ---------- */
+.cabecera {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--rojo); color: #fff;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.15);
+}
+.cabecera h1 { font-size: 20px; margin: 0; font-weight: 900; }
+.subtitulo { margin: 2px 0 0; font-size: 12px; opacity: .9; }
+
+/* ---------- Botones ---------- */
+.btn {
+  border: 0; border-radius: 14px; padding: 12px 16px;
+  font-size: 14px; font-weight: 800; cursor: pointer; color: var(--texto);
+  background: #e7e5e4; touch-action: manipulation;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn-principal { background: var(--rojo); color: #fff; }
+.btn-principal:hover { background: var(--rojo-osc); }
+.btn-grande { width: 100%; padding: 17px; font-size: 17px; border-radius: 16px; }
+.btn-chico { padding: 11px 14px; font-size: 13px; }
+.btn-salir, .btn-volver { background: rgba(255,255,255,.2); color: #fff; padding: 9px 13px; }
+
+/* ---------- Avisos ---------- */
+.aviso-red {
+  margin: 12px 16px 0; padding: 11px 13px; border-radius: 12px;
+  background: #fef3c7; color: #92400e; font-size: 13px; font-weight: 700;
+}
+.error {
+  margin: 0 0 12px; padding: 11px 13px; border-radius: 12px;
+  background: #fee2e2; color: #991b1b; font-size: 13px; font-weight: 700;
+}
+.pista { color: var(--suave); font-size: 12px; line-height: 1.4; margin: 8px 0 0; }
+.centro { text-align: center; }
+
+/* ---------- Mesas ---------- */
+.grid-mesas {
+  display: grid; gap: 12px; padding: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.mesa {
+  border-radius: 18px; padding: 14px; border: 2px solid var(--borde);
+  background: var(--tarjeta); cursor: pointer; min-height: 118px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.mesa:active { transform: scale(.98); }
+.mesa-numero { font-size: 26px; font-weight: 900; line-height: 1; }
+.mesa-estado { font-size: 11px; font-weight: 800; padding: 5px 8px; border-radius: 999px; display: inline-block; width: fit-content; }
+.mesa-total { font-weight: 900; font-size: 16px; margin-top: 6px; }
+.mesa.libre { background: #f0fdf4; border-color: #86efac; }
+.mesa.libre .mesa-estado { background: #dcfce7; color: var(--verde); }
+.mesa.ocupada { background: #fffbeb; border-color: #fcd34d; }
+.mesa.ocupada .mesa-estado { background: #fef3c7; color: var(--ambar); }
+.mesa.pendiente { background: #fef2f2; border-color: #fca5a5; }
+.mesa.pendiente .mesa-estado { background: #fee2e2; color: var(--rojo); }
+.mesa-solicitud { font-size: 11px; font-weight: 800; color: var(--azul); margin-top: 4px; }
+
+/* ---------- Contenido ---------- */
+.contenido { padding: 14px; display: grid; gap: 12px; max-width: 620px; margin: 0 auto; }
+.tarjeta {
+  background: var(--tarjeta); border: 1px solid var(--borde);
+  border-radius: 18px; padding: 15px;
+}
+.tarjeta h2 { font-size: 14px; margin: 0 0 12px; font-weight: 900; }
+.opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.opcion {
+  border: 2px solid var(--borde); background: #fff; border-radius: 12px;
+  padding: 10px 14px; font-weight: 800; font-size: 14px; cursor: pointer;
+}
+.opcion.activa { border-color: var(--rojo); background: #fef2f2; color: var(--rojo-osc); }
+.categorias { display: grid; gap: 12px; }
+.categoria-titulo { font-size: 12px; font-weight: 900; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.sabores { display: flex; flex-wrap: wrap; gap: 7px; }
+.sabor {
+  border: 1px solid var(--borde); background: #fafaf9; border-radius: 999px;
+  padding: 8px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.sabor.activo { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+.fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.elegidos { font-size: 12px; color: var(--suave); flex: 1; min-width: 120px; }
+.interruptor { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+.interruptor input { width: 22px; height: 22px; accent-color: var(--rojo); }
+.extras { display: grid; gap: 8px; }
+.extra { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f5f5f4; }
+.extra:last-child { border-bottom: 0; }
+.extra-nombre { font-size: 14px; font-weight: 700; }
+.extra-precio { font-size: 12px; color: var(--suave); }
+.contador { display: flex; align-items: center; gap: 8px; }
+.contador button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--borde); background: #fff; font-size: 18px; font-weight: 900; }
+.contador span { min-width: 22px; text-align: center; font-weight: 900; }
+.resumen { background: #fff; }
+.resumen > div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+.resumen .total { border-top: 1px solid var(--borde); margin-top: 8px; padding-top: 10px; font-size: 18px; font-weight: 900; }
+.mini-lista { display: grid; gap: 7px; margin: 10px 0; }
+.mini-item { background: #fafaf9; border-radius: 11px; padding: 9px 11px; font-size: 13px; }
+.mini-item strong { display: block; }
+.mini-item .pista { margin: 2px 0 0; }
+.total-mesa { text-align: center; background: var(--rojo); color: #fff; border: 0; }
+.total-mesa .pista { color: rgba(255,255,255,.8); margin: 0; }
+.total-mesa .monto { font-size: 34px; font-weight: 900; margin-top: 4px; }
+.estado-envio { margin-top: 10px; padding: 11px; border-radius: 12px; font-size: 13px; font-weight: 800; text-align: center; }
+.estado-envio.pendiente { background: #fef3c7; color: #92400e; }
+.estado-envio.confirmada { background: #dcfce7; color: var(--verde); }
+.estado-envio.rechazada { background: #fee2e2; color: #991b1b; }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: #1c1917; color: #fff; padding: 13px 18px; border-radius: 14px;
+  font-size: 14px; font-weight: 700; z-index: 20; max-width: 90vw; text-align: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,.3);
+}
+@media (min-width: 700px) { .grid-mesas { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } }

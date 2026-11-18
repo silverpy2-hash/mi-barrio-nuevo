@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b91c1c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mi Barrio · Camarero</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ===================== Acceso ===================== -->
+    <section id="vista-login" class="vista">
+      <div class="login-caja">
+        <div class="marca">
+          <div class="marca-icono">🍕</div>
+          <h1>Mi Barrio</h1>
+          <p>App Camarero</p>
+        </div>
+        <form id="form-login" class="login-form">
+          <label>Correo
+            <input id="login-email" type="email" autocomplete="username" inputmode="email" required placeholder="camarero@mibarrio.com">
+          </label>
+          <label>Contraseña
+            <input id="login-pass" type="password" autocomplete="current-password" required placeholder="Contraseña">
+          </label>
+          <p id="login-error" class="error hidden"></p>
+          <button id="login-enviar" type="submit" class="btn btn-principal">Ingresar</button>
+        </form>
+        <p class="login-nota">Solo usuarios con rol <strong>camarero</strong> activo.<br>La autorización se valida en Firestore, no por el correo.</p>
+      </div>
+    </section>
+
+    <!-- ===================== Mesas ===================== -->
+    <section id="vista-mesas" class="vista hidden">
+      <header class="cabecera">
+        <div>
+          <h1>🪑 Mesas</h1>
+          <p id="mesas-resumen" class="subtitulo">Cargando…</p>
+        </div>
+        <button id="btn-salir" type="button" class="btn btn-salir">Salir</button>
+      </header>
+      <div id="aviso-red" class="aviso-red hidden">⚠️ Sin conexión. Podés armar el pedido, pero todavía no se envió.</div>
+      <main id="mesas-grid" class="grid-mesas"></main>
+    </section>
+
+    <!-- ===================== Tomar pedido ===================== -->
+    <section id="vista-pedido" class="vista hidden">
+      <header class="cabecera">
+        <div>
+          <h1 id="pedido-titulo">Nuevo pedido</h1>
+          <p id="pedido-subtitulo" class="subtitulo">Mesa</p>
+        </div>
+        <button type="button" class="btn btn-volver" data-volver="mesas">‹ Mesas</button>
+      </header>
+      <main class="contenido">
+        <div id="pedido-error" class="error hidden"></div>
+
+        <div class="tarjeta">
+          <h2>1️⃣ Tamaño</h2>
+          <div id="pedido-tamanos" class="opciones"></div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>2️⃣ Sabores <span id="sabores-limite" class="pista"></span></h2>
+          <div id="pedido-sabores" class="categorias"></div>
+          <div class="fila">
+            <div id="pedido-elegidos" class="elegidos">Sin sabores elegidos</div>
+            <button id="btn-agregar-pizza" type="button" class="btn btn-principal btn-chico">＋ Agregar pizza</button>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>3️⃣ Borde relleno</h2>
+          <label class="interruptor"><input id="pedido-borde" type="checkbox"> <span>🧀 Agregar borde relleno</span></label>
+        </div>
+
+        <div class="tarjeta">
+          <h2>4️⃣ Extras y bebidas</h2>
+          <div id="pedido-extras" class="extras"></div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>5️⃣ Notas para cocina</h2>
+          <textarea id="pedido-notas" rows="2" maxlength="300" placeholder="Ej. sin cebolla, cortar en 8…"></textarea>
+        </div>
+
+        <div class="tarjeta resumen">
+          <div><span>Pizzas</span><strong id="resumen-pizzas">0</strong></div>
+          <div><span>Extras</span><strong id="resumen-extras">0</strong></div>
+          <div class="total"><span>Subtotal estimado</span><strong id="resumen-total">0 Gs</strong></div>
+          <p class="pista">El TPV recalcula los precios con el menú oficial antes de confirmar.</p>
+          <div id="pedido-pizzas-lista" class="mini-lista"></div>
+          <button id="btn-enviar" type="button" class="btn btn-principal btn-grande">📤 Enviar solicitud</button>
+          <p id="pedido-estado" class="estado-envio hidden"></p>
+        </div>
+      </main>
+    </section>
+
+    <!-- ===================== Cuenta de mesa ===================== -->
+    <section id="vista-cuenta" class="vista hidden">
+      <header class="cabecera">
+        <div>
+          <h1 id="cuenta-titulo">Mesa</h1>
+          <p id="cuenta-estado" class="subtitulo">Cargando…</p>
+        </div>
+        <button type="button" class="btn btn-volver" data-volver="mesas">‹ Mesas</button>
+      </header>
+      <main class="contenido">
+        <div class="tarjeta total-mesa">
+          <div class="pista">Total acumulado</div>
+          <div id="cuenta-total" class="monto">0 Gs</div>
+        </div>
+        <div class="tarjeta">
+          <h2>🧾 Consumo confirmado</h2>
+          <div id="cuenta-consumo" class="mini-lista"></div>
+        </div>
+        <div class="tarjeta">
+          <h2>👨‍🍳 Comandas</h2>
+          <div id="cuenta-comandas" class="mini-lista"></div>
+        </div>
+        <div class="tarjeta">
+          <h2>📥 Solicitudes</h2>
+          <div id="cuenta-solicitudes" class="mini-lista"></div>
+          <p class="pista">"Enviada" = esperando al TPV. "Confirmada" = ya está en la cuenta.</p>
+        </div>
+        <button id="btn-agregar-productos" type="button" class="btn btn-principal btn-grande">➕ Agregar productos</button>
+        <p class="pista centro">Cobrar y aplicar descuentos se hace solo desde el TPV.</p>
+      </main>
+    </section>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

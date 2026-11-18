@@ -1,0 +1,269 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ======================================================================
+       MI BARRIO — PROPUESTA DE REGLAS PARA LA ETAPA 1 (CUENTAS POR MESA)
+       ----------------------------------------------------------------------
+       ESTADO: PROPUESTA. NO PUBLICAR TODAVÍA.
+       Base: reglas_firestore (2).txt (las vigentes en el repositorio).
+
+       Qué agrega respecto de las reglas actuales:
+         1. Rol explícito de camarero en usuarios/{uid} (rol + activo).
+            NO se usa email.includes('camarero').
+         2. config/mesas legible por camareros (hoy solo admin); el TPV
+            necesita que el camarero conozca las mesas habilitadas.
+         3. pedidos: el camarero puede crear/ampliar SOLO pedidos locales
+            de mesa, sin pagado/pago/descuento/numero, y solo tocando
+            pizzas, extras, total y auditoría en las ampliaciones.
+         4. Colección nueva cuentas_mesa/{mesa}: puntero y candado de la
+            cuenta abierta de cada mesa.
+         5. Colección nueva comandas/{operacionId}: una comanda por envío,
+            con id de operación como id de documento (idempotencia).
+
+       Qué NO cambia:
+         - La creación anónima de pedidos desde el QR/app cliente sigue
+           igual (mismos campos que hoy: sin tipo ni mesa).
+         - El admin conserva sus permisos actuales sobre pedidos, cierres,
+           gastos, config, clientes.
+         - Delivery sigue identificándose por email (App Repartidor).
+
+       LIMITACIÓN CONOCIDA (ver informe ETAPA 1):
+         Estas reglas validan forma, campos permitidos, estado y límites,
+         pero NO pueden recalcular precios contra config/menu. Un cliente
+         autenticado como camarero que llame directo a Firestore podría
+         escribir un total "coherente en forma" pero no con el menú.
+         La validación fuerte de precios requiere backend (Cloud Functions
+         o API Vercel) y queda para una etapa posterior con autorización.
+       ====================================================================== */
+
+    // ------------------------------------------------------------------
+    // Roles
+    // ------------------------------------------------------------------
+
+    // Administrador principal
+    function esAdmin() {
+      return request.auth != null && request.auth.uid == 'e8czOfuF82VqPwNUZjMpOSMHUQo2';
+    }
+
+    // Delivery (se mantiene igual para no romper la App Repartidor)
+    function esDelivery() {
+      return request.auth != null && request.auth.token.email.matches('.*delivery.*');
+    }
+
+    // Camarero: rol explícito en usuarios/{uid}, activo.
+    // Se usa get() sobre un único documento por evaluación.
+    function esCamarero() {
+      return request.auth != null
+          && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'camarero'
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.activo == true;
+    }
+
+    function esPersonal() {
+      return esAdmin() || esCamarero();
+    }
+
+    // Cambios de estado permitidos en un pedido (solo hacia adelante o cancelar)
+    function estadoPermitido(de, a) {
+      return (de == 'nuevo'       && a in ['preparacion', 'entregado', 'cancelado'])
+          || (de == 'preparacion' && a in ['en_camino', 'entregado', 'cancelado'])
+          || (de == 'en_camino'   && a in ['entregado', 'cancelado'])
+          || (de == 'entregado'   && a in ['cancelado', 'archivado'])
+          || (de == 'cancelado'   && a == 'archivado');
+    }
+
+    // Límites de forma compartidos por pedidos y comandas
+    function limitesPedido(d) {
+      return d.total is number
+          && d.total >= 0
+          && d.total < 5000000
+          && d.pizzas is list
+          && d.pizzas.size() <= 30
+          && d.extras is list
+          && d.extras.size() <= 10;
+    }
+
+    // Campos que el camarero puede escribir en un pedido de mesa.
+    function camposPedidoCamarero() {
+      return ['local', 'estado', 'creado', 'tipo', 'mesa', 'origen', 'pagado',
+              'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'cuentaId',
+              'actualizadoPor', 'actualizadoEn', 'ultimaOperacionId'];
+    }
+
+    // Campos que el camarero puede modificar al ampliar una cuenta.
+    function camposAmpliacionCamarero() {
+      return ['pizzas', 'extras', 'total', 'actualizadoPor', 'actualizadoEn',
+              'ultimaOperacionId'];
+    }
+
+    // ------------------------------------------------------------------
+    // Pedidos
+    // ------------------------------------------------------------------
+    match /pedidos/{id} {
+
+      // 1) Cualquier cliente puede CREAR un pedido (QR / app cliente).
+      //    Se mantiene igual que las reglas vigentes para no romper el flujo.
+      allow create: if request.resource.data.keys().hasOnly(
+                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm'])
+                    && (!('pago' in request.resource.data) || request.resource.data.pago in ['efectivo', 'transferencia'])
+                    && request.resource.data.estado == 'nuevo'
+                    && request.resource.data.creado == request.time
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.total < 5000000
+                    && request.resource.data.pizzas is list
+                    && request.resource.data.pizzas.size() <= 30
+                    && request.resource.data.extras is list
+                    && request.resource.data.extras.size() <= 10;
+
+      // 2) El Administrador carga pedidos desde el panel (retiro, local, teléfono).
+      allow create: if esAdmin()
+                    && request.resource.data.estado in ['nuevo', 'preparacion', 'entregado']
+                    && request.resource.data.creado == request.time
+                    && request.resource.data.total is number
+                    && request.resource.data.total >= 0
+                    && request.resource.data.total < 5000000
+                    && request.resource.data.pizzas is list
+                    && request.resource.data.pizzas.size() <= 30
+                    && request.resource.data.extras is list
+                    && request.resource.data.extras.size() <= 10;
+
+      // 3) El TPV (administrador) confirma solicitudes del camarero. Es el
+      //    componente de confianza: valida contra el menú y recalcula precios
+      //    en cuentas-mesa/core.js antes de escribir. Misma forma que el
+      //    camarero, pero con request.auth = admin.
+      allow create: if esAdmin()
+                    && request.resource.data.origen == 'camarero'
+                    && request.resource.data.keys().hasOnly(camposPedidoCamarero())
+                    && request.resource.data.estado == 'nuevo'
+                    && request.resource.data.pagado == false
+                    && limitesPedido(request.resource.data)
+                    && existsAfter(/databases/$(database)/documents/cuentas_mesa/$(string(request.resource.data.mesa)))
+                    && getAfter(/databases/$(database)/documents/cuentas_mesa/$(string(request.resource.data.mesa))).data.pedidoId == id
+                    && existsAfter(/databases/$(database)/documents/comandas/$(request.resource.data.ultimaOperacionId));
+
+      // LECTURA: administrador, delivery y camareros (el TPV ya lee pedidos).
+      allow read: if esAdmin() || esDelivery() || esCamarero();
+
+      // MODIFICAR (admin): el estado solo puede avanzar o cancelarse.
+      allow update: if esAdmin()
+                    && (request.resource.data.estado == resource.data.estado
+                        || estadoPermitido(resource.data.estado, request.resource.data.estado));
+
+      // BORRAR: solo el administrador.
+      allow delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Cuentas por mesa (nueva)
+    // ------------------------------------------------------------------
+    match /cuentas_mesa/{mesa} {
+      // El personal lee el estado de las mesas; el cliente no.
+      allow read: if esPersonal();
+
+      // El TPV (admin) cierra la cuenta al cobrar y también puede abrirla o
+      // ampliarla al confirmar una solicitud o agregar productos desde el panel.
+      allow create, update: if esAdmin();
+
+      // El cierre de una cuenta lo decide el TPV (cobro) o el admin.
+      allow delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Comandas (nueva): una por envío a cocina/preparación
+    // ------------------------------------------------------------------
+    match /comandas/{operacionId} {
+      allow read: if esPersonal();
+
+      // El TPV (admin) crea la comanda al confirmar una solicitud y ajusta
+      // impresión/reimpresión. El camarero nunca escribe comandas directamente.
+      allow create, update, delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Solicitudes de mesa (nueva): cola que envia el camarero y que el
+    // TPV administrador procesa (confirma/rechaza). Sin backend: el TPV es el
+    // componente de confianza. El camarero NO puede actualizar/confirmar sus
+    // propias solicitudes; solo el admin (TPV) las procesa.
+    // ------------------------------------------------------------------
+    match /solicitudes_mesa/{operacionId} {
+      allow read: if esPersonal();
+
+      allow create: if (esAdmin() || esCamarero())
+            && request.resource.data.keys().hasOnly([
+                 'operacionId', 'mesa', 'origen', 'actorUid', 'actorEmail', 'actorNombre',
+                 'items', 'estado', 'creado'])
+            && request.resource.data.operacionId == operacionId
+            && request.resource.data.origen in ['camarero', 'panel']
+            && request.resource.data.mesa is int
+            && request.resource.data.mesa > 0
+            && request.resource.data.mesa < 10000
+            && request.resource.data.estado == 'pendiente'
+            && request.resource.data.creado == request.time
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.items is map
+            && request.resource.data.items.pizzas is list
+            && request.resource.data.items.pizzas.size() <= 30
+            && request.resource.data.items.extras is list
+            && request.resource.data.items.extras.size() <= 10;
+
+      allow update: if esAdmin();
+      allow delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Usuarios / roles (nueva)
+    // ------------------------------------------------------------------
+    match /usuarios/{uid} {
+      // Cada usuario lee su propio perfil (rol, activo, nombre).
+      allow read: if esAdmin() || (request.auth != null && request.auth.uid == uid);
+
+      // Los roles SOLO los administra el admin. El camarero no puede
+      // cambiarse el rol ni activarse a sí mismo.
+      allow create, update, delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Cierres de caja
+    // ------------------------------------------------------------------
+    match /cierres/{id} {
+      allow read, write: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Gastos del día
+    // ------------------------------------------------------------------
+    match /gastos/{id} {
+      allow read, write: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Configuración
+    // ------------------------------------------------------------------
+    match /config/{doc} {
+      // local y menu: públicos (los lee la página de pedidos).
+      // mesas: ahora también lo lee el camarero (lista de mesas habilitadas).
+      // Resto de config: solo admin.
+      allow read: if doc == 'local'
+                  || doc == 'menu'
+                  || esAdmin()
+                  || (doc == 'mesas' && esCamarero());
+      allow write: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Clientes frecuentes
+    // ------------------------------------------------------------------
+    match /clientes/{id} {
+      allow read, write: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // Todo lo demás, cerrado.
+    // ------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
