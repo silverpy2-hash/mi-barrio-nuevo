@@ -12,6 +12,15 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email.matches('.*delivery.*');
     }
 
+    // Camarero: el rol NO se deduce del email, se lee de usuarios/{uid}.
+    // Solo se considera camarero si el documento existe, rol == 'camarero' y activo == true.
+    function esCamarero() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'camarero'
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.activo == true;
+    }
+
     // Cambios de estado permitidos en un pedido (solo hacia adelante o cancelar)
     function estadoPermitido(de, a) {
       return (de == 'nuevo'       && a in ['preparacion', 'entregado', 'cancelado'])
@@ -48,8 +57,10 @@ service cloud.firestore {
                     && request.resource.data.extras is list
                     && request.resource.data.extras.size() <= 10;
 
-      // LECTURA: Permitida tanto para el Administrador como para el Delivery.
-      allow read: if esAdmin() || esDelivery();
+      // LECTURA: Administrador y Delivery como siempre.
+      // El camarero SOLO puede leer pedidos locales (resource.data.tipo == 'local'),
+      // por eso su consulta en el TPV debe filtrar por tipo == 'local'.
+      allow read: if esAdmin() || esDelivery() || (esCamarero() && resource.data.tipo == 'local');
 
       // MODIFICAR: solo el administrador. El estado solo puede avanzar o cancelarse (no hay vuelta atrás).
       // 'archivado' lo usa el cierre de caja (desde entregado o cancelado).
@@ -75,13 +86,51 @@ service cloud.firestore {
     // Estado del local (abierto/cerrado, horarios y mensaje): lo lee cualquiera (la página de pedidos); solo el administrador lo escribe.
     // El menú (precios, sabores, extras) también lo lee la página de pedidos; el resto de config es solo del administrador.
     match /config/{doc} {
-      allow read: if doc == 'local' || doc == 'menu' || esAdmin();
+      // 'mesas' también es lectura pública: el TPV necesita listarlas y el camarero usarlas.
+      allow read: if doc == 'local' || doc == 'menu' || doc == 'mesas' || esAdmin();
       allow write: if esAdmin();
     }
 
     // Memoria de clientes frecuentes (solo administrador)
     match /clientes/{id} {
       allow read, write: if esAdmin();
+    }
+
+    // Perfil de usuarios: cada usuario lee su propio documento; solo el admin lo escribe.
+    match /usuarios/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || esAdmin());
+      allow write: if esAdmin();
+    }
+
+    // Cola sencilla de pedidos de mesa. El camarero propone items SIN precios;
+    // el TPV administrador recalcula importes con config/menu y confirma o rechaza.
+    match /solicitudes_mesa/{id} {
+      // El camarero ve solo lo que él envió; el administrador ve toda la cola.
+      allow read: if esAdmin() || (esCamarero() && resource.data.solicitadoPor == request.auth.uid);
+
+      allow create: if esCamarero()
+                    && request.resource.data.keys().hasOnly([
+                         'local', 'estado', 'tipo', 'mesa', 'operacion', 'pedidoId',
+                         'pizzas', 'extras', 'cliente', 'notas',
+                         'solicitadoPor', 'solicitadoEmail', 'creado'])
+                    && request.resource.data.local == 'mi-barrio'
+                    && request.resource.data.estado == 'pendiente'
+                    && request.resource.data.tipo == 'local'
+                    && request.resource.data.operacion in ['crear', 'agregar']
+                    && request.resource.data.mesa is number
+                    && request.resource.data.mesa > 0
+                    && exists(/databases/$(database)/documents/config/mesas)
+                    && request.resource.data.mesa in get(/databases/$(database)/documents/config/mesas).data.mesas
+                    && request.resource.data.pizzas is list
+                    && request.resource.data.pizzas.size() <= 20
+                    && request.resource.data.extras is list
+                    && request.resource.data.extras.size() <= 20
+                    && request.resource.data.solicitadoPor == request.auth.uid
+                    && request.resource.data.creado == request.time;
+
+      // Solo el TPV administrador confirma o rechaza (nunca el camarero).
+      allow update: if esAdmin();
+      allow delete: if esAdmin();
     }
 
     // Todo lo demás, cerrado.

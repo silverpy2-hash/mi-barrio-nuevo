@@ -1045,6 +1045,9 @@
                 🔕 Tocá acá para activar el aviso sonoro de pedidos nuevos
             </button>
             <p id="aviso-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></p>
+            <!-- Solo camarero: resumen de consumo por mesa y estado de sus solicitudes -->
+            <div id="resumen-mesas" class="hidden grid gap-2 sm:grid-cols-2 lg:grid-cols-4"></div>
+            <div id="estado-solicitudes" class="hidden text-sm font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3"></div>
             <div id="lista"></div>
         </main>
     </section>
@@ -1089,7 +1092,7 @@
                     <div id="nuevo-extras" class="space-y-2"></div>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
+                <div id="nuevo-pago-box" class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
                     <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Pago</div>
                     <div id="nuevo-pago" class="flex flex-wrap gap-2"></div>
                     <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500 pt-1">Cómo entra</div>
@@ -1102,7 +1105,7 @@
                     <div id="nuevo-envio" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
+                <div id="nuevo-descuento-box" class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
                     <div class="flex items-center justify-between gap-3">
                         <label for="nuevo-descuento" class="text-sm font-semibold">Descuento (Gs)</label>
                         <input id="nuevo-descuento" type="number" inputmode="numeric" min="0" placeholder="0" class="w-32 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm text-right">
@@ -1219,7 +1222,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-17 #7 · descuentos y Pedido destacado';
+        const VERSION_PANEL = '2026-11-18 #8 · rol camarero en TPV';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -1263,6 +1266,12 @@
         let filtro = 'todos';
         let panelAbierto = false;
         let esDelivery = false; 
+        let esCamarero = false;
+        let misSolicitudes = [];
+        let cancelarSolicitudes = null;
+        let cancelarSolicitudesAdmin = null;
+        const solicitudesEnProceso = new Set();
+        const adminActivo = () => panelAbierto && !esDelivery && !esCamarero;
 
         // ===== Utilidades =====
         function esc(t) {
@@ -1567,24 +1576,43 @@
         });
         $('btn-salir').addEventListener('click', () => signOut(auth));
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 panelAbierto = true;
-                const emailUsuario = user.email.toLowerCase();
+                const emailUsuario = (user.email || '').toLowerCase();
                 esDelivery = emailUsuario.includes('delivery');
-                $('btn-caja').classList.toggle('hidden', esDelivery);
+                esCamarero = false;
+
+                // El rol NO se infiere del email: se lee de usuarios/{uid}.
+                if (!esDelivery) {
+                    try {
+                        const perfil = await getDoc(doc(db, 'usuarios', user.uid));
+                        const dp = perfil.exists() ? (perfil.data() || {}) : {};
+                        esCamarero = dp.rol === 'camarero' && dp.activo === true;
+                        console.info('[TPV] rol cargado:', esCamarero ? 'camarero' : 'administrador');
+                    } catch (e) {
+                        console.warn('[TPV] No se pudo leer usuarios/{uid}:', e.code || e.message);
+                    }
+                }
+
+                const oculto = esDelivery || esCamarero;
+                $('btn-caja').classList.toggle('hidden', oculto);
                 $('btn-nuevo').classList.toggle('hidden', esDelivery);
-                $('btn-rapida').classList.toggle('hidden', esDelivery);
-                $('btn-cocina').classList.toggle('hidden', esDelivery);
-                $('btn-config').classList.toggle('hidden', esDelivery);
-                $('btn-local').classList.toggle('hidden', esDelivery);
-                $('btn-autoprint').classList.toggle('hidden', esDelivery);
-                $('btn-agotados').classList.toggle('hidden', esDelivery);
+                $('btn-rapida').classList.toggle('hidden', oculto);
+                $('btn-cocina').classList.toggle('hidden', oculto);
+                $('btn-config').classList.toggle('hidden', oculto);
+                $('btn-local').classList.toggle('hidden', oculto);
+                $('btn-autoprint').classList.toggle('hidden', oculto);
+                $('btn-agotados').classList.toggle('hidden', oculto);
 
                 if (esDelivery) {
                     $('header-panel').className = 'bg-neutral-800 text-white shadow sticky top-0 z-20';
                     $('titulo-panel').textContent = '🛵 Pedidos En Camino (Delivery)';
                     $('filtros').classList.add('hidden'); // Ocultar filtros para el repartidor
+                } else if (esCamarero) {
+                    $('header-panel').className = 'bg-neutral-900 text-white shadow sticky top-0 z-20';
+                    $('titulo-panel').textContent = '🍽️ Mesas y pedidos del local';
+                    $('filtros').classList.add('hidden'); // El camarero solo ve pedidos locales
                 } else {
                     $('header-panel').className = 'bg-red-700 text-white shadow sticky top-0 z-20';
                     $('titulo-panel').textContent = '🍕 Pedidos entrantes';
@@ -1593,21 +1621,41 @@
 
                 // Reorganizar las acciones según el tema elegido en este equipo.
                 aplicarTemaPanel(temaPanelActual(), false);
+                if (esCamarero) {
+                    // Salir y Sonido tienen que quedar visibles aunque el tema los mande al menú "Más".
+                    ['btn-sonido', 'btn-salir'].forEach(id => {
+                        const b = $(id);
+                        if (b) { $('acciones-panel').appendChild(b); b.classList.remove('hidden'); }
+                    });
+                    $('btn-mas').classList.add('hidden');
+                    $('menu-mas').classList.add('hidden');
+                }
+
+                $('resumen-mesas').classList.toggle('hidden', !esCamarero);
+                $('estado-solicitudes').classList.toggle('hidden', !esCamarero);
 
                 $('login').classList.add('hidden');
                 $('panel').classList.remove('hidden');
                 actualizarAvisoSonido();
                 mantenerPantalla();
                 escucharPedidos();
-                if (!esDelivery) { escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); escucharMesas(); pintarAutoprint(); }
+                if (!esDelivery && !esCamarero) { escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); escucharMesas(); pintarAutoprint(); escucharSolicitudesAdmin(); }
+                if (esCamarero) { escucharMenu(); escucharMesas(); escucharMisSolicitudes(); pintarResumenMesas(); }
             } else {
                 panelAbierto = false;
                 esDelivery = false;
+                esCamarero = false;
+                misSolicitudes = [];
                 if (cancelarEscucha) { cancelarEscucha(); cancelarEscucha = null; }
                 if (cancelarGastos) { cancelarGastos(); cancelarGastos = null; }
                 if (cancelarClientes) { cancelarClientes(); cancelarClientes = null; }
                 if (cancelarFondo) { cancelarFondo(); cancelarFondo = null; }
                 if (cancelarLocal) { cancelarLocal(); cancelarLocal = null; }
+                if (cancelarSolicitudes) { cancelarSolicitudes(); cancelarSolicitudes = null; }
+                if (cancelarSolicitudesAdmin) { cancelarSolicitudesAdmin(); cancelarSolicitudesAdmin = null; }
+                solicitudesEnProceso.clear();
+                $('resumen-mesas').classList.add('hidden');
+                $('estado-solicitudes').classList.add('hidden');
                 colaComanda.clear();
                 colaTickets.clear(); ticketsVistos = null;
                 fondo = 0; cobro = null; $('modal-cobro').classList.add('hidden'); $('vista-cocina').classList.add('hidden');
@@ -1730,9 +1778,27 @@
                 mesas = Array.isArray(s.exists() ? s.data().mesas : null) ? s.data().mesas.map(Number).filter(n => n > 0) : [];
                 mesasListas = true;
                 pintarMesas();
+                pintarResumenMesas();
+                revisarSolicitudesPendientes();
                 const modal = $('modal-nuevo');
                 if (modal && !modal.classList.contains('hidden')) pintarMesasNuevo();
             }, () => {});
+        }
+        // Resumen que ve el camarero: consumos y totales de cada mesa configurada.
+        function pintarResumenMesas() {
+            const cont = $('resumen-mesas');
+            if (!cont || !esCamarero) return;
+            if (!mesasListas) { cont.innerHTML = '<p class="text-sm text-neutral-500">Cargando mesas…</p>'; return; }
+            if (!mesas.length) { cont.innerHTML = '<p class="text-sm text-red-700 font-bold">No hay mesas configuradas.</p>'; return; }
+            cont.innerHTML = mesas.map(m => {
+                const delLocal = pedidos.filter(p => Number(p.mesa) === m && p.estado !== 'cancelado' && p.estado !== 'archivado');
+                const total = delLocal.reduce((a, p) => a + Number(p.total || 0), 0);
+                return `<div class="bg-white rounded-2xl border border-neutral-200 p-3">
+                    <div class="text-xs font-extrabold text-neutral-500">🪑 Mesa ${m}</div>
+                    <div class="text-sm font-bold">${delLocal.length} pedido${delLocal.length === 1 ? '' : 's'}</div>
+                    <div class="text-lg font-black text-red-700">${gs(total)}</div>
+                </div>`;
+            }).join('');
         }
         // quiere: 'abierto' | 'cerrado' | null (volver al horario automático)
         async function ponerLocalManual(quiere) {
@@ -1751,7 +1817,7 @@
             }
         }
         $('btn-local').addEventListener('click', () => {
-            if (esDelivery) return;
+            if (esDelivery || esCamarero) return;
             const quiere = estadoLocal(localCfg, Date.now()).abierto ? 'cerrado' : 'abierto';
             if (quiere === 'cerrado' && !confirm('¿Cerrar el local ahora?\n\nLa página de pedidos le va a mostrar a los clientes que estamos cerrados y no van a poder pedir.')) return;
             ponerLocalManual(quiere);
@@ -1773,7 +1839,7 @@
             try { await setDoc(doc(db, 'config', 'local'), { agotados: lista, actualizado: serverTimestamp() }, { merge: true }); }
             catch (e) { mostrarError('No se pudo guardar los sabores agotados: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas (reglas_firestore.txt).' : e.message)); }
         }
-        $('btn-agotados').addEventListener('click', () => { if (esDelivery) return; $('modal-agotados').classList.remove('hidden'); pintarAgotados(); });
+        $('btn-agotados').addEventListener('click', () => { if (esDelivery || esCamarero) return; $('modal-agotados').classList.remove('hidden'); pintarAgotados(); });
         $('agot-cerrar').addEventListener('click', () => $('modal-agotados').classList.add('hidden'));
         $('modal-agotados').addEventListener('click', (e) => {
             const b = e.target.closest('button');
@@ -1874,17 +1940,20 @@
 
         // ===== Pedidos en vivo =====
         function escucharPedidos() {
-            // Optimización: filtrar por estado en el servidor para no leer cancelados/archivados
-            const q = query(collection(db, 'pedidos'), where('estado', 'in', ['nuevo', 'preparacion', 'en_camino', 'entregado', 'cancelado']), limit(300));
+            // Optimización: filtrar por estado en el servidor para no leer cancelados/archivados.
+            // El camarero SOLO consulta pedidos locales (el tipo también se exige en las reglas).
+            const q = esCamarero
+                ? query(collection(db, 'pedidos'), where('tipo', '==', 'local'), limit(300))
+                : query(collection(db, 'pedidos'), where('estado', 'in', ['nuevo', 'preparacion', 'en_camino', 'entregado', 'cancelado']), limit(300));
             cancelarEscucha = onSnapshot(q, (snap) => {
                 $('aviso-error').classList.add('hidden');
                 pedidos = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })).filter(p => p.estado !== 'archivado').sort((a, b) => creadoMs(b) - creadoMs(a));
 
-                if (vistos !== null && !esDelivery) {
+                if (vistos !== null && !esDelivery && !esCamarero) {
                     pedidos.forEach(x => { if (!vistos.has(x.id) && !x.comandaImpresa && x.estado !== 'cancelado' && x.estado !== 'archivado') colaComanda.set(x.id, Date.now()); });
                 }
                 const pagadosAhora = new Set(pedidos.filter(x => x.pagado).map(x => x.id));
-                if (ticketsVistos !== null && !esDelivery && autoImprimir) {
+                if (ticketsVistos !== null && !esDelivery && !esCamarero && autoImprimir) {
                     pedidos.forEach(x => {
                         if (x.pagado === true && !x.ticketImpreso && x.cobradoEn && !ticketsVistos.has(x.id)) {
                             colaTickets.set(x.id, Date.now());
@@ -1920,11 +1989,10 @@
                 const idsPedidos = new Set(pedidos.map(x => x.id));
                 for (const k of estadoPrevio.keys()) { if (!idsPedidos.has(k)) estadoPrevio.delete(k); }
                 vistos = new Set(pedidos.map(p => p.id));
-                asignarNumeros();
+                if (!esCamarero) asignarNumeros();
                 render();
                 refrescarCaja();
-                procesarColaComandas();
-                procesarColaTickets();
+                if (!esCamarero) { procesarColaComandas(); procesarColaTickets(); }
             }, (error) => {
                 mostrarError(error.code === 'permission-denied'
                     ? 'Este usuario no tiene permiso para ver los pedidos.'
@@ -1933,7 +2001,7 @@
         }
 
         async function cambiarEstado(id, estado) {
-            if (esDelivery) return;
+            if (esDelivery || esCamarero) return;
             const actual = pedidos.find(x => x.id === id);
             if (!actual || !(TRANSICIONES[estadoDe(actual)] || []).includes(estado)) {
                 mostrarError('Ese cambio no está permitido: un pedido no puede volver atrás, solo avanzar o cancelarse.');
@@ -1947,7 +2015,7 @@
         }
 
         async function cambiarPago(id, pago) {
-            if (esDelivery) return;
+            if (esDelivery || esCamarero) return;
             try {
                 await updateDoc(doc(db, 'pedidos', id), { pago: pago });
             } catch (e) {
@@ -1972,19 +2040,19 @@
                 if (abiertos.has(p.id)) abiertos.delete(p.id); else abiertos.add(p.id);
                 render();
             } else if (acc === 'estado') {
-                if (!esDelivery) cambiarEstado(p.id, b.dataset.estado);
+                if (!esDelivery && !esCamarero) cambiarEstado(p.id, b.dataset.estado);
             } else if (acc === 'pago') {
-                if (!esDelivery) cambiarPago(p.id, b.dataset.pago === p.pago ? null : b.dataset.pago);
+                if (!esDelivery && !esCamarero) cambiarPago(p.id, b.dataset.pago === p.pago ? null : b.dataset.pago);
             } else if (acc === 'imprimir') {
-                imprimirTicket(p);
+                if (!esCamarero) imprimirTicket(p);
             } else if (acc === 'agregar') {
                 if (!esDelivery) abrirAgregar(p);
             } else if (acc === 'comanda') {
-                imprimirComanda(p);
+                if (!esCamarero) imprimirComanda(p);
             } else if (acc === 'cobrar') {
-                if (!esDelivery) abrirCobro(p);
+                if (!esDelivery && !esCamarero) abrirCobro(p);
             } else if (acc === 'cancelar') {
-                if (!esDelivery) {
+                if (!esDelivery && !esCamarero) {
                     const nombre = (p.cliente && p.cliente.nombre) || 'este cliente';
                     const aviso = estadoDe(p) === 'entregado'
                         ? '\n\nEste pedido ya figura como ENTREGADO: al cancelarlo deja de sumar en la caja.'
@@ -2140,7 +2208,7 @@
                 if (e === 'preparacion') { sig = 'entregado'; btnSig = '✅ Marcar Entregado'; }
             }
             let botones = '';
-            if (!esDelivery) {
+            if (!esDelivery && !esCamarero) {
                 if (sig) {
                     botones += `<button type="button" data-accion="estado" data-estado="${sig}" data-id="${idAttr}" class="accion-principal flex-1 min-w-[10rem] bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 rounded-xl active:scale-[0.98] transition">${btnSig}</button>`;
                 }
@@ -2149,10 +2217,12 @@
                 }
             }
             
-            botones += `<button type="button" data-accion="imprimir" data-id="${idAttr}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-3 py-2.5 rounded-xl">🖨️ Ticket</button>`;
-            botones += `<button type="button" data-accion="comanda" data-id="${idAttr}" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold px-3 py-2.5 rounded-xl">🍳 Comanda</button>`;
+            if (!esCamarero) {
+                botones += `<button type="button" data-accion="imprimir" data-id="${idAttr}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-3 py-2.5 rounded-xl">🖨️ Ticket</button>`;
+                botones += `<button type="button" data-accion="comanda" data-id="${idAttr}" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold px-3 py-2.5 rounded-xl">🍳 Comanda</button>`;
+            }
             if (!esDelivery && e !== 'cancelado' && !p.pagado) botones += `<button type="button" data-accion="agregar" data-id="${idAttr}" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-3 py-2.5 rounded-xl">➕ Agregar</button>`;
-            if (!esDelivery && e !== 'cancelado' && !p.pagado) {
+            if (!esDelivery && !esCamarero && e !== 'cancelado' && !p.pagado) {
                 botones = `<button type="button" data-accion="cobrar" data-id="${idAttr}" class="flex-1 min-w-[10rem] bg-neutral-900 hover:bg-black text-white font-bold text-sm py-2.5 rounded-xl active:scale-[0.98] transition">💰 Cobrar ${gs(p.total)}</button>` + botones;
             }
 
@@ -2162,14 +2232,14 @@
 
             const pagoActual = PAGOS[p.pago] ? p.pago : '';
             let pagoHtml = '';
-            if (!esDelivery && e !== 'cancelado') {
+            if (!esDelivery && !esCamarero && e !== 'cancelado') {
                 pagoHtml = `<div class="pedido-pagos flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold text-neutral-500">Pago:</span>` +
                     Object.entries(PAGOS).map(([k, v]) => `<button type="button" data-accion="pago" data-pago="${k}" data-id="${idAttr}" class="text-xs font-bold px-2.5 py-1 rounded-lg ${pagoActual === k ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}">${v.icono} ${v.label}</button>`).join('') + `</div>`;
             } else if (esDelivery && pagoActual) {
                 pagoHtml = `<div class="text-sm font-bold">${PAGOS[pagoActual].icono} Pago: ${PAGOS[pagoActual].label}</div>`;
             }
 
-            if (!esDelivery) {
+            if (!esDelivery && !esCamarero) {
                 if (e !== 'cancelado') {
                     botones += `<button type="button" data-accion="cancelar" data-id="${idAttr}" class="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2.5 rounded-xl">✖ Cancelar</button>`;
                 }
@@ -2205,7 +2275,7 @@
                     </div>
                     <div class="pedido-head-badges flex items-center gap-2 shrink-0">
                         <span class="pedido-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${info.badge}">${esc(info.label.toUpperCase())}</span>
-                        ${p.pagado ? '<span class="pedido-pago-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">✅ PAGADO</span>' : (e !== 'cancelado' && !esDelivery ? '<span class="pedido-pago-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">💰 POR COBRAR</span>' : '')}
+                        ${p.pagado ? '<span class="pedido-pago-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">✅ PAGADO</span>' : (e !== 'cancelado' && !esDelivery && !esCamarero ? '<span class="pedido-pago-estado inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">💰 POR COBRAR</span>' : '')}
                         <span class="flecha-pedido text-neutral-400 text-xs">${abierto ? '▲' : '▼'}</span>
                     </div>
                 </div>
@@ -2264,6 +2334,7 @@
         function render() {
             if (!$('vista-cocina').classList.contains('hidden')) renderCocina();
             actualizarFiltros();
+            pintarResumenMesas();
 
             // SI ES DELIVERY: Filtra estrictamente los que están 'en_camino'
             const visibles = pedidos.filter(p => {
@@ -2455,6 +2526,16 @@
             cont.innerHTML = mesas.map(n => `<button type="button" data-n-mesa="${n}" class="py-2 px-3 rounded-xl text-sm font-bold border ${Number(nuevo.mesa) === n ? clsOn : clsOff}">Mesa ${n}</button>`).join('');
         }
         function renderNuevo() {
+            if (esCamarero) {
+                // El camarero solo arma pedidos de mesa: sin delivery, retiro, pago ni descuento.
+                nuevo.tipo = 'local';
+                nuevo.envio = 0; nuevo.distanciaKm = null; nuevo.deliveryFuera = false;
+                $('nuevo-descuento').value = '';
+            }
+            $('nuevo-tipo').classList.toggle('hidden', esCamarero);
+            if ($('nuevo-pago-box')) $('nuevo-pago-box').classList.toggle('hidden', esCamarero);
+            if ($('nuevo-descuento-box')) $('nuevo-descuento-box').classList.toggle('hidden', esCamarero);
+
             // tipo
             $('nuevo-tipo').innerHTML = Object.entries(TIPOS).map(([k, v]) =>
                 `<button type="button" data-n-tipo="${k}" class="py-3 rounded-xl text-sm font-bold border ${nuevo.tipo === k ? clsOn : clsOff}"><div class="text-xl">${v.icono}</div>${v.label}</button>`).join('');
@@ -2516,7 +2597,7 @@
 
         function renderNuevoTotal() {
             const { sub, desc, env, total } = nuevoTotales();
-            if (!nuevo.guardando) $('nuevo-guardar').textContent = '💾 Guardar pedido · ' + gs(total);
+            if (!nuevo.guardando) $('nuevo-guardar').textContent = (esCamarero ? '📤 Enviar pedido · ' : '💾 Guardar pedido · ') + gs(total);
             $('nuevo-total').innerHTML = `
                 ${(desc > 0 || env > 0) ? `<div class="flex justify-between text-sm text-neutral-600"><span>Subtotal</span><span>${gs(sub)}</span></div>` : ''}${env > 0 ? `<div class="flex justify-between text-sm text-neutral-600"><span>🛵 Delivery</span><span>+ ${gs(env)}</span></div>` : ''}${desc > 0 ? `<div class="flex justify-between text-sm text-red-700"><span>Descuento</span><span>− ${gs(desc)}</span></div>` : ''}
                 <div class="flex justify-between items-center"><span class="font-bold">TOTAL</span><span class="text-2xl font-black text-red-700">${gs(total)}</span></div>`;
@@ -2575,6 +2656,17 @@
             }
 
             const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
+
+            // El camarero NO escribe en pedidos: manda la propuesta sin precios a la cola
+            // y el TPV administrador la valida contra MENU antes de crear el pedido.
+            if (esCamarero) {
+                const items = itemsSinPrecios(n);
+                return enviarSolicitudCamarero('crear', null, {
+                    mesa: n.mesa, pizzas: items.pizzas, extras: items.extras,
+                    nombre: nombre, notas: notas
+                });
+            }
+
             const lineas = ['*PEDIDO ' + TIPOS[n.tipo].label.toUpperCase() + ' (cargado en el panel)*', 'Cliente: ' + nombre];
             if (n.tipo === 'local') lineas.push('🪑 Mesa: ' + n.mesa);
             if (celular) lineas.push('Celular: ' + telBonito(celular));
@@ -2965,7 +3057,7 @@
         }
 
         $('btn-caja').addEventListener('click', () => {
-            if (esDelivery) return;
+            if (esDelivery || esCamarero) return;
             tabCaja = 'hoy';
             $('modal-caja').classList.remove('hidden');
             renderCaja();
@@ -3320,7 +3412,7 @@
 
         // ===== TPV: venta rápida (mostrador, efectivo, ya entregada) =====
         $('btn-rapida').addEventListener('click', () => {
-            if (esDelivery) return;
+            if (esDelivery || esCamarero) return;
             nuevoLimpiar();
             nuevo.tipo = 'retiro'; nuevo.entrada = 'entregado'; nuevo.pago = 'efectivo';
             $('btn-nuevo').click();
@@ -3388,7 +3480,7 @@
                 </article>`;
             }).join('') : '<p class="col-span-full text-center text-neutral-400 py-16 text-lg">No hay pedidos en cocina</p>';
         }
-        $('btn-cocina').addEventListener('click', () => { $('vista-cocina').classList.remove('hidden'); renderCocina(); });
+        $('btn-cocina').addEventListener('click', () => { if (esDelivery || esCamarero) return; $('vista-cocina').classList.remove('hidden'); renderCocina(); });
         $('cocina-cerrar').addEventListener('click', () => $('vista-cocina').classList.add('hidden'));
         $('cocina-lista').addEventListener('click', (e) => {
             const b = e.target.closest('[data-cocina]');
@@ -3416,6 +3508,17 @@
             if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
             const extrasN = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
             if (!n.pizzas.length && !extrasN.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
+
+            // Igual que al crear: el camarero propone items y el TPV recalcula los precios.
+            if (esCamarero) {
+                if (p.tipo !== 'local' || !p.mesa) { nuevoMsg('nuevo-error', 'Solo se pueden agregar productos a pedidos de mesa.'); return; }
+                const items = itemsSinPrecios(n);
+                return enviarSolicitudCamarero('agregar', p.id, {
+                    mesa: p.mesa, pizzas: items.pizzas, extras: items.extras,
+                    nombre: ((p.cliente || {}).nombre || ''), notas: ''
+                });
+            }
+
             const pizzasN = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
             const suma = pizzasN.reduce((a, z) => a + z.precio, 0) + MENU.extras.reduce((a, x) => a + (n.extras[x[0]] || 0) * x[2], 0);
             const extras = (p.extras || []).map(x => ({ ...x }));
@@ -3431,6 +3534,232 @@
                 nuevoMsg('nuevo-error', 'No se pudo agregar: ' + e.message);
             } finally {
                 n.guardando = false; $('nuevo-guardar').disabled = false; renderNuevoTotal();
+            }
+        }
+
+        // ===== Cola sencilla de solicitudes de mesa (camarero -> TPV validador) =====
+        // El camarero manda items SIN precios. El TPV administrador recalcula todo con MENU.
+        function itemsSinPrecios(n) {
+            return {
+                pizzas: n.pizzas.map(z => ({ tamano: z.tamano, sabores: z.sabores.slice(), borde: !!z.borde })),
+                extras: MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ id: x[0], cantidad: n.extras[x[0]] }))
+            };
+        }
+
+        async function enviarSolicitudCamarero(operacion, pedidoId, payload) {
+            const n = nuevo;
+            if (n.guardando) return;
+            n.guardando = true;
+            $('nuevo-guardar').disabled = true;
+            $('nuevo-guardar').textContent = 'Enviando...';
+            try {
+                const u = auth.currentUser;
+                await addDoc(collection(db, 'solicitudes_mesa'), {
+                    local: 'mi-barrio',
+                    estado: 'pendiente',
+                    tipo: 'local',
+                    mesa: Number(payload.mesa),
+                    operacion: operacion,
+                    pedidoId: pedidoId || null,
+                    pizzas: payload.pizzas,
+                    extras: payload.extras,
+                    cliente: { nombre: String(payload.nombre || ('Mesa ' + payload.mesa)) },
+                    notas: String(payload.notas || ''),
+                    solicitadoPor: u ? u.uid : '',
+                    solicitadoEmail: u ? (u.email || '') : '',
+                    creado: serverTimestamp()
+                });
+                nuevoLimpiar();
+                renderNuevo();
+                $('modal-nuevo').classList.add('hidden');
+                mostrarToast('⏳ Mesa ' + payload.mesa + ': pedido enviado. El TPV lo valida y aparece en la lista.');
+            } catch (e) {
+                console.error('[TPV] Error al enviar solicitud de mesa:', { code: e.code, message: e.message, error: e });
+                nuevoMsg('nuevo-error', 'No se pudo enviar (' + (e.code || 'error') + '): ' + (e.message || 'sin mensaje'));
+            } finally {
+                n.guardando = false;
+                $('nuevo-guardar').disabled = false;
+                renderNuevoTotal();
+            }
+        }
+
+        function escucharMisSolicitudes() {
+            if (cancelarSolicitudes) cancelarSolicitudes();
+            const uid = auth.currentUser && auth.currentUser.uid;
+            if (!uid) return;
+            cancelarSolicitudes = onSnapshot(
+                query(collection(db, 'solicitudes_mesa'), where('solicitadoPor', '==', uid), limit(30)),
+                (snap) => {
+                    misSolicitudes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    pintarEstadoSolicitudes();
+                },
+                (err) => console.warn('[TPV] No se pudo leer solicitudes propias:', err.code || err.message)
+            );
+        }
+
+        function pintarEstadoSolicitudes() {
+            const el = $('estado-solicitudes');
+            if (!el || !esCamarero) return;
+            const pendientes = misSolicitudes.filter(s => s.estado === 'pendiente').length;
+            const rechazadas = misSolicitudes.filter(s => s.estado === 'rechazada');
+            if (!pendientes && !rechazadas.length) { el.textContent = ''; el.classList.add('hidden'); return; }
+            el.classList.remove('hidden');
+            let txt = pendientes
+                ? '⏳ ' + pendientes + ' pedido' + (pendientes === 1 ? '' : 's') + ' esperando la confirmación del TPV.'
+                : '';
+            if (rechazadas.length) {
+                const ult = rechazadas[rechazadas.length - 1];
+                txt += (txt ? ' ' : '') + '⚠️ Última solicitud rechazada: ' + String(ult.motivo || 'revisá el pedido');
+            }
+            el.textContent = txt;
+        }
+
+        function escucharSolicitudesAdmin() {
+            if (cancelarSolicitudesAdmin) cancelarSolicitudesAdmin();
+            // El snapshot solo dispara la revisión; la validación real usa getDocs y
+            // se vuelve a llamar cuando terminan de cargar el menú y las mesas.
+            cancelarSolicitudesAdmin = onSnapshot(
+                query(collection(db, 'solicitudes_mesa'), where('estado', '==', 'pendiente'), limit(50)),
+                () => { revisarSolicitudesPendientes(); },
+                (err) => console.error('[TPV] No se pudo escuchar solicitudes de mesa:', err.code || err.message)
+            );
+        }
+
+        async function revisarSolicitudesPendientes() {
+            if (!adminActivo() || !mesasListas || !MENU.tamanos || !Object.keys(MENU.tamanos).length) return;
+            try {
+                const snap = await getDocs(query(collection(db, 'solicitudes_mesa'), where('estado', '==', 'pendiente'), limit(50)));
+                snap.forEach(ds => {
+                    if (solicitudesEnProceso.has(ds.id)) return;
+                    solicitudesEnProceso.add(ds.id);
+                    validarSolicitudMesa(ds)
+                        .catch(e => console.error('[TPV] Error inesperado al validar solicitud:', ds.id, e))
+                        .finally(() => solicitudesEnProceso.delete(ds.id));
+                });
+            } catch (e) {
+                console.warn('[TPV] No se pudieron leer solicitudes pendientes:', e.code || e.message);
+            }
+        }
+
+        // Recalcula precios con el MENU del TPV. Nunca confía en precios que vengan del cliente.
+        function itemsValidados(sol) {
+            if (!MENU.tamanos || !MENU.sabores) return null;
+            const todos = Object.values(MENU.sabores).reduce((a, b) => a.concat(b), []);
+            const pizzas = [];
+            for (const z of (sol.pizzas || [])) {
+                const t = MENU.tamanos[z.tamano];
+                if (!t || !Array.isArray(z.sabores) || !z.sabores.length || z.sabores.length > t.limite) return null;
+                if (z.sabores.some(sb => !todos.includes(sb))) return null;
+                pizzas.push({
+                    tamano: z.tamano,
+                    nombre: t.nombre,
+                    sabores: z.sabores.slice(),
+                    borde: !!z.borde,
+                    precio: nuevoPrecio(z.tamano, z.sabores, !!z.borde)
+                });
+            }
+            const extras = [];
+            let montoExtras = 0;
+            for (const e of (sol.extras || [])) {
+                const x = MENU.extras.find(y => y[0] === e.id);
+                const cant = Number(e.cantidad);
+                if (!x || !isFinite(cant) || cant <= 0 || cant > 20) return null;
+                extras.push({ item: x[1], cantidad: cant });
+                montoExtras += cant * Number(x[2] || 0);
+            }
+            if (!pizzas.length && !extras.length) return null;
+            return { pizzas: pizzas, extras: extras, total: pizzas.reduce((a, z) => a + z.precio, 0) + montoExtras };
+        }
+
+        async function validarSolicitudMesa(ds) {
+            const sol = ds.data() || {};
+            const refSol = ds.ref;
+            const rechazar = async (motivo) => {
+                await updateDoc(refSol, {
+                    estado: 'rechazada',
+                    motivo: String(motivo).slice(0, 180),
+                    revisado: serverTimestamp()
+                });
+                console.warn('[TPV] solicitud de mesa rechazada:', ds.id, motivo);
+            };
+            try {
+                const mesa = Number(sol.mesa);
+                if (!mesas.includes(mesa)) { await rechazar('La mesa ya no existe en la configuración.'); return; }
+                if (!Array.isArray(sol.pizzas) || sol.pizzas.length > 20 || !Array.isArray(sol.extras) || sol.extras.length > 20) {
+                    await rechazar('Demasiados productos en la solicitud.'); return;
+                }
+                const items = itemsValidados(sol);
+                if (!items) { await rechazar('Algún producto o sabor ya no está en el menú.'); return; }
+                const nombre = String(((sol.cliente || {}).nombre) || ('Mesa ' + mesa));
+                const notas = String(sol.notas || '');
+
+                if (sol.operacion === 'crear') {
+                    const lineas = ['*PEDIDO EN EL LOCAL (cargado por camarero, validado en el TPV)*', 'Cliente: ' + nombre, '🪑 Mesa: ' + mesa];
+                    items.pizzas.forEach((z, i) => lineas.push('• Pizza ' + (i + 1) + ' ' + z.nombre + ': ' + z.sabores.join(', ') + (z.borde ? ' · Borde relleno' : '') + ' - ' + gs(z.precio)));
+                    items.extras.forEach(x => lineas.push('• ' + x.item + ' x' + x.cantidad));
+                    if (notas) lineas.push('Notas: ' + notas);
+                    lineas.push('TOTAL: ' + gs(items.total));
+                    const datos = {
+                        local: 'mi-barrio',
+                        estado: 'nuevo',
+                        creado: serverTimestamp(),
+                        tipo: 'local',
+                        mesa: mesa,
+                        origen: 'panel',
+                        pago: null,
+                        pagado: false,
+                        descuento: 0,
+                        costoDelivery: 0,
+                        distanciaKm: null,
+                        cliente: { nombre: nombre, direccion: '', celular: '', notas: notas, lat: null, lng: null, mapa: '' },
+                        pizzas: items.pizzas,
+                        extras: items.extras,
+                        total: items.total,
+                        mensaje: lineas.join('\n')
+                    };
+                    const ref = doc(collection(db, 'pedidos'));
+                    propios.add(ref.id);
+                    await runTransaction(db, async (tx) => {
+                        const c = await tx.get(refContador());
+                        datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
+                        await recordarCliente(tx, datos, Date.now());
+                        tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
+                        tx.set(ref, datos);
+                    });
+                    await updateDoc(refSol, {
+                        estado: 'confirmada', pedidoId: ref.id, total: items.total, revisado: serverTimestamp()
+                    });
+                    console.info('[TPV] solicitud confirmada:', ds.id, '-> pedido', ref.id, 'mesa', mesa);
+                } else if (sol.operacion === 'agregar') {
+                    if (!sol.pedidoId) { await rechazar('Falta el pedido al que agregar.'); return; }
+                    const refP = doc(db, 'pedidos', sol.pedidoId);
+                    const snapP = await getDoc(refP);
+                    if (!snapP.exists()) { await rechazar('No se encontró el pedido.'); return; }
+                    const p = snapP.data();
+                    if (p.tipo !== 'local' || p.pagado || ['cancelado', 'archivado', 'entregado'].includes(p.estado)) {
+                        await rechazar('Ese pedido ya no está abierto.'); return;
+                    }
+                    const extras = (p.extras || []).map(x => ({ ...x }));
+                    items.extras.forEach(x => {
+                        const f = extras.find(y => y.item === x.item);
+                        if (f) f.cantidad = Number(f.cantidad) + x.cantidad; else extras.push({ ...x });
+                    });
+                    const totalN = Number(p.total || 0) + items.total;
+                    await updateDoc(refP, {
+                        pizzas: [...(p.pizzas || []), ...items.pizzas], extras: extras, total: totalN
+                    });
+                    try { imprimirComanda({ ...p, pizzas: items.pizzas, extras: items.extras }, 'AGREGADO'); }
+                    catch (e) { console.warn('[TPV] No se pudo imprimir la comanda del agregado:', e.message); }
+                    await updateDoc(refSol, {
+                        estado: 'confirmada', pedidoId: sol.pedidoId, total: totalN, revisado: serverTimestamp()
+                    });
+                    console.info('[TPV] agregado confirmado:', ds.id, '-> pedido', sol.pedidoId);
+                } else {
+                    await rechazar('Operación desconocida.');
+                }
+            } catch (e) {
+                console.error('[TPV] Error al validar solicitud de mesa', ds.id, { code: e.code, message: e.message, error: e });
+                try { await rechazar('No se pudo validar: ' + (e.message || 'error')); } catch (e2) { console.error('[TPV] No se pudo marcar la solicitud como rechazada:', e2); }
             }
         }
 
@@ -3555,6 +3884,7 @@
                 if (!MENU.tamanos[nuevo.tamano]) nuevo.tamano = Object.keys(MENU.tamanos)[0];
                 nuevo.sabores = nuevo.sabores.filter(x => Object.values(MENU.sabores).some(a => a.includes(x)));
                 if (!$('modal-nuevo').classList.contains('hidden')) renderNuevo();
+                revisarSolicitudesPendientes();
             }, () => { menuEscuchando = false; });
         }
 
@@ -4104,7 +4434,7 @@ $('cfg-vista').addEventListener('click', (e) => {
 });
 
         function abrirConfig() {
-            if (esDelivery) return;
+            if (esDelivery || esCamarero) return;
             ddraft = null;
             cfgMas = false;
             $('modal-config').classList.remove('hidden');
