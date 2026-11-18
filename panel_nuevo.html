@@ -1368,7 +1368,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-18 #8 · rol camarero en TPV';
+        const VERSION_PANEL = '2026-11-18 #9 · tema panel por usuario y rol';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -1411,7 +1411,8 @@
         let recien = new Set();      
         let filtro = 'todos';
         let panelAbierto = false;
-        let esDelivery = false; 
+        let usuarioUid = null;   // uid de la sesión actual; null antes de auth y tras logout
+        let esDelivery = false;
         let esCamarero = false;
         let misSolicitudes = [];
         let cancelarSolicitudes = null;
@@ -1492,15 +1493,24 @@
             ['camarero', 'Camarero móvil', 'Mesas primero, botones táctiles grandes y pedidos en una sola columna. Pensado para el celular del camarero.']
         ];
         const TEMAS_PANEL_VALIDOS = TEMAS_PANEL.map(t => t[0]);
-        // El tema "Camarero móvil" es exclusivo del rol camarero: el administrador
-        // no lo ve en Configuración y no puede guardarlo en su navegador.
-        function temasPanelPermitidos() {
-            return esCamarero ? TEMAS_PANEL_VALIDOS.slice() : TEMAS_PANEL_VALIDOS.filter(t => t !== 'camarero');
+        // Rol efectivo para el tema. Null cuando todavía no se conoce el
+        // usuario (antes de auth / después de logout): no se lee ni se
+        // escribe ninguna preferencia y se usa la vista neutra ('clasico').
+        function rolTemaPanel() {
+            if (!usuarioUid) return null;
+            return esCamarero ? 'camarero' : (esDelivery ? 'delivery' : 'admin');
         }
-        // La elección del camarero se guarda en una clave aparte para no pisar
-        // el tema del administrador cuando comparten el mismo navegador.
+        // El tema "Camarero móvil" es exclusivo del rol camarero: el administrador
+        // y el delivery no lo ven en Configuración ni pueden guardarlo en este equipo.
+        function temasPanelPermitidos() {
+            return rolTemaPanel() === 'camarero' ? TEMAS_PANEL_VALIDOS.slice() : TEMAS_PANEL_VALIDOS.filter(t => t !== 'camarero');
+        }
+        // Preferencia por equipo (localStorage) + usuario + rol: la clave
+        // incluye rol y uid (temaPanel:{rol}:{uid}), así administrador,
+        // delivery y camarero no se pisan aunque compartan el navegador.
         function claveTemaPanel() {
-            return esCamarero ? 'temaPanelCamarero' : 'temaPanel';
+            const rol = rolTemaPanel();
+            return rol ? 'temaPanel:' + rol + ':' + usuarioUid : null;
         }
         let accionesOriginales = null;
 
@@ -1513,11 +1523,26 @@
             const t = document.body.dataset.temaPanel;
             return temasPanelPermitidos().includes(t) ? t : 'clasico';
         }
+        // Lee el tema del usuario y rol actuales. Sin usuario conocido devuelve
+        // la vista neutra. Migra una sola vez (sin borrar las claves antiguas)
+        // la preferencia legacy válida temaPanel / temaPanelCamarero a la nueva
+        // clave; nunca mezcla admin/delivery: cada rol tiene su propia clave.
         function leerTemaPanel() {
+            const clave = claveTemaPanel();
+            if (!clave) return 'clasico';
+            const permitidos = temasPanelPermitidos();
             try {
-                const t = localStorage.getItem(claveTemaPanel());
-                return temasPanelPermitidos().includes(t) ? t : 'clasico';
+                const t = localStorage.getItem(clave);
+                if (permitidos.includes(t)) return t;
+                // Migración legacy: 'temaPanelCamarero' solo para camarero;
+                // 'temaPanel' (compartida históricamente) para admin y delivery.
+                const legado = localStorage.getItem(esCamarero ? 'temaPanelCamarero' : 'temaPanel');
+                if (permitidos.includes(legado)) {
+                    try { localStorage.setItem(clave, legado); } catch (e) {}
+                    return legado;
+                }
             } catch (e) { return 'clasico'; }
+            return 'clasico';
         }
         function limpiarAccionesPanel() {
             const cont = $('acciones-panel');
@@ -1545,7 +1570,7 @@
 
             if (tema === 'simple') {
                 const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
-                secundarios.forEach(id => { const n = $(id); if (n) cuerpo.appendChild(n); });
+                secundarios.forEach(id => { const n = porId(id); if (n) cuerpo.appendChild(n); });
                 mas.classList.remove('hidden');
                 cont.appendChild(mas);
             } else if (tema === 'moderno') {
@@ -1570,6 +1595,10 @@
                     ids.forEach(id => { const n = porId(id); if (n) g.appendChild(n); });
                     cont.appendChild(g);
                 });
+                // Fallback (igual que Avanzado): los botones originales que no
+                // entren en grupos ni en el menú "Más" (p. ej. btn-apariencia)
+                // se re-insertan al final del contenedor, nunca quedan sueltos.
+                accionesOriginales.forEach(n => { if (!n.parentElement) cont.appendChild(n); });
                 mas.classList.remove('hidden');
             } else if (tema === 'avanzado') {
                 const grupos = [
@@ -1623,7 +1652,10 @@
             if (!temasPanelPermitidos().includes(tema)) tema = 'clasico';
             document.body.dataset.temaPanel = tema;
             if (guardar !== false) {
-                try { localStorage.setItem(claveTemaPanel(), tema); } catch (e) {}
+                // Sin usuario conocido (antes de auth / tras logout) no se
+                // persiste nada: la preferencia es por dispositivo+usuario+rol.
+                const clave = claveTemaPanel();
+                if (clave) { try { localStorage.setItem(clave, tema); } catch (e) {} }
             }
             organizarAccionesPanel(tema);
             if (esCamarero) ajustarAccionesCamarero();
@@ -1647,7 +1679,7 @@
         }
 
         capturarAccionesPanel();
-        aplicarTemaPanel(leerTemaPanel(), false);
+        aplicarTemaPanel('clasico', false); // Vista neutra hasta conocer usuario y rol.
 
         $('btn-mas').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1762,6 +1794,7 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 panelAbierto = true;
+                usuarioUid = user.uid;
                 const emailUsuario = (user.email || '').toLowerCase();
                 esDelivery = emailUsuario.includes('delivery');
                 esCamarero = false;
@@ -1804,8 +1837,9 @@
                     $('filtros').classList.remove('hidden');
                 }
 
-                // Reorganizar las acciones según el tema elegido en este equipo.
-                // Cada rol lee su propia clave (temaPanel / temaPanelCamarero).
+                // Reorganizar las acciones según el tema elegido por este usuario
+                // en este equipo. La clave es temaPanel:{rol}:{uid} (dispositivo +
+                // usuario + rol); migra una sola vez la preferencia legacy válida.
                 // Si es camarero, aplicarTemaPanel ya reaplica sus permisos.
                 aplicarTemaPanel(leerTemaPanel(), false);
 
@@ -1821,6 +1855,7 @@
                 if (esCamarero) { escucharMenu(); escucharMesas(); escucharMisSolicitudes(); pintarResumenMesas(); }
             } else {
                 panelAbierto = false;
+                usuarioUid = null;
                 esDelivery = false;
                 esCamarero = false;
                 misSolicitudes = [];
@@ -1846,9 +1881,10 @@
                 $('panel').classList.add('hidden');
                 $('modal-caja').classList.add('hidden');
                 $('modal-nuevo').classList.add('hidden'); $('modal-config').classList.add('hidden'); $('modal-apariencia').classList.add('hidden');
-                // El tema del camarero es solo para su sesión: al cerrar, la pantalla
-                // vuelve al tema guardado por el administrador en este navegador.
-                aplicarTemaPanel(leerTemaPanel(), false);
+                // El tema es por dispositivo+usuario+rol: al cerrar sesión no se
+                // deja visible la preferencia de nadie; la pantalla queda en la
+                // vista neutra hasta el próximo login.
+                aplicarTemaPanel('clasico', false);
                 $('login').classList.remove('hidden');
                 $('clave').value = '';
                 document.title = 'Panel de pedidos - Mi Barrio';
@@ -4491,7 +4527,7 @@ $('apariencia-camarero-grid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tema-camarero]');
     if (!b || !esCamarero) return;
     const t = b.dataset.temaCamarero;
-    aplicarTemaPanel(t, true); // Guarda en 'temaPanelCamarero', separado del administrador.
+    aplicarTemaPanel(t, true); // Guarda en 'temaPanel:camarero:{uid}', separado del administrador y del delivery.
     const nombre = (TEMAS_PANEL.find(x => x[0] === t) || [])[1] || t;
     mostrarToast('🎨 Apariencia: ' + nombre);
     pintarAparienciaCamarero();
