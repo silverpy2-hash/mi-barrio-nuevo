@@ -1,0 +1,16 @@
+{
+  "functions": [
+    {
+      "source": ".",
+      "codebase": "tpv-push-backend",
+      "ignore": [
+        "node_modules",
+        "test.mjs",
+        ".git",
+        "*.log",
+        ".env",
+        ".env.local"
+      ]
+    }
+  ]
+}

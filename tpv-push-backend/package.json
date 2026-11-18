@@ -1,0 +1,20 @@
+{
+  "name": "tpv-push-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prepared (not deployed) Firebase Functions backend for TPV new-order push notifications for Mi Barrio. Dependencies are declared but NOT installed in this repository yet.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test test.mjs",
+    "check": "node --check src/core.js && node --check src/firestore-store.js && node --check src/index.js && node --check test.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.1",
+    "firebase-functions": "^7.4.0"
+  },
+  "license": "UNLICENSED"
+}
