@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#171717">
+    <meta name="description" content="Página del camarero de Mi Barrio: mesas y pedidos en el local. Envía solicitudes al TPV; el administrador las valida y crea los pedidos.">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Mi Barrio · Camarero</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./icon-maskable.svg">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+</head>
+<body data-tema="camarero" class="antialiased">
+
+    <!-- ===== Login ===== -->
+    <section id="login" class="login-pantalla">
+        <form id="form-login" class="login-tarjeta" autocomplete="on">
+            <div class="login-icono" aria-hidden="true">🍽️</div>
+            <h1 class="login-titulo">Mi Barrio · Camarero</h1>
+            <p class="login-ayuda">Entrá con la cuenta de camarero que te dio el local.</p>
+            <label class="campo">
+                <span>Correo</span>
+                <input id="email" type="email" required autocomplete="username" placeholder="camarero@mibarrio...">
+            </label>
+            <label class="campo">
+                <span>Contraseña</span>
+                <input id="clave" type="password" required autocomplete="current-password" placeholder="••••••••">
+            </label>
+            <p id="login-error" class="aviso error hidden" role="alert"></p>
+            <button id="btn-entrar" type="submit" class="btn-entrar">Entrar</button>
+            <p class="login-pie">Esta página es solo para camareros. Los pedidos los confirma el TPV del local.</p>
+        </form>
+    </section>
+
+    <!-- ===== Bloqueo: cuenta válida pero sin rol camarero ===== -->
+    <section id="bloqueado" class="login-pantalla hidden" role="alert">
+        <div class="login-tarjeta">
+            <div class="login-icono" aria-hidden="true">🚫</div>
+            <h1 class="login-titulo">Sin permiso de camarero</h1>
+            <p class="login-ayuda" id="bloqueado-motivo">Esta cuenta no tiene el rol de camarero activo.</p>
+            <p class="login-ayuda">Si creés que es un error, pedile al administrador que revise tu usuario (<em>rol = camarero, activo = sí</em>). No se cargó ningún dato.</p>
+            <button id="btn-salir-bloqueado" type="button" class="btn-entrar">Salir</button>
+        </div>
+    </section>
+
+    <!-- ===== Panel del camarero ===== -->
+    <section id="panel" class="hidden">
+        <header id="header-panel">
+            <div class="header-inner">
+                <div class="header-texto">
+                    <span class="header-marca">MI BARRIO · CAMARERO</span>
+                    <h1 id="titulo-panel" class="header-titulo">🍽️ Mesas y pedidos</h1>
+                    <p id="contador" class="header-contador">Cargando...</p>
+                </div>
+                <div id="acciones-panel" class="acciones-panel">
+                    <button id="btn-nuevo" type="button" class="btn-nuevo" title="Nuevo pedido de mesa">➕ Pedido</button>
+                    <button id="btn-sonido" type="button" class="btn-chip" title="Activar/silenciar el aviso sonoro">🔔 Sonido</button>
+                    <button id="btn-apariencia" type="button" class="btn-chip" title="Cambiar la apariencia en este equipo">🎨</button>
+                    <button id="btn-salir" type="button" class="btn-chip" title="Cerrar sesión">Salir</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="contenedor">
+            <button id="aviso-sonido" type="button" class="aviso aviso-sonido hidden">🔕 Tocá acá para activar el aviso sonoro de pedidos nuevos</button>
+            <p id="aviso-offline" class="aviso error hidden" role="alert">📴 Sin conexión. Necesitás internet para operar: los pedidos no se guardan ni se reenvían sin conexión.</p>
+            <p id="aviso-error" class="aviso error hidden" role="alert"></p>
+
+            <!-- Mis solicitudes: pendiente / confirmada / rechazada -->
+            <details id="solicitudes-box" class="solicitudes-box hidden">
+                <summary id="solicitudes-resumen">Mis solicitudes</summary>
+                <p class="solicitudes-nota">Los pedidos enviados quedan <strong>pendientes</strong> hasta que el administrador los confirme en el TPV. El TPV del local tiene que estar abierto; si nadie confirma, la solicitud queda pendiente.</p>
+                <div id="estado-solicitudes" class="solicitudes-estado hidden"></div>
+                <ul id="solicitudes-lista" class="solicitudes-lista"></ul>
+            </details>
+
+            <h2 class="lista-titulo">Pedidos del local</h2>
+            <div id="lista" class="lista" aria-live="polite"></div>
+        </main>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <!-- ===== Modal: nuevo pedido / agregar a pedido (solo mesa) ===== -->
+    <div id="modal-nuevo" class="modal hidden" role="dialog" aria-modal="true" aria-label="Nuevo pedido">
+        <div class="modal-cuerpo">
+            <div class="modal-barra">
+                <h2 id="modal-nuevo-titulo" class="modal-titulo">➕ Nuevo pedido</h2>
+                <button id="nuevo-cerrar" type="button" class="btn-chip oscuro">✖ Cerrar</button>
+            </div>
+            <div class="modal-contenido">
+                <p id="nuevo-ok" class="aviso ok hidden" role="status"></p>
+                <p id="nuevo-error" class="aviso error hidden" role="alert"></p>
+
+                <div id="nuevo-agregar-info" class="aviso info hidden"></div>
+
+                <div id="nuevo-mesa-box" class="tarjeta">
+                    <div class="tarjeta-lbl">🪑 Mesa</div>
+                    <div id="nuevo-mesa" class="mesa-grid"></div>
+                </div>
+
+                <div id="nuevo-cliente-box" class="tarjeta">
+                    <div class="tarjeta-lbl">Cliente</div>
+                    <input id="nuevo-nombre" type="text" maxlength="60" placeholder="Nombre (opcional)" class="campo-input">
+                    <input id="nuevo-notas" type="text" maxlength="150" placeholder="Notas (opcional)" class="campo-input">
+                </div>
+
+                <div class="tarjeta">
+                    <div class="tarjeta-lbl">Pizzas</div>
+                    <div id="nuevo-constructor" class="constructor"></div>
+                    <div id="nuevo-pizzas" class="pizzas-lista"></div>
+                </div>
+
+                <div class="tarjeta">
+                    <div class="tarjeta-lbl">Extras</div>
+                    <div id="nuevo-extras" class="extras-lista"></div>
+                </div>
+
+                <div class="tarjeta">
+                    <div class="tarjeta-lbl">Total orientativo</div>
+                    <div id="nuevo-total"></div>
+                    <p class="total-nota">Precio orientativo calculado con el menú actual. El TPV del local recalcula los importes al confirmar; el total final puede variar.</p>
+                </div>
+
+                <button id="nuevo-guardar" type="button" class="btn-guardar">📤 Enviar pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Modal: apariencia (este equipo) ===== -->
+    <div id="modal-apariencia" class="modal hidden" role="dialog" aria-modal="true" aria-label="Apariencia">
+        <div class="modal-cuerpo apariencia-cuerpo">
+            <div class="modal-barra">
+                <h2 class="modal-titulo">🎨 Apariencia</h2>
+                <button id="apariencia-cerrar" type="button" class="btn-chip oscuro">✖ Cerrar</button>
+            </div>
+            <div class="modal-contenido">
+                <p class="total-nota">Solo cambia cómo se ve esta página en este equipo. Se guarda aparte y no afecta al TPV ni a la página de pedidos de los clientes.</p>
+                <div id="apariencia-grid" class="apariencia-grid"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
