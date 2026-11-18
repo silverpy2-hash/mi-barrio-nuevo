@@ -3,23 +3,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /* ======================================================================
-       MI BARRIO — PROPUESTA DE REGLAS PARA LA ETAPA 1 (CUENTAS POR MESA)
+       MI BARRIO — REGLAS DEFINITIVAS (ETAPAS 1 a 4)
        ----------------------------------------------------------------------
-       ESTADO: PROPUESTA. NO PUBLICAR TODAVÍA.
+       ESTADO: DEFINITIVAS. Listas para publicar en Firebase Console.
        Base: reglas_firestore (2).txt (las vigentes en el repositorio).
 
-       Qué agrega respecto de las reglas actuales:
+       Modelo de escritura:
          1. Rol explícito de camarero en usuarios/{uid} (rol + activo).
             NO se usa email.includes('camarero').
-         2. config/mesas legible por camareros (hoy solo admin); el TPV
-            necesita que el camarero conozca las mesas habilitadas.
-         3. pedidos: el camarero puede crear/ampliar SOLO pedidos locales
-            de mesa, sin pagado/pago/descuento/numero, y solo tocando
-            pizzas, extras, total y auditoría en las ampliaciones.
-         4. Colección nueva cuentas_mesa/{mesa}: puntero y candado de la
-            cuenta abierta de cada mesa.
-         5. Colección nueva comandas/{operacionId}: una comanda por envío,
-            con id de operación como id de documento (idempotencia).
+         2. El camarero SOLO escribe en solicitudes_mesa/{operacionId}, con
+            su propio actorUid y sin precios ni totales. No puede crear,
+            actualizar ni borrar pedidos, cuentas_mesa ni comandas.
+         3. El TPV (administrador) es el único componente de confianza:
+            valida contra config/menu, recalcula precios, confirma o
+            rechaza solicitudes, abre/amplía/cierra cuentas y crea comandas.
+         4. config/mesas es legible por camareros para listar mesas
+            habilitadas.
 
        Qué NO cambia:
          - La creación anónima de pedidos desde el QR/app cliente sigue
@@ -28,13 +27,12 @@ service cloud.firestore {
            gastos, config, clientes.
          - Delivery sigue identificándose por email (App Repartidor).
 
-       LIMITACIÓN CONOCIDA (ver informe ETAPA 1):
-         Estas reglas validan forma, campos permitidos, estado y límites,
-         pero NO pueden recalcular precios contra config/menu. Un cliente
-         autenticado como camarero que llame directo a Firestore podría
-         escribir un total "coherente en forma" pero no con el menú.
-         La validación fuerte de precios requiere backend (Cloud Functions
-         o API Vercel) y queda para una etapa posterior con autorización.
+       LIMITACIÓN CONOCIDA:
+         Sin backend, las reglas validan forma, campos permitidos, estado y
+         límites, pero NO recalculan precios contra config/menu. Ese control
+         lo hace el TPV en cuentas-mesa/core.js antes de escribir. Una API o
+         Cloud Functions (fuera de Spark) haría falta para validarlo también
+         en reglas.
        ====================================================================== */
 
     // ------------------------------------------------------------------
@@ -84,14 +82,14 @@ service cloud.firestore {
           && d.extras.size() <= 10;
     }
 
-    // Campos que el camarero puede escribir en un pedido de mesa.
+    // Forma del pedido de mesa que el TPV crea al confirmar una solicitud.
     function camposPedidoCamarero() {
       return ['local', 'estado', 'creado', 'tipo', 'mesa', 'origen', 'pagado',
               'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'cuentaId',
               'actualizadoPor', 'actualizadoEn', 'ultimaOperacionId'];
     }
 
-    // Campos que el camarero puede modificar al ampliar una cuenta.
+    // Campos que el TPV puede ampliar en un pedido de mesa (referencia).
     function camposAmpliacionCamarero() {
       return ['pizzas', 'extras', 'total', 'actualizadoPor', 'actualizadoEn',
               'ultimaOperacionId'];
