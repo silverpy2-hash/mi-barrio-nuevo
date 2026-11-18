@@ -10,7 +10,8 @@ import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.14.1/fire
 
 const CACHE = {
   mesas: 'mb-camarero-mesas',
-  menu: 'mb-camarero-menu'
+  menu: 'mb-camarero-menu',
+  agotados: 'mb-camarero-agotados'
 };
 
 function leerCache(clave, fallback) {
@@ -22,10 +23,16 @@ function leerCache(clave, fallback) {
 function escribirCache(clave, valor) {
   try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) {}
 }
+// Igual que la App Cliente: un menú sin tamanos no sirve para pintar el formulario.
+function leerCacheMenu() {
+  const m = leerCache(CACHE.menu, null);
+  return (m && m.tamanos && typeof m.tamanos === 'object') ? m : null;
+}
 
 let estado = {
   mesas: leerCache(CACHE.mesas, []),
-  menu: leerCache(CACHE.menu, null),
+  menu: leerCacheMenu(),
+  agotados: leerCache(CACHE.agotados, []),
   enLinea: navigator.onLine !== false,
   listo: false
 };
@@ -60,6 +67,14 @@ export function iniciarConfig() {
       escribirCache(CACHE.menu, estado.menu);
     }
     estado.listo = true;
+    notificar();
+  }, () => { estado.enLinea = false; notificar(); });
+
+  // Agotados del local (config/local): los mismos que respeta la App Cliente.
+  onSnapshot(doc(db, 'config', 'local'), (snap) => {
+    const d = snap.exists() ? (snap.data() || {}) : {};
+    estado.agotados = Array.isArray(d.agotados) ? d.agotados.map(String) : [];
+    escribirCache(CACHE.agotados, estado.agotados);
     notificar();
   }, () => { estado.enLinea = false; notificar(); });
 

@@ -241,8 +241,10 @@ function describirItems(items) {
 }
 
 $('btn-agregar-productos').addEventListener('click', () => {
-  iniciarPedido(mesaActual);
+  // Hay que cambiar de vista ANTES de renderizar: renderPedido() no pinta
+  // mientras la vista siga siendo 'cuenta'.
   mostrarVista('pedido');
+  iniciarPedido(mesaActual);
 });
 
 /* --------------------------------------------------------------------------
@@ -250,6 +252,27 @@ $('btn-agregar-productos').addEventListener('click', () => {
    -------------------------------------------------------------------------- */
 
 function menu() { return configuracion().menu; }
+
+// Estructura real de config/menu (la misma que usan el TPV y la App Cliente).
+function tamanosDelMenu(m) {
+  return m && m.tamanos && typeof m.tamanos === 'object' ? m.tamanos : {};
+}
+function precioCategoria(t, categoria) {
+  if (!t) return 0;
+  const p = t.precios || {};
+  const valor = p[categoria] !== undefined ? p[categoria] : t[categoria];
+  return Math.max(0, Number(valor) || 0);
+}
+function bordeDelTamano(t) { return Math.max(0, Number(t && t.borde) || 0); }
+function limiteDelTamano(t) { return Math.max(1, Number(t && t.limite) || 1); }
+function nombreSabor(s) { return String((s && typeof s === 'object' ? s.nombre : s) || ''); }
+function productoAgotado(nombre) {
+  return (configuracion().agotados || []).some(x => String(x) === String(nombre));
+}
+function saborAgotado(s) {
+  if (s && typeof s === 'object' && s.agotado === true) return true;
+  return productoAgotado(nombreSabor(s));
+}
 
 function iniciarPedido(mesa) {
   pedido.mesa = mesa;
@@ -259,7 +282,7 @@ function iniciarPedido(mesa) {
   pedido.notas = '';
   pedido.borde = false;
   const m = menu();
-  pedido.tamano = m && m.tamanos ? Object.keys(m.tamanos)[0] : null;
+  pedido.tamano = Object.keys(tamanosDelMenu(m))[0] || null;
   operacionEnCurso = null;
   errorEn('pedido-error', '');
   $('pedido-notas').value = '';
@@ -275,42 +298,61 @@ function iniciarPedido(mesa) {
 function renderPedido() {
   if (vista !== 'pedido') return;
   const m = menu();
-  if (!m) {
+  const tamanos = tamanosDelMenu(m);
+  if (!Object.keys(tamanos).length) {
     errorEn('pedido-error', 'El menú todavía no cargó. Esperá la conexión e intentá de nuevo.');
     return;
   }
   errorEn('pedido-error', '');
-  if (!m.tamanos[pedido.tamano]) pedido.tamano = Object.keys(m.tamanos)[0];
+  if (!tamanos[pedido.tamano]) pedido.tamano = Object.keys(tamanos)[0];
 
-  $('pedido-tamanos').innerHTML = Object.entries(m.tamanos).map(([k, t]) =>
-    `<button type="button" class="opcion ${k === pedido.tamano ? 'activa' : ''}" data-tamano="${esc(k)}">${esc(t.corto || t.nombre || k)}</button>`
-  ).join('');
+  $('pedido-tamanos').innerHTML = Object.entries(tamanos).map(([k, t]) => {
+    const corto = String(t.corto || k);
+    const nombre = String(t.nombre || corto);
+    const promo = nombre && nombre !== corto
+      ? `<span class="opcion-promo">${esc(nombre)}</span>` : '';
+    return `<button type="button" class="opcion ${k === pedido.tamano ? 'activa' : ''}" data-tamano="${esc(k)}">
+      <span class="opcion-titulo">${esc(corto)}</span>${promo}
+      <span class="opcion-precios">Clásico ${gs(precioCategoria(t, 'clasico'))} · Especial ${gs(precioCategoria(t, 'especial'))} · Gourmet ${gs(precioCategoria(t, 'gourmet'))}</span>
+      <span class="opcion-borde">🧀 Borde +${gs(bordeDelTamano(t))}</span>
+    </button>`;
+  }).join('');
 
-  const limite = Math.max(1, Number((m.tamanos[pedido.tamano] || {}).limite) || 1);
-  $('sabores-limite').textContent = '· hasta ' + limite;
+  const limite = limiteDelTamano(tamanos[pedido.tamano]);
+  $('sabores-limite').textContent = '· Hasta ' + limite + ' variedades';
   const categorias = [
     ['gourmet', '⭐ Gourmet'], ['especial', '✨ Especiales'], ['clasico', '🍃 Clásicos']
   ];
   $('pedido-sabores').innerHTML = categorias.map(([k, titulo]) => {
     const lista = (m.sabores && m.sabores[k]) || [];
-    return `<div><div class="categoria-titulo">${titulo}</div><div class="sabores">${lista.map(s =>
-      `<button type="button" class="sabor ${pedido.sabores.includes(s) ? 'activo' : ''}" data-sabor="${esc(s)}">${esc(s)}</button>`
-    ).join('')}</div></div>`;
+    return `<div><div class="categoria-titulo">${titulo}</div><div class="sabores">${lista.map(s => {
+      const nombre = nombreSabor(s);
+      const off = saborAgotado(s);
+      return `<button type="button" class="sabor ${pedido.sabores.includes(nombre) ? 'activo' : ''}${off ? ' agotado' : ''}" data-sabor="${esc(nombre)}" ${off ? 'disabled' : ''}>${off ? '🚫 ' : ''}${esc(nombre)}</button>`;
+    }).join('')}</div></div>`;
   }).join('');
 
   $('pedido-elegidos').textContent = pedido.sabores.length
     ? pedido.sabores.length + '/' + limite + ' · ' + pedido.sabores.join(', ')
     : 'Sin sabores elegidos';
 
-  $('pedido-extras').innerHTML = (m.extras || []).map(x => {
+  const bordeLabel = document.querySelector('#pedido-borde + span');
+  if (bordeLabel) {
+    const pb = bordeDelTamano(tamanos[pedido.tamano]);
+    bordeLabel.textContent = '🧀 Agregar borde relleno' + (pb ? ' (+' + gs(pb) + ')' : '');
+  }
+
+  $('pedido-extras').innerHTML = (Array.isArray(m.extras) ? m.extras : []).map(x => {
     const id = String(x.id);
     const cant = Number(pedido.extras[id] || 0);
-    return `<div class="extra"><div><div class="extra-nombre">${esc(x.nombre || id)}</div><div class="extra-precio">${gs(x.precio)}</div></div>
-      <div class="contador"><button type="button" data-extra-menos="${esc(id)}" ${cant ? '' : 'disabled'}>−</button><span>${cant}</span><button type="button" data-extra-mas="${esc(id)}">＋</button></div></div>`;
+    const off = productoAgotado(x.nombre || id);
+    return `<div class="extra${off ? ' agotado' : ''}"><div><div class="extra-nombre">${off ? '🚫 ' : ''}${esc(x.nombre || id)}</div><div class="extra-precio">${off ? 'Agotado' : gs(x.precio)}</div></div>
+      <div class="contador"><button type="button" data-extra-menos="${esc(id)}" ${cant ? '' : 'disabled'}>−</button><span>${cant}</span><button type="button" data-extra-mas="${esc(id)}" ${off ? 'disabled' : ''}>＋</button></div></div>`;
   }).join('') || '<p class="pista">No hay extras configurados.</p>';
 
   const bruto = pedido.pizzas.reduce((a, z) => a + z.precio, 0) +
-    (m.extras || []).reduce((a, x) => a + Number(pedido.extras[String(x.id)] || 0) * Number(x.precio || 0), 0);
+    (Array.isArray(m.extras) ? m.extras : []).reduce((a, x) =>
+      a + (productoAgotado(x.nombre || x.id) ? 0 : Number(pedido.extras[String(x.id)] || 0) * Number(x.precio || 0)), 0);
   $('resumen-pizzas').textContent = pedido.pizzas.length;
   $('resumen-extras').textContent = Object.values(pedido.extras).reduce((a, b) => a + Number(b), 0);
   $('resumen-total').textContent = gs(bruto);
@@ -329,7 +371,7 @@ $('pedido-tamanos').addEventListener('click', (e) => {
 $('pedido-sabores').addEventListener('click', (e) => {
   const b = e.target.closest('[data-sabor]'); if (!b) return;
   const s = b.dataset.sabor;
-  const limite = Math.max(1, Number((menu().tamanos[pedido.tamano] || {}).limite) || 1);
+  const limite = limiteDelTamano(tamanosDelMenu(menu())[pedido.tamano]);
   if (pedido.sabores.includes(s)) pedido.sabores = pedido.sabores.filter(x => x !== s);
   else if (pedido.sabores.length >= limite) { toast('Ese tamaño admite hasta ' + limite + ' sabores.'); return; }
   else pedido.sabores.push(s);
@@ -355,10 +397,11 @@ $('pedido-borde').addEventListener('change', (e) => { pedido.borde = e.target.ch
 $('btn-agregar-pizza').addEventListener('click', () => {
   const m = menu();
   if (!m) return;
-  const limite = Math.max(1, Number((m.tamanos[pedido.tamano] || {}).limite) || 1);
+  const t = tamanosDelMenu(m)[pedido.tamano];
+  const limite = limiteDelTamano(t);
   if (!pedido.sabores.length) { toast('Elegí al menos un sabor.'); return; }
   if (pedido.sabores.length > limite) { toast('Demasiados sabores para ese tamaño.'); return; }
-  const t = m.tamanos[pedido.tamano];
+  if (pedido.sabores.some(productoAgotado)) { toast('Hay un sabor agotado en la pizza.'); return; }
   const precio = precioPizza(m, pedido.tamano, pedido.sabores, pedido.borde);
   pedido.pizzas.push({
     tamano: pedido.tamano,
@@ -376,8 +419,8 @@ $('btn-agregar-pizza').addEventListener('click', () => {
 $('btn-enviar').addEventListener('click', async () => {
   if (enviando || !usuario) return;
   pedido.notas = $('pedido-notas').value.trim();
-  const extras = (menu().extras || [])
-    .filter(x => Number(pedido.extras[String(x.id)] || 0) > 0)
+  const extras = ((menu() && menu().extras) || [])
+    .filter(x => Number(pedido.extras[String(x.id)] || 0) > 0 && !productoAgotado(x.nombre || x.id))
     .map(x => ({ id: String(x.id), cantidad: Number(pedido.extras[String(x.id)]) }));
   if (!pedido.pizzas.length && !extras.length) { toast('Agregá al menos una pizza o un extra.'); return; }
   if (!configuracion().enLinea) {

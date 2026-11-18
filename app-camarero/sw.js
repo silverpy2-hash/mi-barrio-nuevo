@@ -3,7 +3,7 @@
    Los datos (menú, mesas, solicitudes) SIEMPRE van a Firestore: nunca se
    simula una confirmación offline. */
 
-const CACHE = 'mb-camarero-v1';
+const CACHE = 'mb-camarero-v2';
 const SHELL = [
   './',
   './index.html',

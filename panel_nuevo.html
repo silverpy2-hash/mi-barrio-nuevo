@@ -2683,10 +2683,13 @@
                 renderNuevo();
                 $('modal-nuevo').classList.add('hidden');
             } catch (e) {
+                console.error('[TPV] Error real al guardar pedido'
+                    + (esMesa ? ' de mesa ' + n.mesa : '') + ':', {
+                        code: e.code, name: e.name, message: e.message, error: e
+                    });
                 if (!esMesa) propios.delete(ref.id);
-                nuevoMsg('nuevo-error', e.code === 'permission-denied'
-                    ? 'Firebase no dejó guardar el pedido: falta publicar las reglas nuevas (reglas_firestore_etapa1.txt) o no entraste como administrador.'
-                    : 'No se pudo guardar el pedido: ' + e.message);
+                nuevoMsg('nuevo-error', 'No se pudo guardar ('
+                    + (e.code || e.name || 'error') + '): ' + (e.message || 'sin mensaje'));
             } finally {
                 nuevo.guardando = false;
                 $('nuevo-guardar').disabled = false;
@@ -3515,7 +3518,11 @@
                     $('modal-nuevo').classList.add('hidden');
                     mostrarToast('➕ Mesa ' + p.mesa + ' · total ' + gs(res.total));
                 } catch (e) {
-                    nuevoMsg('nuevo-error', 'No se pudo agregar: ' + e.message);
+                    console.error('[TPV] Error real al agregar a mesa ' + p.mesa + ':', {
+                        code: e.code, name: e.name, message: e.message, error: e
+                    });
+                    nuevoMsg('nuevo-error', 'No se pudo agregar ('
+                        + (e.code || e.name || 'error') + '): ' + (e.message || 'sin mensaje'));
                 } finally {
                     n.guardando = false; $('nuevo-guardar').disabled = false; renderNuevoTotal();
                 }
