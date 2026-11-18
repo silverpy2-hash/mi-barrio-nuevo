@@ -131,6 +131,13 @@
             box-sizing: border-box;
         }
 
+        /* Los controles con .hidden nunca deben aparecer por reglas de tema que
+           declaren `display` propio (los temas del panel pisan el display:none de
+           Tailwind, que vive en una capa de cascada). Esta regla va antes que los
+           temas para que .solo-avanzado (display:inline-block !important a
+           propósito, para mostrar el monto solo en Avanzado) siga funcionando. */
+        .hidden { display: none !important; }
+
         /* ============================================================
            TEMAS DEL PANEL (TPV)
            Todo lo de acá está limitado a Simple / Moderno / Avanzado.
@@ -1001,41 +1008,59 @@
         body[data-tema-panel="camarero"] #header-panel > div:first-child {
             flex-direction: column;
             align-items: stretch;
-            gap: 8px;
-            padding-top: 10px !important;
-            padding-bottom: 10px !important;
+            gap: 4px;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
         }
-        body[data-tema-panel="camarero"] #titulo-panel { color: #fbbf24; font-size: 1.25rem; line-height: 1.15; }
-        body[data-tema-panel="camarero"] #contador { color: #d4d4d4; opacity: 1; font-size: .8rem; }
+        body[data-tema-panel="camarero"] #header-panel > div:first-child > div:first-child {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 0;
+        }
+        body[data-tema-panel="camarero"] #titulo-panel {
+            color: #fbbf24;
+            font-size: .95rem;
+            line-height: 1.15;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        body[data-tema-panel="camarero"] #contador { color: #d4d4d4; opacity: 1; font-size: .68rem; white-space: nowrap; }
         body[data-tema-panel="camarero"] #version-panel { display: none; }
 
-        /* Barra de acciones: "➕ Pedido" a todo ancho arriba; resto en fila táctil. */
+        /* Barra de acciones compacta (~100-140px de header en 377px de ancho):
+           "➕ Pedido" tocable pero sin bloque enorme; Sonido/Salir/Apariencia chicos. */
         body[data-tema-panel="camarero"] #acciones-panel {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
             width: 100%;
-            justify-content: stretch;
+            justify-content: flex-start;
         }
         body[data-tema-panel="camarero"] #acciones-panel #btn-nuevo {
-            order: -1;
-            flex: 1 1 100%;
-            min-height: 58px;
-            font-size: 1.2rem;
+            order: 0;
+            flex: 0 0 auto;
+            min-height: 44px;
+            font-size: .88rem;
             font-weight: 900;
-            letter-spacing: .02em;
+            letter-spacing: 0;
             background: #f59e0b !important;
             color: #171717 !important;
-            border-radius: 16px;
-            box-shadow: 0 4px 0 #b45309;
-        }
-        body[data-tema-panel="camarero"] #acciones-panel #btn-nuevo:active { transform: translateY(2px); box-shadow: 0 2px 0 #b45309; }
-        body[data-tema-panel="camarero"] #acciones-panel > button:not(#btn-nuevo) {
-            flex: 1 1 0;
-            min-height: 48px;
-            font-size: .9rem;
             border-radius: 12px;
-            padding: 8px 10px !important;
+            padding: 0 14px !important;
+            white-space: nowrap;
+            box-shadow: 0 2px 0 #b45309;
+        }
+        body[data-tema-panel="camarero"] #acciones-panel #btn-nuevo:active { transform: translateY(1px); box-shadow: 0 1px 0 #b45309; }
+        body[data-tema-panel="camarero"] #acciones-panel > button:not(#btn-nuevo) {
+            flex: 0 0 auto;
+            min-height: 40px;
+            font-size: .7rem;
+            border-radius: 10px;
+            padding: 6px 8px !important;
             white-space: nowrap;
         }
         body[data-tema-panel="camarero"] #btn-apariencia,
@@ -1177,7 +1202,7 @@
                 🔕 Tocá acá para activar el aviso sonoro de pedidos nuevos
             </button>
             <p id="aviso-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></p>
-            <!-- Solo camarero: resumen de consumo por mesa y estado de sus solicitudes -->
+            <!-- Resumen de mesas DESACTIVADO a pedido: oculto siempre; queda la lista de pedidos directa -->
             <div id="resumen-mesas" class="hidden grid gap-2 sm:grid-cols-2 lg:grid-cols-4"></div>
             <div id="estado-solicitudes" class="hidden text-sm font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3"></div>
             <div id="lista"></div>
@@ -1368,7 +1393,7 @@
 
         // ===== Configuración =====
         // Subir VERSION_PANEL en cada publicación. Sirve para ver de un vistazo si una pestaña quedó con código viejo.
-        const VERSION_PANEL = '2026-11-18 #9 · tema panel por usuario y rol';
+        const VERSION_PANEL = '2026-11-18 #10 · camarero compacto + fix permisos local/agotados';
         (() => {
             const el = document.getElementById('version-panel');
             if (el) el.textContent = VERSION_PANEL;
@@ -1829,7 +1854,7 @@
                     $('filtros').classList.add('hidden'); // Ocultar filtros para el repartidor
                 } else if (esCamarero) {
                     $('header-panel').className = 'bg-neutral-900 text-white shadow sticky top-0 z-20';
-                    $('titulo-panel').textContent = '🍽️ Mesas y pedidos del local';
+                    $('titulo-panel').textContent = '🍽️ Mesas y pedidos';
                     $('filtros').classList.add('hidden'); // El camarero solo ve pedidos locales
                 } else {
                     $('header-panel').className = 'bg-red-700 text-white shadow sticky top-0 z-20';
@@ -1843,7 +1868,8 @@
                 // Si es camarero, aplicarTemaPanel ya reaplica sus permisos.
                 aplicarTemaPanel(leerTemaPanel(), false);
 
-                $('resumen-mesas').classList.toggle('hidden', !esCamarero);
+                // Resumen de mesas desactivado a pedido: el camarero ve la lista de pedidos directamente.
+                $('resumen-mesas').classList.add('hidden');
                 $('estado-solicitudes').classList.toggle('hidden', !esCamarero);
 
                 $('login').classList.add('hidden');
@@ -1967,7 +1993,8 @@
         let mesas = []; let cancelarMesas = null; let mesasListas = false;
 
         function pintarLocal() {
-            if (esDelivery || !panelAbierto) return;
+            // Solo el administrador puede abrir/cerrar el local: camarero y delivery no tocan estos botones.
+            if (esDelivery || esCamarero || !panelAbierto) return;
             const e = estadoLocal(localCfg, Date.now());
             const sub = e.modo === 'manual' ? 'Manual' + (e.hasta ? ' · hasta ' + fmtHora(e.hasta) : '') : (e.modo === 'auto' ? 'Automático' : 'Sin horario');
             const b = $('btn-local');
@@ -2001,8 +2028,25 @@
                 if (modal && !modal.classList.contains('hidden')) pintarMesasNuevo();
             }, () => {});
         }
+        // Pintado de la grilla "Mesas y QR" de la Configuración.
+        // Vive en el ámbito principal (no dentro del IIFE de Configuración) porque
+        // escucharMesas() la llama desde acá; la Configuración la sigue viendo por cierre.
+        function pintarMesas() {
+            const cont = $('mesas-lista');
+            if (!cont) return;
+            if (!mesas.length) { cont.innerHTML = '<p class="text-sm text-neutral-500">Todavía no tenés mesas cargadas.</p>'; return; }
+            cont.innerHTML = mesas.map(n => `
+        <div class="rounded-2xl border border-neutral-200 bg-white p-3 text-center">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin + location.pathname.replace(/[^/]*$/, '') + '?mesa=' + n)}" alt="QR mesa ${n}" class="w-40 h-40 mx-auto" />
+            <div class="font-bold mt-2">Mesa ${n}</div>
+            <button type="button" data-del-mesa="${n}" class="mt-2 text-xs font-bold bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded-lg">🗑️ Borrar</button>
+        </div>`).join('');
+        }
         // Resumen que ve el camarero: consumos y totales de cada mesa configurada.
         function pintarResumenMesas() {
+            // Desactivado a pedido: ya no se muestra el resumen de mesas al camarero.
+            // Se conserva la función y sus llamadas (login, render, onSnapshot de mesas) como no-op.
+            return;
             const cont = $('resumen-mesas');
             if (!cont || !esCamarero) return;
             if (!mesasListas) { cont.innerHTML = '<p class="text-sm text-neutral-500">Cargando mesas…</p>'; return; }
@@ -2086,7 +2130,7 @@
         function pintarAutoprint() {
             const b = $('btn-autoprint');
             b.textContent = autoImprimir ? '🖨️ Auto: ON' : '🖨️ Auto: OFF';
-            b.className = (esDelivery ? 'hidden ' : '') + 'text-xs font-bold px-3 py-1.5 rounded-lg ' + (autoImprimir ? 'bg-amber-300 text-neutral-900 hover:bg-amber-200' : 'bg-white/20 hover:bg-white/30');
+            b.className = ((esDelivery || esCamarero) ? 'hidden ' : '') + 'text-xs font-bold px-3 py-1.5 rounded-lg ' + (autoImprimir ? 'bg-amber-300 text-neutral-900 hover:bg-amber-200' : 'bg-white/20 hover:bg-white/30');
         }
         $('btn-autoprint').addEventListener('click', () => {
             autoImprimir = !autoImprimir;
@@ -4485,17 +4529,6 @@ function vistaMesas() {
             <div id="mesas-lista" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3"></div>
         </div>`;
     pintarMesas();
-}
-function pintarMesas() {
-    const cont = $('mesas-lista');
-    if (!cont) return;
-    if (!mesas.length) { cont.innerHTML = '<p class="text-sm text-neutral-500">Todavía no tenés mesas cargadas.</p>'; return; }
-    cont.innerHTML = mesas.map(n => `
-        <div class="rounded-2xl border border-neutral-200 bg-white p-3 text-center">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin + location.pathname.replace(/[^/]*$/, '') + '?mesa=' + n)}" alt="QR mesa ${n}" class="w-40 h-40 mx-auto" />
-            <div class="font-bold mt-2">Mesa ${n}</div>
-            <button type="button" data-del-mesa="${n}" class="mt-2 text-xs font-bold bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded-lg">🗑️ Borrar</button>
-        </div>`).join('');
 }
 async function guardarMesas() {
     try { await setDoc(doc(db, 'config', 'mesas'), { mesas: mesas, actualizado: serverTimestamp() }, { merge: true }); toast('🪑 Mesas guardadas'); }
