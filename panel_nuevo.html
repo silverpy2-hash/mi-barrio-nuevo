@@ -1227,7 +1227,8 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
         import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-        import { crearOAmpliarCuenta, generarOperacionId, procesarSolicitud, rechazarSolicitud } from "./cuentas-mesa/firebase.js";
+        import { crearOAmpliarCuenta, procesarSolicitud, rechazarSolicitud } from "./cuentas-mesa/firebase.js";
+        import { generarOperacionId } from "./cuentas-mesa/core.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBczdHiqe4fO6XThYRQky-WBlwgdhWDYCI",
