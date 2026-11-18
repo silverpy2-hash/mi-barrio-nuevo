@@ -1023,8 +1023,6 @@
                     <button id="btn-agotados" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Marcar sabores agotados">🚫 Agotados</button>
                     <button id="btn-config" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">⚙️ Config</button>
                     <button id="btn-cocina" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">👨‍🍳 Cocina</button>
-                    <button id="btn-mesas" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">🪑 Mesas</button>
-                    <button id="btn-solicitudes" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">📥 Solicitudes <span id="sol-badge" class="hidden bg-amber-300 text-neutral-900 rounded-full px-1.5 ml-1">0</span></button>
                     <button id="btn-rapida" type="button" class="hidden text-xs bg-amber-300 text-neutral-900 hover:bg-amber-200 font-bold px-3 py-1.5 rounded-lg">⚡ Venta rápida</button>
                     <button id="btn-nuevo" type="button" class="hidden text-xs bg-white text-red-700 hover:bg-red-50 font-bold px-3 py-1.5 rounded-lg">➕ Pedido</button>
                     <button id="btn-caja" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">📊 Caja</button>
@@ -1179,27 +1177,6 @@
         <div id="cocina-lista" class="p-3 grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div>
     </div>
 
-    <!-- ===== Mesas (App Camarero): estado, consumo y cobro ===== -->
-    <div id="vista-mesas" class="hidden fixed inset-0 z-30 bg-neutral-100 overflow-y-auto">
-        <div class="sticky top-0 z-10 bg-red-700 text-white px-4 py-3 flex items-center justify-between gap-2">
-            <div><h2 class="font-extrabold text-lg">🪑 Mesas</h2><p id="mesas-cont" class="text-xs opacity-90"></p></div>
-            <button id="mesas-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Salir</button>
-        </div>
-        <div id="mesas-lista" class="p-3 grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div>
-    </div>
-
-    <!-- ===== Solicitudes del camarero (cola pendiente de aprobación del TPV) ===== -->
-    <div id="vista-solicitudes" class="hidden fixed inset-0 z-30 bg-neutral-100 overflow-y-auto">
-        <div class="sticky top-0 z-10 bg-red-700 text-white px-4 py-3 flex items-center justify-between gap-2">
-            <div><h2 class="font-extrabold text-lg">📥 Solicitudes del camarero</h2><p id="sol-cont" class="text-xs opacity-90"></p></div>
-            <div class="flex items-center gap-2">
-                <label class="text-xs font-bold flex items-center gap-1"><input id="sol-auto" type="checkbox" checked> Aprobar automáticamente</label>
-                <button id="sol-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Salir</button>
-            </div>
-        </div>
-        <div id="sol-lista" class="p-3 grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
-    </div>
-
     <!-- ===== Cobro (efectivo con vuelto, transferencia, POS) ===== -->
     <div id="modal-agotados" class="hidden fixed inset-0 z-50 bg-black/60 overflow-y-auto">
         <div class="max-w-lg mx-auto min-h-screen sm:min-h-0 sm:mt-8 bg-neutral-100 sm:rounded-2xl overflow-hidden">
@@ -1226,9 +1203,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
         import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-
-        import { crearOAmpliarCuenta, procesarSolicitud, rechazarSolicitud } from "./cuentas-mesa/firebase.js";
-        import { generarOperacionId } from "./cuentas-mesa/core.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBczdHiqe4fO6XThYRQky-WBlwgdhWDYCI",
@@ -1404,14 +1378,14 @@
             if (mas.parentElement !== cont) cont.appendChild(mas);
 
             if (tema === 'simple') {
-                const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir', 'btn-mesas', 'btn-solicitudes'];
+                const secundarios = ['version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
                 secundarios.forEach(id => { const n = $(id); if (n) cuerpo.appendChild(n); });
                 mas.classList.remove('hidden');
                 cont.appendChild(mas);
             } else if (tema === 'moderno') {
                 // Cocina y Venta rápida también van al menú "Más": Acciones principales
                 // queda solo con Pedido y Caja. Los botones se reutilizan tal cual.
-                const secundarios = ['btn-cocina', 'btn-mesas', 'btn-solicitudes', 'btn-rapida', 'version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
+                const secundarios = ['btn-cocina', 'btn-rapida', 'version-panel', 'btn-local-auto', 'btn-autoprint', 'btn-agotados', 'btn-config', 'btn-sonido', 'btn-salir'];
                 secundarios.forEach(id => { const n = porId(id); if (n) cuerpo.appendChild(n); });
                 const grupos = [
                     ['Estado del local', ['btn-local']],
@@ -1433,7 +1407,7 @@
                 mas.classList.remove('hidden');
             } else if (tema === 'avanzado') {
                 const grupos = [
-                    ['Pedidos', ['btn-nuevo', 'btn-rapida', 'btn-cocina', 'btn-mesas', 'btn-solicitudes', 'btn-caja']],
+                    ['Pedidos', ['btn-nuevo', 'btn-rapida', 'btn-cocina', 'btn-caja']],
                     ['Local', ['btn-local', 'btn-local-auto', 'btn-agotados', 'btn-autoprint']],
                     ['Sistema', ['btn-config', 'btn-sonido', 'btn-salir', 'version-panel']]
                 ];
@@ -1602,8 +1576,6 @@
                 $('btn-nuevo').classList.toggle('hidden', esDelivery);
                 $('btn-rapida').classList.toggle('hidden', esDelivery);
                 $('btn-cocina').classList.toggle('hidden', esDelivery);
-                $('btn-mesas').classList.toggle('hidden', esDelivery);
-                $('btn-solicitudes').classList.toggle('hidden', esDelivery);
                 $('btn-config').classList.toggle('hidden', esDelivery);
                 $('btn-local').classList.toggle('hidden', esDelivery);
                 $('btn-autoprint').classList.toggle('hidden', esDelivery);
@@ -1627,7 +1599,7 @@
                 actualizarAvisoSonido();
                 mantenerPantalla();
                 escucharPedidos();
-                if (!esDelivery) { escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); escucharMesas(); escucharDatosMesa(); pintarAutoprint(); }
+                if (!esDelivery) { escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); escucharMesas(); pintarAutoprint(); }
             } else {
                 panelAbierto = false;
                 esDelivery = false;
@@ -1638,9 +1610,6 @@
                 if (cancelarLocal) { cancelarLocal(); cancelarLocal = null; }
                 colaComanda.clear();
                 colaTickets.clear(); ticketsVistos = null;
-                detenerDatosMesa();
-                $('vista-mesas').classList.add('hidden');
-                $('vista-solicitudes').classList.add('hidden');
                 fondo = 0; cobro = null; $('modal-cobro').classList.add('hidden'); $('vista-cocina').classList.add('hidden');
                 clientesMem = [];
                 gastos = [];
@@ -1850,8 +1819,7 @@
             try {
                 for (const [id, desde] of [...colaComanda]) {
                     const ped = pedidos.find(x => x.id === id);
-                    // Los pedidos de mesa (camarero) se imprimen desde su comanda, no desde el pedido.
-                    if (!ped || ped.comandaImpresa || ped.origen === 'camarero' || ped.cuentaId) { colaComanda.delete(id); continue; }
+                    if (!ped || ped.comandaImpresa) { colaComanda.delete(id); continue; }
                     if (!ped.numero && Date.now() - desde < 8000) continue;   // espera a que le asignen el número
                     colaComanda.delete(id);
                     let numero = ped.numero;
@@ -2639,57 +2607,28 @@
             };
             if (n.entrada === 'entregado') datos.estadoActualizado = serverTimestamp();
 
-            const esMesa = n.tipo === 'local';
-            const itemsMesa = esMesa ? {
-                pizzas: n.pizzas.map(z => ({ tamano: z.tamano, sabores: z.sabores, borde: !!z.borde })),
-                extras: MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ id: x[0], cantidad: n.extras[x[0]] }))
-            } : null;
             const ref = doc(collection(db, 'pedidos'));
-            if (!esMesa) propios.add(ref.id);
+            propios.add(ref.id);
             nuevo.guardando = true;
             $('nuevo-guardar').disabled = true;
             $('nuevo-guardar').textContent = 'Guardando...';
             try {
-                let pedidoIdFinal = ref.id;
-                if (esMesa) {
-                    const u = auth.currentUser;
-                    const res = await crearOAmpliarCuenta(db, {
-                        mesa: n.mesa,
-                        items: itemsMesa,
-                        actor: { uid: u ? u.uid : 'tpv', email: u ? (u.email || '') : '', nombre: 'TPV' },
-                        operacionId: generarOperacionId()
-                    });
-                    pedidoIdFinal = res.pedidoId;
-                    // El núcleo calcula precios y totales; el TPV agrega solo datos de presentación/cobro.
-                    await updateDoc(doc(db, 'pedidos', pedidoIdFinal), {
-                        descuento: desc,
-                        mensaje: lineas.join('\n'),
-                        cliente: datos.cliente,
-                        pago: null,
-                        costoDelivery: 0
-                    });
-                    mostrarToast('✅ Mesa ' + n.mesa + ' · ' + (res.accion === 'crear' ? 'cuenta abierta' : 'cuenta ampliada') + ' · ' + gs(res.total));
-                } else {
-                    await runTransaction(db, async (tx) => {
-                        const c = await tx.get(refContador());
-                        datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
-                        await recordarCliente(tx, datos, Date.now());
-                        tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
-                        tx.set(ref, datos);
-                    });
-                    mostrarToast('✅ Pedido #' + datos.numero + ' guardado · ' + gs(total));
-                }
+                await runTransaction(db, async (tx) => {
+                    const c = await tx.get(refContador());
+                    datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
+                    await recordarCliente(tx, datos, Date.now());
+                    tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
+                    tx.set(ref, datos);
+                });
                 nuevoLimpiar();
                 renderNuevo();
                 $('modal-nuevo').classList.add('hidden');
+                mostrarToast('✅ Pedido #' + datos.numero + ' guardado · ' + gs(total));
             } catch (e) {
-                console.error('[TPV] Error real al guardar pedido'
-                    + (esMesa ? ' de mesa ' + n.mesa : '') + ':', {
-                        code: e.code, name: e.name, message: e.message, error: e
-                    });
-                if (!esMesa) propios.delete(ref.id);
-                nuevoMsg('nuevo-error', 'No se pudo guardar ('
-                    + (e.code || e.name || 'error') + '): ' + (e.message || 'sin mensaje'));
+                propios.delete(ref.id);
+                nuevoMsg('nuevo-error', e.code === 'permission-denied'
+                    ? 'Firebase no dejó guardar el pedido: falta publicar las reglas nuevas (reglas_firestore.txt) o no entraste como administrador.'
+                    : 'No se pudo guardar el pedido: ' + e.message);
             } finally {
                 nuevo.guardando = false;
                 $('nuevo-guardar').disabled = false;
@@ -2757,15 +2696,12 @@
 
         function resumenActual() {
             const entregados = pedidos.filter(p => estadoDe(p) === 'entregado');
-            // Un pedido entregado pero NO cobrado no es una venta: sigue en el panel
-            // y no se archiva al cerrar la caja.
-            const cobrados = entregados.filter(p => p.pagado === true);
             const cancelados = pedidos.filter(p => estadoDe(p) === 'cancelado');
-            const enCurso = pedidos.filter(p => ACTIVOS.includes(estadoDe(p)) || (estadoDe(p) === 'entregado' && p.pagado !== true));
-            const total = cobrados.reduce((a, p) => a + Number(p.total || 0), 0);
+            const enCurso = pedidos.filter(p => ACTIVOS.includes(estadoDe(p)));
+            const total = entregados.reduce((a, p) => a + Number(p.total || 0), 0);
             const porTamano = {};
             let pizzas = 0;
-            cobrados.forEach(p => (p.pizzas || []).forEach(z => {
+            entregados.forEach(p => (p.pizzas || []).forEach(z => {
                 pizzas++;
                 const k = z.nombre || 'Pizza';
                 porTamano[k] = porTamano[k] || { nombre: k, cantidad: 0, monto: 0 };
@@ -2773,33 +2709,33 @@
                 porTamano[k].monto += Number(z.precio || 0);
             }));
             const porPago = { efectivo: 0, transferencia: 0, pos: 0, sinDefinir: 0 };
-            cobrados.forEach(p => { porPago[PAGOS[p.pago] ? p.pago : 'sinDefinir'] += Number(p.total || 0); });
+            entregados.forEach(p => { porPago[PAGOS[p.pago] ? p.pago : 'sinDefinir'] += Number(p.total || 0); });
             const porTipo = { delivery: { n: 0, monto: 0 }, retiro: { n: 0, monto: 0 }, local: { n: 0, monto: 0 } };
-            cobrados.forEach(p => {
+            entregados.forEach(p => {
                 const k = (p.tipo === 'retiro' || p.tipo === 'local') ? p.tipo : 'delivery';
                 porTipo[k].n++; porTipo[k].monto += Number(p.total || 0);
             });
             const totalGastos = gastos.reduce((a, g) => a + Number(g.monto || 0), 0);
             const sab = {}, hs = {};
-            cobrados.forEach(p => {
+            entregados.forEach(p => {
                 (p.pizzas || []).forEach(z => (z.sabores || []).forEach(x => { sab[x] = (sab[x] || 0) + 1; }));
                 const h = new Date(creadoMs(p)).getHours(); hs[h] = (hs[h] || 0) + 1;
             });
             const topSabores = Object.entries(sab).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([nombre, cantidad]) => ({ nombre, cantidad }));
             const pico = Object.entries(hs).sort((a, b) => b[1] - a[1])[0];
             const horaPico = pico ? { hora: Number(pico[0]), pedidos: pico[1] } : null;
-            return { entregados, cobrados, cancelados, enCurso, total, pizzas, porTamano: Object.values(porTamano), porPago, porTipo, totalGastos, topSabores, horaPico, porHora: hs };
+            return { entregados, cancelados, enCurso, total, pizzas, porTamano: Object.values(porTamano), porPago, porTipo, totalGastos, topSabores, horaPico, porHora: hs };
         }
 
         function bloqueResumen(r) {
             const filas = r.porTamano.map(t => `<div class="flex justify-between text-sm"><span>${esc(t.cantidad)} × ${esc(t.nombre)}</span><span class="font-semibold">${gs(t.monto)}</span></div>`).join('');
             return `
                 <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
-                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Total cobrado (pedidos entregados y pagados)</div>
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Total vendido (pedidos entregados)</div>
                     <div class="text-3xl font-black text-red-700">${gs(r.total)}</div>
                     <div class="grid grid-cols-3 gap-2 text-center">
-                        <div class="bg-green-50 rounded-xl py-2"><div class="text-lg font-black text-green-700">${r.cobrados.length}</div><div class="text-[11px] text-neutral-600">Cobrados</div></div>
-                        <div class="bg-neutral-50 rounded-xl py-2"><div class="text-lg font-black">${r.cobrados.length ? gs(Math.round(r.total / r.cobrados.length)) : '-'}</div><div class="text-[11px] text-neutral-600">Ticket promedio</div></div>
+                        <div class="bg-green-50 rounded-xl py-2"><div class="text-lg font-black text-green-700">${r.entregados.length}</div><div class="text-[11px] text-neutral-600">Entregados</div></div>
+                        <div class="bg-neutral-50 rounded-xl py-2"><div class="text-lg font-black">${r.entregados.length ? gs(Math.round(r.total / r.entregados.length)) : '-'}</div><div class="text-[11px] text-neutral-600">Ticket promedio</div></div>
                         <div class="bg-red-50 rounded-xl py-2"><div class="text-lg font-black text-red-700">${r.cancelados.length}</div><div class="text-[11px] text-neutral-600">Cancelados</div></div>
                     </div>
                     ${filas ? `<div class="border-t pt-2 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Pizzas vendidas: ${r.pizzas}</div>${filas}</div>` : ''}
@@ -2944,17 +2880,11 @@
         async function cerrarCaja() {
             if (esDelivery) return;
             const r = resumenActual();
-            const mesasAbiertas = mesasPendientesCobro();
-            if (mesasAbiertas.length) {
-                mostrarError('⛔ No se puede cerrar la caja: hay mesas abiertas sin cobrar: ' + mesasAbiertas.join(', ') + '. Cobralas o cancelá sus cuentas antes de cerrar.');
-                return;
-            }
-            const aArchivar = [...r.cobrados, ...r.cancelados];
+            const aArchivar = [...r.entregados, ...r.cancelados];
             if (!aArchivar.length && !gastos.length) return;
             if (aArchivar.length + gastos.length > 450) { mostrarError('Son demasiados pedidos para un solo cierre.'); return; }
-            if (!confirm('¿Cerrar la caja?\n\nTotal cobrado: ' + gs(r.total) + '\nCobrados: ' + r.cobrados.length + ' · Cancelados: ' + r.cancelados.length +
-                '\nPendientes de cobro (siguen en el panel): ' + r.enCurso.length +
-                '\nGastos: ' + gs(r.totalGastos) + '\n\nSe guarda el reporte y solo los pedidos cobrados salen del panel.')) return;
+            if (!confirm('¿Cerrar la caja?\n\nTotal: ' + gs(r.total) + '\nEntregados: ' + r.entregados.length + ' · Cancelados: ' + r.cancelados.length +
+                '\nGastos: ' + gs(r.totalGastos) + '\n\nSe guarda el reporte y estos pedidos salen del panel.')) return;
             const btn = $('btn-cerrar-caja');
             if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
             try {
@@ -2986,7 +2916,7 @@
                     topSabores: r.topSabores,
                     horaPico: r.horaPico,
                     porHora: r.porHora,
-                    cantidadEntregados: r.cobrados.length,
+                    cantidadEntregados: r.entregados.length,
                     cantidadCancelados: r.cancelados.length,
                     pizzas: r.pizzas,
                     porTamano: r.porTamano,
@@ -3353,18 +3283,7 @@
             cobro.guardando = true;
             $('cobro-confirmar').disabled = true;
             try {
-                const batchCobro = writeBatch(db);
-                batchCobro.update(doc(db, 'pedidos', p.id), upd);
-                // Al cobrar, la mesa se libera cerrando su cuenta activa en la misma operación.
-                if (p.mesa && (p.tipo === 'local' || p.cuentaId)) {
-                    batchCobro.set(doc(db, 'cuentas_mesa', String(p.mesa)), {
-                        estado: 'cerrada',
-                        cerradaEn: serverTimestamp(),
-                        cerradaPorUid: (auth.currentUser && auth.currentUser.uid) || ''
-                    }, { merge: true });
-                }
-                await batchCobro.commit();
-                pintarMesas();
+                await updateDoc(doc(db, 'pedidos', p.id), upd);
                 cerrarCobro();
                 mostrarToast('✅ Cobrado ' + numeroCorto(p) + ' · ' + gs(total) + (vuelto ? ' · vuelto ' + gs(vuelto) : ''));
             } catch (e) {
@@ -3481,8 +3400,7 @@
         $('btn-nuevo').addEventListener('click', () => { nuevo.agregarA = null; });
         function abrirAgregar(p) {
             nuevoLimpiar();
-            const mesaServida = p.tipo === 'local' && p.mesa && !p.pagado;
-            if (p.pagado || p.estado === 'cancelado' || p.estado === 'archivado' || (p.estado === 'entregado' && !mesaServida)) { toast('⚠️ El pedido ' + numeroCorto(p) + ' ya fue cobrado/cerrado: no se puede agregar más. Creá un nuevo pedido.'); return; }
+            if (p.estado === 'entregado' || p.pagado) { toast('⚠️ El pedido ' + numeroCorto(p) + ' ya fue cobrado/entregado: no se puede agregar más. Creá un nuevo pedido.'); return; }
             nuevo.agregarA = p.id; nuevo.tipo = TIPOS[p.tipo] ? p.tipo : 'delivery'; nuevo.entrada = 'nuevo';
             nuevo.mesa = (nuevo.tipo === 'local' && Number(p.mesa)) || null;
             nuevoMsg('nuevo-error', '');
@@ -3493,41 +3411,11 @@
         async function guardarAgregado() {
             const n = nuevo, p = pedidos.find(x => x.id === n.agregarA);
             if (!p || n.guardando) { nuevoMsg('nuevo-error', 'No se encontró el pedido.'); return; }
-            const mesaServida = p.tipo === 'local' && p.mesa && !p.pagado;
-            if (p.pagado || p.estado === 'cancelado' || p.estado === 'archivado' || (p.estado === 'entregado' && !mesaServida)) { nuevoMsg('nuevo-error', 'El pedido ' + numeroCorto(p) + ' ya fue cobrado/cerrado: no se puede agregar más productos. Creá un nuevo pedido.'); return; }
+            if (p.estado === 'entregado' || p.pagado) { nuevoMsg('nuevo-error', 'El pedido ' + numeroCorto(p) + ' ya fue cobrado/entregado: no se puede agregar más productos. Creá un nuevo pedido.'); return; }
             nuevoMsg('nuevo-ok', ''); nuevoMsg('nuevo-error', '');
             if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
             const extrasN = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
             if (!n.pizzas.length && !extrasN.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
-            if (mesaServida) {
-                const u = auth.currentUser;
-                const items = {
-                    pizzas: n.pizzas.map(z => ({ tamano: z.tamano, sabores: z.sabores, borde: !!z.borde })),
-                    extras: MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ id: x[0], cantidad: n.extras[x[0]] }))
-                };
-                n.guardando = true; $('nuevo-guardar').disabled = true;
-                try {
-                    const res = await crearOAmpliarCuenta(db, {
-                        mesa: p.mesa,
-                        items,
-                        actor: { uid: u ? u.uid : 'tpv', email: u ? (u.email || '') : '', nombre: 'TPV' },
-                        operacionId: generarOperacionId(),
-                        pedidoIdEsperado: p.id
-                    });
-                    nuevoLimpiar(); renderNuevo();
-                    $('modal-nuevo').classList.add('hidden');
-                    mostrarToast('➕ Mesa ' + p.mesa + ' · total ' + gs(res.total));
-                } catch (e) {
-                    console.error('[TPV] Error real al agregar a mesa ' + p.mesa + ':', {
-                        code: e.code, name: e.name, message: e.message, error: e
-                    });
-                    nuevoMsg('nuevo-error', 'No se pudo agregar ('
-                        + (e.code || e.name || 'error') + '): ' + (e.message || 'sin mensaje'));
-                } finally {
-                    n.guardando = false; $('nuevo-guardar').disabled = false; renderNuevoTotal();
-                }
-                return;
-            }
             const pizzasN = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
             const suma = pizzasN.reduce((a, z) => a + z.precio, 0) + MENU.extras.reduce((a, x) => a + (n.extras[x[0]] || 0) * x[2], 0);
             const extras = (p.extras || []).map(x => ({ ...x }));
@@ -4237,251 +4125,6 @@ $('cfg-vista').addEventListener('click', (e) => {
         $('btn-config').addEventListener('click', abrirConfig);
         $('cfg-cerrar').addEventListener('click', cerrarConfig);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal-config').classList.contains('hidden') && $('modal-nuevo').classList.contains('hidden')) cerrarConfig(); });
-
-        /* ==================================================================
-           ETAPAS 2 y 4 — Cuentas por mesa, solicitudes del camarero y comandas.
-           El TPV administrador es el componente de confianza: recalcula los
-           precios desde config/menu (cuentas-mesa/core.js) y es el único que
-           puede confirmar solicitudes. Sin backend, esto queda documentado
-           como limitación de seguridad.
-           ================================================================== */
-        let cuentasMesa = [];
-        let comandasMesa = [];
-        let solicitudesMesa = [];
-        let cancelarCuentas = null, cancelarComandas = null, cancelarSolicitudes = null;
-        let autoAprobar = true;
-        let procesandoSolicitudes = false;
-        const colaComandasMesa = new Map();
-        let procesandoComandasMesa = false;
-
-        function estadoMesa(mesa) {
-            const c = cuentasMesa.find(x => String(x.id) === String(mesa));
-            if (!c || !c.pedidoId) return { estado: 'libre', cuenta: null, pedido: null };
-            const pedido = pedidos.find(p => p.id === c.pedidoId) || null;
-            let estado = 'ocupada';
-            if (c.estado === 'cerrada') estado = 'cerrada';
-            else if (!pedido) estado = 'pendiente_cobro'; // cuenta huérfana: no se libera sola
-            else if (pedido.pagado === true || pedido.estado === 'cancelado' || pedido.estado === 'archivado') estado = 'cerrada';
-            else if (pedido.estado === 'entregado') estado = 'pendiente_cobro';
-            return { estado, cuenta: c, pedido };
-        }
-        function solicitudesPendientes() { return solicitudesMesa.filter(s => s.estado === 'pendiente'); }
-        function mesasPendientesCobro() {
-            return cuentasMesa.filter(c => c.pedidoId && estadoMesa(c.id).estado !== 'cerrada').map(c => Number(c.mesa || c.id));
-        }
-        function actualizarBadgeSolicitudes() {
-            const b = $('sol-badge'); if (!b) return;
-            const n = solicitudesPendientes().length;
-            b.textContent = n;
-            b.classList.toggle('hidden', !n);
-        }
-        function escucharDatosMesa() {
-            if (cancelarCuentas) cancelarCuentas();
-            if (cancelarComandas) cancelarComandas();
-            if (cancelarSolicitudes) cancelarSolicitudes();
-            cancelarCuentas = onSnapshot(collection(db, 'cuentas_mesa'), (snap) => {
-                cuentasMesa = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                pintarMesas();
-            }, () => {});
-            cancelarComandas = onSnapshot(collection(db, 'comandas'), (snap) => {
-                const vistasAntes = new Set(comandasMesa.filter(c => !c.impresa).map(c => c.id));
-                comandasMesa = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                const ahora = new Set(comandasMesa.map(c => c.id));
-                comandasMesa.forEach(c => {
-                    if (!c.impresa && !vistasAntes.has(c.id) && ahora.has(c.id)) colaComandasMesa.set(c.id, Date.now());
-                });
-                pintarMesas();
-                procesarColaComandasMesa();
-            }, () => {});
-            // Sin orderBy para no depender de índices compuestos nuevos.
-            cancelarSolicitudes = onSnapshot(query(collection(db, 'solicitudes_mesa'), where('estado', '==', 'pendiente')), (snap) => {
-                solicitudesMesa = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                    .sort((a, b) => (a.creado && a.creado.toMillis ? a.creado.toMillis() : 0) - (b.creado && b.creado.toMillis ? b.creado.toMillis() : 0));
-                actualizarBadgeSolicitudes();
-                renderSolicitudes();
-                if (autoAprobar) procesarSolicitudes();
-            }, () => {});
-        }
-        function detenerDatosMesa() {
-            [cancelarCuentas, cancelarComandas, cancelarSolicitudes].forEach(f => { if (f) f(); });
-            cancelarCuentas = cancelarComandas = cancelarSolicitudes = null;
-            cuentasMesa = []; comandasMesa = []; solicitudesMesa = [];
-            colaComandasMesa.clear();
-            actualizarBadgeSolicitudes();
-        }
-
-        function describirItems(items) {
-            const i = items || {};
-            const pizzas = (i.pizzas || []).map(z => `<div>• ${esc(z.nombre || z.tamano || 'Pizza')}: ${esc((z.sabores || []).join(' / '))}${z.borde ? ' + borde' : ''}</div>`).join('');
-            const extras = (i.extras || []).map(x => `<div>• ${esc(x.item || x.id)} x${esc(x.cantidad)}</div>`).join('');
-            return pizzas + extras;
-        }
-
-        function pintarMesas() {
-            const el = $('mesas-lista'); if (!el) return;
-            const lista = mesas.slice().sort((a, b) => Number(a) - Number(b));
-            const libres = lista.filter(m => estadoMesa(m).estado === 'libre').length;
-            const porCobrar = lista.filter(m => estadoMesa(m).estado === 'pendiente_cobro').length;
-            $('mesas-cont').textContent = lista.length + ' mesas · ' + libres + ' libres · ' + porCobrar + ' por cobrar';
-            el.innerHTML = lista.length ? lista.map(m => {
-                const { estado, cuenta, pedido } = estadoMesa(m);
-                const colores = {
-                    libre: 'border-green-400 bg-green-50', ocupada: 'border-amber-400 bg-amber-50',
-                    pendiente_cobro: 'border-red-400 bg-red-50', cerrada: 'border-neutral-300 bg-neutral-100'
-                };
-                const etiquetas = {
-                    libre: '🟢 Libre', ocupada: '🟡 Ocupada',
-                    pendiente_cobro: '🔴 Por cobrar', cerrada: '⚪ Cerrada'
-                };
-                const soles = solicitudesPendientes().filter(s => Number(s.mesa) === Number(m)).length;
-                const total = pedido ? Number(pedido.total || 0) : (cuenta ? Number(cuenta.total || 0) : 0);
-                const consumo = pedido ? describirItems({ pizzas: pedido.pizzas, extras: pedido.extras }) : '<div class="text-neutral-500">Sin consumo</div>';
-                const historial = comandasMesa.filter(c => Number(c.mesa) === Number(m))
-                    .sort((a, b) => creadoMs(b) - creadoMs(a))
-                    .map(c => `<div class="text-[11px]">${esc((c.id || '').slice(0, 6))} · ${gs(c.subtotal)} · ${esc(c.creadoPorNombre || c.creadoPorEmail || '')}</div>`).join('');
-                return `<article class="rounded-2xl border-2 p-4 space-y-2 ${colores[estado]}">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-2xl font-black text-neutral-900">Mesa ${esc(m)}</span>
-                        <span class="text-[11px] font-bold px-2 py-1 rounded-lg bg-white text-neutral-800">${etiquetas[estado]}</span>
-                    </div>
-                    <div class="text-2xl font-black text-neutral-900">${gs(total)}</div>
-                    ${soles ? `<div class="text-xs font-bold text-amber-800">📥 ${soles} solicitud(es) pendiente(s)</div>` : ''}
-                    <details class="text-sm text-neutral-800"><summary class="font-bold cursor-pointer">Ver consumo y comandas</summary>
-                        <div class="pt-2 space-y-0.5">${consumo}</div>
-                        ${historial ? `<div class="border-t mt-2 pt-2 space-y-0.5"><div class="font-bold">Comandas</div>${historial}</div>` : ''}
-                    </details>
-                    <div class="flex gap-2">
-                        <button type="button" data-mesa-agregar="${esc(m)}" class="flex-1 text-xs font-bold bg-red-700 hover:bg-red-800 text-white py-2.5 rounded-xl">➕ Agregar productos</button>
-                        ${pedido && !pedido.pagado && estado !== 'cerrada' ? `<button type="button" data-mesa-cobrar="${esc(pedido.id)}" class="text-xs font-bold bg-green-600 hover:bg-green-700 text-white py-2.5 px-3 rounded-xl">💵 Cobrar</button>` : ''}
-                    </div>
-                </article>`;
-            }).join('') : '<p class="col-span-full text-center text-neutral-500 py-10">No hay mesas configuradas. Agregalas en Configuración → 🪑 Mesas.</p>';
-        }
-
-        function renderSolicitudes() {
-            const el = $('sol-lista'); if (!el) return;
-            const lista = solicitudesPendientes();
-            $('sol-cont').textContent = lista.length + ' solicitudes pendientes de confirmación del TPV';
-            el.innerHTML = lista.length ? lista.map(s => `<article class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
-                <div class="flex items-center justify-between gap-2">
-                    <span class="font-extrabold text-lg">Mesa ${esc(s.mesa)}</span>
-                    <span class="text-[11px] text-neutral-500 truncate">${esc(s.actorNombre || s.actorEmail || s.actorUid || '')}</span>
-                </div>
-                <div class="text-sm space-y-0.5">${describirItems(s.items)}</div>
-                <div class="flex gap-2 pt-1">
-                    <button type="button" data-sol-aprobar="${esc(s.id)}" class="flex-1 text-xs font-bold bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl">✅ Confirmar</button>
-                    <button type="button" data-sol-rechazar="${esc(s.id)}" class="text-xs font-bold bg-red-100 hover:bg-red-200 text-red-700 py-2.5 px-3 rounded-xl">✖ Rechazar</button>
-                </div>
-            </article>`).join('') : '<p class="col-span-full text-center text-neutral-500 py-10">No hay solicitudes pendientes.</p>';
-        }
-
-        async function aprobarSolicitud(id) {
-            try {
-                const r = await procesarSolicitud(db, id);
-                if (r.accion !== 'ya-confirmada' && r.accion !== 'ya-rechazada') {
-                    mostrarToast('✅ Solicitud confirmada · mesa ' + r.mesa + ' · ' + gs(r.total));
-                }
-            } catch (e) {
-                mostrarError('No se pudo confirmar la solicitud: ' + e.message);
-            }
-            renderSolicitudes(); pintarMesas();
-        }
-        async function rechazarSolicitudManual(id) {
-            const motivo = prompt('¿Por qué se rechaza la solicitud?', 'Producto no disponible');
-            if (motivo === null) return;
-            try { await rechazarSolicitud(db, id, motivo || 'Rechazada desde el TPV'); }
-            catch (e) { mostrarError('No se pudo rechazar: ' + e.message); }
-            renderSolicitudes();
-        }
-        async function procesarSolicitudes() {
-            if (procesandoSolicitudes) return;
-            const lista = solicitudesPendientes();
-            if (!lista.length) return;
-            procesandoSolicitudes = true;
-            try {
-                for (const s of lista) {
-                    try {
-                        const r = await procesarSolicitud(db, s.id);
-                        if (r.accion !== 'ya-confirmada' && r.accion !== 'ya-rechazada') {
-                            mostrarToast('✅ Mesa ' + r.mesa + ' confirmada · ' + gs(r.total));
-                        }
-                    } catch (e) {
-                        // Producto inválido o mesa no configurada: se rechaza sin crear pedido.
-                        try { await rechazarSolicitud(db, s.id, e.message || 'Producto inválido'); } catch (e2) {}
-                        mostrarError('Solicitud de mesa ' + s.mesa + ' rechazada: ' + (e.message || 'producto inválido'));
-                    }
-                }
-            } finally {
-                procesandoSolicitudes = false;
-                renderSolicitudes(); pintarMesas();
-            }
-        }
-
-        async function procesarColaComandasMesa() {
-            if (!autoImprimir || esDelivery) { colaComandasMesa.clear(); return; }
-            if (procesandoComandasMesa) return;
-            procesandoComandasMesa = true;
-            try {
-                for (const id of [...colaComandasMesa.keys()]) {
-                    colaComandasMesa.delete(id);
-                    const c = comandasMesa.find(x => x.id === id);
-                    if (!c || c.impresa) continue;
-                    let ganado = false;
-                    try {
-                        ganado = await runTransaction(db, async (tx) => {
-                            const r = doc(db, 'comandas', id);
-                            const d = await tx.get(r);
-                            if (!d.exists() || d.data().impresa) return false;
-                            tx.update(r, { impresa: true, impresaEn: serverTimestamp() });
-                            return true;
-                        });
-                    } catch (e) {
-                        mostrarError('No se pudo reclamar la comanda para imprimir: ' + e.message);
-                    }
-                    if (!ganado) continue;
-                    const p = pedidos.find(x => x.id === c.pedidoId) || {};
-                    imprimirComandaAuto({
-                        id: c.pedidoId, numero: p.numero, creado: c.creado || p.creado,
-                        cliente: { nombre: 'Mesa ' + c.mesa, notas: '' }, tipo: 'local',
-                        pizzas: (c.items && c.items.pizzas) || [],
-                        extras: (c.items && c.items.extras) || []
-                    });
-                }
-            } finally { procesandoComandasMesa = false; }
-            if (colaComandasMesa.size) setTimeout(procesarColaComandasMesa, 2000);
-        }
-
-        $('btn-mesas').addEventListener('click', () => { $('vista-mesas').classList.remove('hidden'); pintarMesas(); });
-        $('mesas-cerrar').addEventListener('click', () => $('vista-mesas').classList.add('hidden'));
-        $('btn-solicitudes').addEventListener('click', () => { $('vista-solicitudes').classList.remove('hidden'); renderSolicitudes(); });
-        $('sol-cerrar').addEventListener('click', () => $('vista-solicitudes').classList.add('hidden'));
-        $('sol-auto').addEventListener('change', (e) => {
-            autoAprobar = e.target.checked;
-            if (autoAprobar) procesarSolicitudes();
-        });
-        $('sol-lista').addEventListener('click', (e) => {
-            const b = e.target.closest('button'); if (!b) return;
-            if (b.dataset.solAprobar) aprobarSolicitud(b.dataset.solAprobar);
-            else if (b.dataset.solRechazar) rechazarSolicitudManual(b.dataset.solRechazar);
-        });
-        $('mesas-lista').addEventListener('click', (e) => {
-            const b = e.target.closest('button'); if (!b) return;
-            if (b.dataset.mesaAgregar) {
-                nuevoLimpiar();
-                nuevo.tipo = 'local'; nuevo.entrada = 'nuevo'; nuevo.agregarA = null;
-                nuevo.mesa = Number(b.dataset.mesaAgregar);
-                $('modal-nuevo').classList.remove('hidden');
-                renderNuevo();
-            } else if (b.dataset.mesaCobrar) {
-                const p = pedidos.find(x => x.id === b.dataset.mesaCobrar);
-                if (p) abrirCobro(p);
-            }
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape') return;
-            $('vista-mesas').classList.add('hidden');
-            $('vista-solicitudes').classList.add('hidden');
-        });
         })();
 
         setInterval(() => {
