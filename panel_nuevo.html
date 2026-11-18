@@ -986,6 +986,137 @@
                 padding: 0;
             }
         }
+
+        /* ============================================================
+           TEMA CAMARERO MÓVIL (solo rol camarero)
+           Pensado para celular: mesas primero, una columna,
+           controles táctiles grandes y "➕ Pedido" siempre accesible.
+           ============================================================ */
+        body[data-tema-panel="camarero"] { background: #e7e5e4; }
+        body[data-tema-panel="camarero"] #header-panel {
+            background: #171717 !important;
+            border-bottom: 4px solid #f59e0b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+        }
+        body[data-tema-panel="camarero"] #header-panel > div:first-child {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+        }
+        body[data-tema-panel="camarero"] #titulo-panel { color: #fbbf24; font-size: 1.25rem; line-height: 1.15; }
+        body[data-tema-panel="camarero"] #contador { color: #d4d4d4; opacity: 1; font-size: .8rem; }
+        body[data-tema-panel="camarero"] #version-panel { display: none; }
+
+        /* Barra de acciones: "➕ Pedido" a todo ancho arriba; resto en fila táctil. */
+        body[data-tema-panel="camarero"] #acciones-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            width: 100%;
+            justify-content: stretch;
+        }
+        body[data-tema-panel="camarero"] #acciones-panel #btn-nuevo {
+            order: -1;
+            flex: 1 1 100%;
+            min-height: 58px;
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: .02em;
+            background: #f59e0b !important;
+            color: #171717 !important;
+            border-radius: 16px;
+            box-shadow: 0 4px 0 #b45309;
+        }
+        body[data-tema-panel="camarero"] #acciones-panel #btn-nuevo:active { transform: translateY(2px); box-shadow: 0 2px 0 #b45309; }
+        body[data-tema-panel="camarero"] #acciones-panel > button:not(#btn-nuevo) {
+            flex: 1 1 0;
+            min-height: 48px;
+            font-size: .9rem;
+            border-radius: 12px;
+            padding: 8px 10px !important;
+            white-space: nowrap;
+        }
+        body[data-tema-panel="camarero"] #btn-apariencia,
+        body[data-tema-panel="camarero"] #btn-sonido,
+        body[data-tema-panel="camarero"] #btn-salir { background: rgba(255, 255, 255, .14) !important; color: #fff !important; }
+
+        /* Mesas primero: tarjetas grandes y tocables. */
+        body[data-tema-panel="camarero"] #resumen-mesas {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px;
+        }
+        body[data-tema-panel="camarero"] #resumen-mesas > div {
+            min-height: 88px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 2px;
+            padding: 10px 6px !important;
+            border-width: 2px !important;
+            border-radius: 16px !important;
+        }
+        body[data-tema-panel="camarero"] #resumen-mesas .text-lg { font-size: 1.4rem; }
+        @media (min-width: 700px) {
+            body[data-tema-panel="camarero"] #resumen-mesas { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+        }
+
+        /* Modal de Apariencia del camarero: grilla de 1-2 columnas cómodas en celular. */
+        #apariencia-camarero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 480px) {
+            #apariencia-camarero-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+        /* Pedidos: una sola columna siempre, tarjetas grandes. */
+        body[data-tema-panel="camarero"] #lista {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 12px;
+        }
+        body[data-tema-panel="camarero"] #lista > article {
+            border-radius: 18px;
+            border-width: 2px !important;
+            overflow-x: hidden;
+        }
+        body[data-tema-panel="camarero"] #lista article [data-accion="toggle"] { min-height: 60px; padding: 12px !important; }
+        body[data-tema-panel="camarero"] #lista article .text-xl { font-size: 1.3rem; }
+        body[data-tema-panel="camarero"] .pedido-head-main { max-width: 100%; }
+        body[data-tema-panel="camarero"] .pedido-cliente { max-width: 9rem; font-size: 1.05rem; }
+
+        /* Detalle del pedido: adaptar sin scroll horizontal, botones táctiles. */
+        body[data-tema-panel="camarero"] .detalle-pedido { overflow-x: hidden; }
+        body[data-tema-panel="camarero"] .detalle-pedido .flex { flex-wrap: wrap; }
+        body[data-tema-panel="camarero"] .pedido-acciones {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        body[data-tema-panel="camarero"] .pedido-acciones > button,
+        body[data-tema-panel="camarero"] .pedido-acciones > a {
+            min-height: 52px;
+            font-size: 14px !important;
+            font-weight: 800 !important;
+            padding: 12px 8px !important;
+            border-radius: 14px !important;
+            white-space: normal;
+            text-align: center;
+        }
+        body[data-tema-panel="camarero"] .pedido-acciones > .accion-principal { grid-column: 1 / -1; min-height: 56px; font-size: 15px !important; }
+
+        /* Modal de pedido (nuevo pedido): ancho completo en celular, controles grandes. */
+        body[data-tema-panel="camarero"] #modal-nuevo > div { max-width: 100% !important; width: 100% !important; min-height: 100vh; overflow-x: hidden; }
+        body[data-tema-panel="camarero"] #modal-nuevo input,
+        body[data-tema-panel="camarero"] #modal-nuevo select,
+        body[data-tema-panel="camarero"] #modal-nuevo textarea {
+            font-size: 16px !important; /* Evita zoom automático en iOS */
+            min-height: 48px;
+        }
+        body[data-tema-panel="camarero"] #nuevo-tipo { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 10px !important; }
+        body[data-tema-panel="camarero"] #nuevo-tipo > button { min-height: 56px; font-size: 1rem !important; border-radius: 14px !important; }
+        body[data-tema-panel="camarero"] #nuevo-mesa > button { min-height: 52px; font-size: 1rem; padding: 10px 16px !important; border-radius: 14px !important; }
+        body[data-tema-panel="camarero"] #nuevo-guardar { min-height: 60px; font-size: 1.1rem !important; border-radius: 16px !important; }
+
     </style>
 </head>
 <body class="bg-neutral-100 text-neutral-800 antialiased">
@@ -1028,6 +1159,7 @@
                     <button id="btn-caja" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">📊 Caja</button>
                     <button id="btn-sonido" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">🔔 Sonido</button>
                     <button id="btn-salir" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">Salir</button>
+                    <button id="btn-apariencia" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Cambiar la apariencia de este panel en este equipo (solo camarero)">🎨 Apariencia</button>
                     <button id="btn-mas" type="button" class="hidden text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg" title="Más opciones" aria-expanded="false">⋯ Más</button>
                 </div>
             </div>
@@ -1146,6 +1278,20 @@
             <nav id="cfg-tabs" class="max-w-4xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto whitespace-nowrap"></nav>
         </header>
         <main id="cfg-vista" class="max-w-4xl mx-auto px-4 py-5 space-y-4"></main>
+    </div>
+
+    <!-- ===== Apariencia del panel (solo camarero: temas TPV sin abrir Configuración) ===== -->
+    <div id="modal-apariencia" class="hidden fixed inset-0 z-40 bg-black/50 overflow-y-auto" role="dialog" aria-label="Apariencia del panel">
+        <div class="max-w-2xl mx-auto min-h-screen bg-neutral-100">
+            <div class="sticky top-0 z-10 bg-neutral-900 text-white px-4 py-3 flex items-center justify-between gap-2">
+                <h2 class="font-extrabold">🎨 Apariencia del panel</h2>
+                <button id="apariencia-cerrar" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Cerrar</button>
+            </div>
+            <div class="px-4 py-5 space-y-4">
+                <p class="text-xs text-neutral-500">Solo cambia cómo se ve este panel en este equipo. Se guarda aparte del tema del administrador y no afecta la página de pedidos de los clientes.</p>
+                <div id="apariencia-camarero-grid" class="grid gap-3 grid-cols-2"></div>
+            </div>
+        </div>
     </div>
 
     <!-- ===== Editar cliente ===== -->
@@ -1342,9 +1488,20 @@
             ['clasico', 'Clásico', 'La vista actual del TPV, sin cambios.'],
             ['simple', 'Simple', 'Menos botones a la vista, una sola columna y tarjetas grandes.'],
             ['moderno', 'Moderno', 'Barra lateral en PC, tarjetas y filtros tipo panel.'],
-            ['avanzado', 'Avanzado', 'Todas las herramientas, agrupadas y en una vista compacta.']
+            ['avanzado', 'Avanzado', 'Todas las herramientas, agrupadas y en una vista compacta.'],
+            ['camarero', 'Camarero móvil', 'Mesas primero, botones táctiles grandes y pedidos en una sola columna. Pensado para el celular del camarero.']
         ];
         const TEMAS_PANEL_VALIDOS = TEMAS_PANEL.map(t => t[0]);
+        // El tema "Camarero móvil" es exclusivo del rol camarero: el administrador
+        // no lo ve en Configuración y no puede guardarlo en su navegador.
+        function temasPanelPermitidos() {
+            return esCamarero ? TEMAS_PANEL_VALIDOS.slice() : TEMAS_PANEL_VALIDOS.filter(t => t !== 'camarero');
+        }
+        // La elección del camarero se guarda en una clave aparte para no pisar
+        // el tema del administrador cuando comparten el mismo navegador.
+        function claveTemaPanel() {
+            return esCamarero ? 'temaPanelCamarero' : 'temaPanel';
+        }
         let accionesOriginales = null;
 
         function capturarAccionesPanel() {
@@ -1354,12 +1511,12 @@
         }
         function temaPanelActual() {
             const t = document.body.dataset.temaPanel;
-            return TEMAS_PANEL_VALIDOS.includes(t) ? t : 'clasico';
+            return temasPanelPermitidos().includes(t) ? t : 'clasico';
         }
         function leerTemaPanel() {
             try {
-                const t = localStorage.getItem('temaPanel');
-                return TEMAS_PANEL_VALIDOS.includes(t) ? t : 'clasico';
+                const t = localStorage.getItem(claveTemaPanel());
+                return temasPanelPermitidos().includes(t) ? t : 'clasico';
             } catch (e) { return 'clasico'; }
         }
         function limpiarAccionesPanel() {
@@ -1440,17 +1597,43 @@
                 cont.appendChild(mas);
             }
         }
+        // Reaplica los permisos del camarero después de (re)organizar las acciones.
+        // Así, cambiar de tema como camarero no rearma herramientas ocultas (Config,
+        // Caja, Cocina, etc.) ni pierde Sonido / Salir / Apariencia, sin importar
+        // qué tema haya elegido (Clásico, Simple, Moderno, Avanzado o Camarero móvil).
+        function ajustarAccionesCamarero() {
+            const cont = $('acciones-panel');
+            if (!cont) return;
+            ['btn-caja', 'btn-rapida', 'btn-cocina', 'btn-config', 'btn-local', 'btn-local-auto', 'btn-autoprint', 'btn-agotados'].forEach(id => {
+                const b = $(id); if (b) b.classList.add('hidden');
+            });
+            ['btn-sonido', 'btn-salir', 'btn-apariencia'].forEach(id => {
+                const b = $(id); if (b) { cont.appendChild(b); b.classList.remove('hidden'); }
+            });
+            const nuevo = $('btn-nuevo'); if (nuevo) nuevo.classList.remove('hidden');
+            const mas = $('btn-mas'); if (mas) mas.classList.add('hidden');
+            const menu = $('menu-mas'); if (menu) menu.classList.add('hidden');
+            // Oculta grupos de acciones que quedaron solo con botones ocultos.
+            cont.querySelectorAll('[data-grupo-acciones]').forEach(g => {
+                const hayVisible = [...g.querySelectorAll('button, a')].some(n => !n.classList.contains('hidden'));
+                g.classList.toggle('hidden', !hayVisible);
+            });
+        }
         function aplicarTemaPanel(tema, guardar) {
-            if (!TEMAS_PANEL_VALIDOS.includes(tema)) tema = 'clasico';
+            if (!temasPanelPermitidos().includes(tema)) tema = 'clasico';
             document.body.dataset.temaPanel = tema;
             if (guardar !== false) {
-                try { localStorage.setItem('temaPanel', tema); } catch (e) {}
+                try { localStorage.setItem(claveTemaPanel(), tema); } catch (e) {}
             }
             organizarAccionesPanel(tema);
+            if (esCamarero) ajustarAccionesCamarero();
             if (typeof window.refrescarTemaConfig === 'function') window.refrescarTemaConfig();
         }
         function miniTemaPanel(k) {
             const base = 'border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;background:#f8fafc;';
+            if (k === 'camarero') {
+                return `<div style="${base}max-width:110px;margin:0 auto"><div style="height:10px;background:#171717;border-bottom:2px solid #f59e0b"></div><div style="padding:6px;display:grid;gap:5px"><div style="height:14px;border-radius:7px;background:#f59e0b"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div style="height:20px;border-radius:6px;background:#fff;border:2px solid #e2e8f0"></div><div style="height:20px;border-radius:6px;background:#fff;border:2px solid #e2e8f0"></div><div style="height:20px;border-radius:6px;background:#fff;border:2px solid #e2e8f0"></div><div style="height:20px;border-radius:6px;background:#fff;border:2px solid #e2e8f0"></div></div><div style="height:24px;border-radius:6px;background:#fff;border:1px solid #e2e8f0"></div></div></div>`;
+            }
             if (k === 'simple') {
                 return `<div style="${base}"><div style="height:12px;background:#b91c1c"></div><div style="padding:10px;display:grid;gap:6px"><div style="height:10px;width:50%;border-radius:6px;background:#cbd5e1;margin:0 auto"></div><div style="height:34px;border-radius:10px;background:#fff;border:1px solid #e2e8f0"></div><div style="height:34px;border-radius:10px;background:#fff;border:1px solid #e2e8f0"></div></div></div>`;
             }
@@ -1604,6 +1787,8 @@
                 $('btn-local').classList.toggle('hidden', oculto);
                 $('btn-autoprint').classList.toggle('hidden', oculto);
                 $('btn-agotados').classList.toggle('hidden', oculto);
+                // Apariencia es exclusiva del camarero; para los demás roles queda oculta.
+                $('btn-apariencia').classList.toggle('hidden', !esCamarero);
 
                 if (esDelivery) {
                     $('header-panel').className = 'bg-neutral-800 text-white shadow sticky top-0 z-20';
@@ -1620,16 +1805,9 @@
                 }
 
                 // Reorganizar las acciones según el tema elegido en este equipo.
-                aplicarTemaPanel(temaPanelActual(), false);
-                if (esCamarero) {
-                    // Salir y Sonido tienen que quedar visibles aunque el tema los mande al menú "Más".
-                    ['btn-sonido', 'btn-salir'].forEach(id => {
-                        const b = $(id);
-                        if (b) { $('acciones-panel').appendChild(b); b.classList.remove('hidden'); }
-                    });
-                    $('btn-mas').classList.add('hidden');
-                    $('menu-mas').classList.add('hidden');
-                }
+                // Cada rol lee su propia clave (temaPanel / temaPanelCamarero).
+                // Si es camarero, aplicarTemaPanel ya reaplica sus permisos.
+                aplicarTemaPanel(leerTemaPanel(), false);
 
                 $('resumen-mesas').classList.toggle('hidden', !esCamarero);
                 $('estado-solicitudes').classList.toggle('hidden', !esCamarero);
@@ -1667,7 +1845,10 @@
                 $('lista').innerHTML = '';
                 $('panel').classList.add('hidden');
                 $('modal-caja').classList.add('hidden');
-                $('modal-nuevo').classList.add('hidden'); $('modal-config').classList.add('hidden');
+                $('modal-nuevo').classList.add('hidden'); $('modal-config').classList.add('hidden'); $('modal-apariencia').classList.add('hidden');
+                // El tema del camarero es solo para su sesión: al cerrar, la pantalla
+                // vuelve al tema guardado por el administrador en este navegador.
+                aplicarTemaPanel(leerTemaPanel(), false);
                 $('login').classList.remove('hidden');
                 $('clave').value = '';
                 document.title = 'Panel de pedidos - Mi Barrio';
@@ -4285,6 +4466,37 @@ async function guardarMesas() {
     catch (e) { toast('No se pudo guardar las mesas: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas nuevas (reglas_firestore.txt).' : e.message)); }
 }
 
+// ===== 4b. Apariencia exclusiva del camarero (temas TPV, sin Configuración) =====
+function pintarAparienciaCamarero() {
+    const cont = $('apariencia-camarero-grid');
+    if (!cont) return;
+    const actual = temaPanelActual();
+    cont.innerHTML = TEMAS_PANEL.map(([k, nombre, desc]) => `
+        <div class="rounded-2xl border-2 p-3 space-y-2 ${actual === k ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'}">
+            ${miniTemaPanel(k)}
+            <div class="flex items-center justify-between gap-2"><div class="font-bold text-sm">${nombre}</div>${actual === k ? '<span class="text-[11px] font-extrabold text-green-700">✅ EN USO</span>' : ''}</div>
+            <p class="text-[11px] text-neutral-500">${desc}</p>
+            ${actual === k ? '' : `<button type="button" data-tema-camarero="${k}" class="w-full text-sm font-bold px-3 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-amber-300">Usar este</button>`}
+        </div>`).join('');
+}
+function abrirAparienciaCamarero() {
+    if (!esCamarero) return; // Exclusivo para camarero: no abre Configuración ni temas de clientes.
+    pintarAparienciaCamarero();
+    $('modal-apariencia').classList.remove('hidden');
+}
+$('btn-apariencia').addEventListener('click', abrirAparienciaCamarero);
+$('apariencia-cerrar').addEventListener('click', () => $('modal-apariencia').classList.add('hidden'));
+$('modal-apariencia').addEventListener('click', (e) => { if (e.target === $('modal-apariencia')) $('modal-apariencia').classList.add('hidden'); });
+$('apariencia-camarero-grid').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tema-camarero]');
+    if (!b || !esCamarero) return;
+    const t = b.dataset.temaCamarero;
+    aplicarTemaPanel(t, true); // Guarda en 'temaPanelCamarero', separado del administrador.
+    const nombre = (TEMAS_PANEL.find(x => x[0] === t) || [])[1] || t;
+    mostrarToast('🎨 Apariencia: ' + nombre);
+    pintarAparienciaCamarero();
+});
+
 // ===== 5. Apariencia (temas) =====
 const TEMAS_CLIENTE = [
     ['clasico', 'Clásico', 'El diseño de siempre: simple y claro.', { bg: '#fcf8f2', top: '#000', a: '#b91c1c', card: '#fff', line: '#e5e5e5' }],
@@ -4304,7 +4516,8 @@ function miniTema(c) {
 function vistaApariencia() {
     const actual = (localCfg && localCfg.tema) || 'clasico';
     const actualPanel = temaPanelActual();
-    const temasPanelHtml = TEMAS_PANEL.map(([k, nombre, desc]) => `
+    // El tema "Camarero móvil" es exclusivo del rol camarero: no se muestra acá.
+    const temasPanelHtml = TEMAS_PANEL.filter(([k]) => k !== 'camarero').map(([k, nombre, desc]) => `
         <div class="rounded-2xl border-2 p-3 space-y-2 ${actualPanel === k ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'}">
             ${miniTemaPanel(k)}
             <div class="flex items-center justify-between gap-2"><div class="font-bold">${nombre}</div>${actualPanel === k ? '<span class="text-[11px] font-extrabold text-green-700">✅ EN USO</span>' : ''}</div>
@@ -4338,6 +4551,7 @@ $('cfg-vista').addEventListener('click', async (e) => {
     const bp = e.target.closest('[data-tema-panel-opt]');
     if (bp) {
         const t = bp.dataset.temaPanelOpt;
+        if (!esCamarero && t === 'camarero') return; // Exclusivo del camarero.
         const nombre = (TEMAS_PANEL.find(x => x[0] === t) || [])[1] || t;
         aplicarTemaPanel(t, true);
         toast('🖥️ Tema del panel: ' + nombre);
