@@ -72,3 +72,5 @@ backups/
 .vercel/
 .vscode/
 .idea/
+
+.vercel
