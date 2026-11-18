@@ -2,8 +2,8 @@
 // Cachea solo el shell estático de esta página. NUNCA intercepta Firebase/Auth/Firestore
 // (todo origen externo va directo a la red) y NO encola pedidos offline: sin conexión
 // no se puede operar; la página lo informa y bloquea el envío.
-const VERSION = 'mi-barrio-camarero-v1';
-const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icon.svg', './icon-maskable.svg'];
+const VERSION = 'mi-barrio-camarero-v2';
+const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icon.svg', './icon-maskable.svg', './icon-192.png', './icon-512.png', './icon-maskable-192.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
