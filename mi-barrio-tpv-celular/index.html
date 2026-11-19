@@ -1224,8 +1224,10 @@
         body[data-tema-panel="camarero"] #nuevo-guardar { min-height: 60px; font-size: 1.1rem !important; border-radius: 16px !important; }
 
     </style>
+    <!-- ===== Mobile-first UI (S5/T5): esta hoja va última para poder reorganizar solo el celular ===== -->
+    <link rel="stylesheet" href="./mobile.css">
 </head>
-<body class="bg-neutral-100 text-neutral-800 antialiased">
+<body class="bg-neutral-100 text-neutral-800 antialiased tpv-mobile-ui">
 
     <!-- ===== Login ===== -->
     <section id="login" class="min-h-screen flex items-center justify-center px-4">
@@ -5016,5 +5018,10 @@ $('cfg-vista').addEventListener('click', (e) => {
             });
         }
     </script>
+
+    <!-- ===== Navegación móvil (S5/T5) =====
+         Módulo independiente y sin Firebase. Si falta o falla, la barra original sigue usable:
+         body.tpv-mobile-ready no se agrega y la capa móvil queda oculta. -->
+    <script type="module" src="./mobile-ui.js"></script>
 </body>
 </html>

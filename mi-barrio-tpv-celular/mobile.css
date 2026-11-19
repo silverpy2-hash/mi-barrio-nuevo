@@ -1,0 +1,977 @@
+/* ==========================================================================
+   Mi Barrio - TPV Celular · mobile-first administrator shell (S5 / T4)
+   --------------------------------------------------------------------------
+   Loaded LAST by the controller. Everything is scoped to body.tpv-mobile-ui.
+   Chrome replacement requires .tpv-mobile-ready (added after the shell mounts)
+   and max-width: 899px, so a JS failure leaves the original toolbar usable and
+   desktop (>= 900px) keeps the original panel untouched.
+   No external fonts, gradients, frameworks or business rules live here.
+   ========================================================================== */
+
+body.tpv-mobile-ui {
+  --tpv-ivory: #f7f5f0;
+  --tpv-surface: #ffffff;
+  --tpv-ink: #241c1a;
+  --tpv-ink-soft: #6b5f59;
+  --tpv-burgundy: #8d2838;
+  --tpv-burgundy-deep: #6f1f2c;
+  --tpv-gold: #a9853f;
+  --tpv-gold-soft: #f1e6cf;
+  --tpv-green: #2f6b4f;
+  --tpv-blue: #2b5c7d;
+  --tpv-danger: #a3261b;
+  --tpv-line: #e4ddd2;
+  --tpv-line-strong: #d6ccbd;
+  --tpv-focus: #8d2838;
+  --tpv-shadow: 0 1px 2px rgba(36, 28, 26, .05), 0 10px 24px -16px rgba(36, 28, 26, .35);
+  --tpv-radius: 16px;
+  --tpv-nav-h: 68px;
+  color-scheme: light;
+}
+
+/* --- Shell is inert until the controller renders it ---------------------- */
+
+body.tpv-mobile-ui #tpv-mobile-header,
+body.tpv-mobile-ui #tpv-tools-backdrop,
+body.tpv-mobile-ui #tpv-tools-sheet {
+  display: none;
+}
+
+/* Hidden semantics used by the legacy panel must survive every theme. */
+body.tpv-mobile-ui [hidden] {
+  display: none !important;
+}
+
+body.tpv-mobile-ui .hidden {
+  display: none !important;
+}
+
+/* Tailwind preflight normally provides this; keep the same box model when the
+   fixture blocks the CDN so the scoped layout still renders meaningfully. */
+body.tpv-mobile-ui *,
+body.tpv-mobile-ui *::before,
+body.tpv-mobile-ui *::after {
+  box-sizing: border-box;
+}
+
+/* --- Shared inline icons ------------------------------------------------- */
+
+body.tpv-mobile-ui .tpv-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+}
+
+/* --- Bottom navigation geometry (shown only on ready mobile) ------------- */
+
+body.tpv-mobile-ui #tpv-mobile-nav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--tpv-surface);
+  border-top: 1px solid var(--tpv-line);
+  box-shadow: 0 -10px 24px -20px rgba(36, 28, 26, .55);
+}
+
+body.tpv-mobile-ui #tpv-mobile-nav .tpv-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--tpv-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+body.tpv-mobile-ui #tpv-mobile-nav .tpv-nav-item .tpv-nav-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  line-height: 1.2;
+}
+
+body.tpv-mobile-ui #tpv-mobile-nav .tpv-nav-item[data-nav="nuevo"] {
+  min-height: 52px;
+  background: var(--tpv-burgundy);
+  color: #ffffff;
+  box-shadow: 0 3px 0 var(--tpv-burgundy-deep);
+}
+
+body.tpv-mobile-ui #tpv-mobile-nav .tpv-nav-item:active {
+  background: #f3eee6;
+}
+
+body.tpv-mobile-ui #tpv-mobile-nav .tpv-nav-item[data-nav="nuevo"]:active {
+  background: var(--tpv-burgundy-deep);
+}
+
+/* --- Tools sheet and backdrop geometry ----------------------------------- */
+
+body.tpv-mobile-ui #tpv-tools-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(36, 28, 26, .44);
+  overscroll-behavior: contain;
+}
+
+body.tpv-mobile-ui #tpv-tools-sheet {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 45;
+  max-height: 80dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  background: var(--tpv-surface);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -18px 40px -24px rgba(36, 28, 26, .55);
+}
+
+body.tpv-mobile-ui #tpv-tools-sheet::before {
+  content: "";
+  display: block;
+  width: 38px;
+  height: 4px;
+  margin: 2px auto 12px;
+  border-radius: 999px;
+  background: var(--tpv-line-strong);
+}
+
+body.tpv-mobile-ui .tpv-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+body.tpv-mobile-ui #tpv-tools-title {
+  min-width: 0;
+  margin: 0;
+  color: var(--tpv-ink);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+
+body.tpv-mobile-ui #tpv-tools-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--tpv-line);
+  border-radius: 12px;
+  background: #f4f1ea;
+  color: var(--tpv-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+body.tpv-mobile-ui #tpv-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body.tpv-mobile-ui #tpv-tools-grid .tpv-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid var(--tpv-line);
+  border-radius: 14px;
+  background: #fbf9f5;
+  color: var(--tpv-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+}
+
+body.tpv-mobile-ui #tpv-tools-grid .tpv-tool .tpv-icon {
+  color: var(--tpv-burgundy);
+}
+
+/* ==========================================================================
+   Mobile breakpoint: the shell replaces the desktop toolbar only when ready.
+   ========================================================================== */
+
+@media (max-width: 899px) {
+  body.tpv-mobile-ui {
+    /* Remain full-width even when the optional CDN preflight is unavailable. */
+    margin: 0;
+    min-width: 320px;
+    background-color: var(--tpv-ivory);
+    color: var(--tpv-ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* --- Login keeps the same form, restyled for one hand ------------------ */
+
+  body.tpv-mobile-ui #login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+    background: var(--tpv-ivory);
+  }
+
+  body.tpv-mobile-ui #login form {
+    width: 100%;
+    max-width: 400px;
+    padding: 24px 20px;
+    border: 1px solid var(--tpv-line);
+    border-radius: 20px;
+    background: var(--tpv-surface);
+    box-shadow: var(--tpv-shadow);
+  }
+
+  body.tpv-mobile-ui #login h1 {
+    color: var(--tpv-burgundy);
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  body.tpv-mobile-ui #login input {
+    min-height: 48px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  body.tpv-mobile-ui #login button[type="submit"] {
+    min-height: 52px;
+    border-radius: 14px;
+    background: var(--tpv-burgundy);
+    font-size: 16px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  /* --- Compact brand header --------------------------------------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #tpv-mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 64px;
+    padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
+    background: var(--tpv-surface);
+    border-bottom: 1px solid var(--tpv-line);
+  }
+
+  body.tpv-mobile-ui .tpv-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  body.tpv-mobile-ui .tpv-brand .tpv-icon {
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+    border-radius: 11px;
+    background: var(--tpv-burgundy);
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui .tpv-brand strong {
+    display: block;
+    color: var(--tpv-ink);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: .01em;
+    white-space: nowrap;
+  }
+
+  body.tpv-mobile-ui .tpv-brand small {
+    display: block;
+    margin-top: 1px;
+    color: var(--tpv-ink-soft);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  /* The interaction unit may use a <div> wrapper instead of <strong>/<small>;
+     style the wrapped name and subtitle with the same hierarchy. */
+  body.tpv-mobile-ui .tpv-brand > div {
+    min-width: 0;
+  }
+
+  body.tpv-mobile-ui .tpv-brand > div > :first-child {
+    display: block;
+    color: var(--tpv-ink);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: .01em;
+    white-space: nowrap;
+  }
+
+  body.tpv-mobile-ui .tpv-brand > div > :last-child:not(:first-child) {
+    display: block;
+    margin-top: 1px;
+    color: var(--tpv-ink-soft);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  body.tpv-mobile-ui .tpv-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 46%;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--tpv-gold-soft);
+    color: #5c4a24;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  body.tpv-mobile-ui #tpv-mobile-status {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- Legacy toolbar: keep only the filter strip while ready ----------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #header-panel {
+    position: static !important;
+    background: var(--tpv-ivory) !important;
+    color: var(--tpv-ink);
+    border-bottom: 1px solid var(--tpv-line);
+    box-shadow: none !important;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #header-panel > div:first-child {
+    display: none !important;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #menu-mas {
+    margin: 0 12px 10px;
+    border: 1px solid var(--tpv-line);
+    border-radius: var(--tpv-radius);
+    background: var(--tpv-surface);
+    box-shadow: var(--tpv-shadow);
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #filtros {
+    display: flex;
+    gap: 8px;
+    max-width: 100%;
+    padding: 8px 12px 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #filtros::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #filtros [data-filtro] {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--tpv-line-strong);
+    border-radius: 999px;
+    background: var(--tpv-surface);
+    color: var(--tpv-ink-soft);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  /* The renderer marks the active chip with .bg-white; repaint it burgundy. */
+  body.tpv-mobile-ui.tpv-mobile-ready #filtros [data-filtro].bg-white {
+    background: var(--tpv-burgundy);
+    border-color: transparent;
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #filtros .filtro-num {
+    opacity: .78;
+  }
+
+  /* --- Page canvas and section heading ---------------------------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #panel,
+  body.tpv-mobile-ui.tpv-mobile-ready #panel > main {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #panel > main {
+    width: 100%;
+    padding: 12px 12px calc(92px + env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+
+  body.tpv-mobile-ui #tpv-orders-heading,
+  body.tpv-mobile-ui .tpv-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 2px 2px 8px;
+    color: var(--tpv-ink-soft);
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  /* --- Informative banners inherited from the original panel ------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #aviso-sonido,
+  body.tpv-mobile-ui.tpv-mobile-ready #aviso-error,
+  body.tpv-mobile-ui.tpv-mobile-ready #estado-solicitudes {
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  /* --- Order list and cards --------------------------------------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #lista {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 0 !important;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #lista > article {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    background: var(--tpv-surface);
+    border: 1px solid var(--tpv-line) !important;
+    border-radius: var(--tpv-radius);
+    box-shadow: var(--tpv-shadow);
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #lista > article[data-activo="1"] .pedido-head {
+    background: #fdfbf7;
+    border-radius: var(--tpv-radius) var(--tpv-radius) 0 0;
+  }
+
+  body.tpv-mobile-ui .pedido-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 52px;
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+
+  body.tpv-mobile-ui .pedido-head-main {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body.tpv-mobile-ui .pedido-head-badges {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body.tpv-mobile-ui .pedido-num {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 7px;
+    background: var(--tpv-ink);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .02em;
+  }
+
+  body.tpv-mobile-ui .pedido-cliente {
+    max-width: 100% !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    color: var(--tpv-ink);
+    font-size: 15.5px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  body.tpv-mobile-ui .pedido-tipo,
+  body.tpv-mobile-ui .pedido-mesa,
+  body.tpv-mobile-ui .pedido-estado,
+  body.tpv-mobile-ui .pedido-pago-estado {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .03em;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  body.tpv-mobile-ui .pedido-tipo {
+    background: #f4ecdd;
+    color: #6a532a;
+  }
+
+  body.tpv-mobile-ui .pedido-mesa {
+    background: var(--tpv-gold-soft);
+    color: #6a532a;
+  }
+
+  body.tpv-mobile-ui #lista > article[data-tipo="delivery"] .pedido-tipo {
+    background: #e8f1ec;
+    color: var(--tpv-green);
+  }
+
+  body.tpv-mobile-ui #lista > article[data-tipo="local"] .pedido-tipo {
+    background: #eceff4;
+    color: #3c4a5c;
+  }
+
+  body.tpv-mobile-ui #lista > article[data-estado="nuevo"] .pedido-estado {
+    background: var(--tpv-green);
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui #lista > article[data-estado="preparacion"] .pedido-estado {
+    background: #a16207;
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui #lista > article[data-estado="en_camino"] .pedido-estado {
+    background: var(--tpv-blue);
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui #lista > article[data-estado="entregado"] .pedido-estado {
+    background: #6b5f59;
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui #lista > article[data-estado="cancelado"] .pedido-estado {
+    background: var(--tpv-danger);
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui .pedido-pago-estado {
+    background: #ece7dd;
+    color: var(--tpv-ink-soft);
+  }
+
+  body.tpv-mobile-ui #lista > article .pedido-pago-estado.bg-green-100 {
+    background: #e5f2ea;
+    color: var(--tpv-green);
+  }
+
+  body.tpv-mobile-ui .flecha-pedido {
+    color: var(--tpv-ink-soft);
+    font-size: 11px;
+  }
+
+  /* Detail drawer: same markup, comfortable spacing without Tailwind. */
+  body.tpv-mobile-ui .detalle-pedido {
+    min-width: 0;
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--tpv-line);
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+
+  body.tpv-mobile-ui .detalle-pedido > * + * {
+    margin-top: 10px;
+  }
+
+  body.tpv-mobile-ui .pedido-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  body.tpv-mobile-ui .pedido-total {
+    flex: 0 0 auto;
+    color: var(--tpv-burgundy);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  body.tpv-mobile-ui .pedido-pizzas {
+    display: grid;
+    gap: 8px;
+  }
+
+  body.tpv-mobile-ui .pedido-pizza {
+    padding: 8px 10px;
+    border: 1px solid var(--tpv-line);
+    border-radius: 12px;
+    background: #faf8f4;
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  body.tpv-mobile-ui .pedido-pizza > div:first-child {
+    font-weight: 700;
+  }
+
+  body.tpv-mobile-ui .pedido-pagos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  body.tpv-mobile-ui .pedido-pagos > button {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--tpv-line);
+    border-radius: 10px;
+    background: #f4f1ea;
+    color: var(--tpv-ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  body.tpv-mobile-ui #lista .pedido-pagos > button.bg-neutral-800 {
+    background: var(--tpv-burgundy);
+    border-color: transparent;
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui .pedido-acciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--tpv-line);
+  }
+
+  body.tpv-mobile-ui #lista .pedido-acciones > button,
+  body.tpv-mobile-ui #lista .pedido-acciones > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--tpv-line);
+    border-radius: 12px;
+    background: #f4f1ea;
+    color: var(--tpv-ink);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+  }
+
+  body.tpv-mobile-ui #lista .pedido-acciones > [data-accion="cobrar"],
+  body.tpv-mobile-ui #lista .pedido-acciones > .accion-principal {
+    grid-column: 1 / -1;
+    min-height: 52px;
+    border-color: transparent;
+    background: var(--tpv-burgundy);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  body.tpv-mobile-ui #lista .pedido-acciones > .accion-principal {
+    background: var(--tpv-green);
+  }
+
+  body.tpv-mobile-ui #lista .pedido-acciones > [data-accion="cancelar"] {
+    color: var(--tpv-danger);
+  }
+
+  /* --- Empty state and its call to action -------------------------------- */
+
+  body.tpv-mobile-ui .tpv-empty-state,
+  body.tpv-mobile-ui #lista > p:only-child {
+    margin: 0;
+    padding: 30px 20px;
+    border: 1px dashed var(--tpv-line-strong);
+    border-radius: 18px;
+    background: var(--tpv-surface);
+    color: var(--tpv-ink-soft);
+    font-size: 13.5px;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  body.tpv-mobile-ui .tpv-empty-state::before {
+    content: "🍕";
+    display: block;
+    margin-bottom: 8px;
+    font-size: 24px;
+    line-height: 1;
+    opacity: .85;
+  }
+
+  body.tpv-mobile-ui .tpv-empty-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    margin-top: 14px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--tpv-burgundy);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  /* --- Shell visibility once the controller is ready --------------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #tpv-mobile-nav {
+    display: grid;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #tpv-tools-backdrop:not([hidden]) {
+    display: block;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #tpv-tools-sheet:not([hidden]) {
+    display: block;
+  }
+
+  /* --- Toast stays above the navigation and the safe area ---------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready #toast {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(var(--tpv-nav-h) + 18px + env(safe-area-inset-bottom)) !important;
+    z-index: 70;
+    width: auto;
+    max-width: none !important;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    transform: none !important;
+    background: var(--tpv-ink);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* --- Modals and full-screen administrative views ----------------------- */
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] {
+    padding: 0;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] > div {
+    width: calc(100% - 20px) !important;
+    max-width: 560px !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 20px);
+    margin: 10px auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    border-radius: 18px;
+    background: var(--tpv-ivory) !important;
+    box-shadow: 0 24px 60px -30px rgba(36, 28, 26, .6);
+  }
+
+  /* The inherited <=699px block forces 100vw/100% through ID selectors with
+     !important; match that specificity so dialogs really keep their margins. */
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-nuevo > div,
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-caja > div,
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-cobro > div,
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-cliente > div,
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-agotados > div,
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-apariencia > div {
+    width: calc(100% - 20px) !important;
+    max-width: 560px !important;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-config > header,
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] .bg-neutral-900 {
+    background: var(--tpv-burgundy) !important;
+    color: #ffffff;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready #modal-config > main {
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] input,
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] select,
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--tpv-line-strong);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--tpv-ink);
+    font-size: 16px !important;
+    line-height: 1.35;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] textarea {
+    min-height: 96px;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] button {
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] .bg-neutral-900 button {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    background: rgba(255, 255, 255, .16);
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  body.tpv-mobile-ui.tpv-mobile-ready [id^="modal-"] .caja-tab {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, .24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .12);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* Kitchen view must cover the bottom navigation while it is open. */
+  body.tpv-mobile-ui.tpv-mobile-ready #vista-cocina {
+    z-index: 35;
+  }
+
+  /* --- Visible keyboard focus on every mobile control -------------------- */
+
+  body.tpv-mobile-ui :is(button, a[href], input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--tpv-focus);
+    outline-offset: 2px;
+  }
+}
+
+/* ==========================================================================
+   Tablet-sized phones (600-899 CSS px) get a two-column order board but keep
+   the same shell, header and bottom navigation.
+   ========================================================================== */
+
+@media (min-width: 600px) and (max-width: 899px) {
+  body.tpv-mobile-ui.tpv-mobile-ready #lista {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body.tpv-mobile-ui #tpv-tools-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  body.tpv-mobile-ui .tpv-status {
+    max-width: 60%;
+  }
+}
+
+/* ==========================================================================
+   Desktop: the original red toolbar and wide grid remain authoritative.
+   No fixed navigation, no body lock, no mobile spacing leaks upward.
+   ========================================================================== */
+
+@media (min-width: 900px) {
+  body.tpv-mobile-ui {
+    padding-bottom: 0 !important;
+  }
+
+  body.tpv-mobile-ui #tpv-mobile-header,
+  body.tpv-mobile-ui #tpv-mobile-nav,
+  body.tpv-mobile-ui #tpv-tools-backdrop,
+  body.tpv-mobile-ui #tpv-tools-sheet {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Motion preferences
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  body.tpv-mobile-ui *,
+  body.tpv-mobile-ui *::before,
+  body.tpv-mobile-ui *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

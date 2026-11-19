@@ -2,6 +2,8 @@
 
 Administración completa de Mi Barrio desde el celular, como PWA instalable, **exclusiva del administrador** y sin tocar `panel_nuevo.html`. Push preparado pero **desactivado por defecto**. Sin APK todavía: la APK vendrá como contenedor de esta misma web.
 
+La interfaz móvil usa una cabecera compacta y navegación inferior; el escritorio (≥ 900 px) conserva el panel clásico sin cambios.
+
 ## Quick path
 
 1. Serví esta carpeta por HTTPS (o `localhost` en tu PC): `python -m http.server` dentro de `mi-barrio-tpv-celular/`.
@@ -21,6 +23,23 @@ Pedidos en vivo, alta manual y venta rápida, cocina, cobro con vuelto, cierres 
 | Reglas de Firestore | Las reglas actuales **aún no publicadas** rechazan el pase directo a `en_camino` desde etapas como `nuevo`. El cobro depende de `tpv-push-backend/firestore.rules.proposed.txt` (solo seis campos de pago: `pago`, `pagado`, `cobradoEn`, `recibido`, `vuelto`, `estado`; admin exacto; `pagado: true`; servidor timestamp; método válido; previo sin pagar; sin cambio de `tipo`). Hasta aplicarla tras autorización y verificación en emulador, confirmar cobro puede ser **rechazado**: no hay toast de éxito, no se marca pagado y se informa honestamente. |
 | Impresión automática | Desactivada: los snapshots nunca imprimen en el celular. La impresión explícita (🖨️ Ticket / Comanda) sigue disponible. |
 | Camarero/delivery en esta app | No. El rol camarero y el modo repartidor viven en sus propias apps. |
+
+## Navegación y diseño móvil
+
+La capa visual nueva vive en `mobile.css` y se carga **al final** de la app. Solo actúa cuando el controlador agrega `body.tpv-mobile-ui` y, después de montar la interfaz, `.tpv-mobile-ready`; si el JavaScript falla, queda la barra de herramientas original operativa. En escritorio (≥ 900 px) no se aplica: el panel clásico sigue igual, sin navegación fija ni bloqueo de scroll.
+
+| Pieza | Comportamiento |
+|-------|----------------|
+| Cabecera | Compacta (≤ 90 px): marca Mi Barrio, subtítulo de administración y el estado real del panel. No inventa un estado de conexión. |
+| Navegación inferior | Cuatro destinos: **Pedidos**, **Nuevo**, **Caja** y **Más**. `Nuevo` es la acción primaria. Los botones delegan en los controles originales y respetan sus permisos. |
+| Panel «Más» | Hoja inferior desplazable con cierre accesible y controles secundarios en grilla; respeta el área segura y no queda debajo de la barra inferior. |
+| Filtros | Chips táctiles en una franja con scroll propio: es el único scroll horizontal intencional. La página no se recorta ni se bloquea. |
+| Pedidos | Tarjetas blancas con número, cliente, tipo, estado, total y acciones. La acción principal (cobrar o avanzar) ocupa la fila completa y los nombres largos se envuelven. |
+| Estados vacíos | Mensaje claro con llamada a crear pedido. Avisos y *toast* aparecen por encima de la barra inferior y del área segura. |
+| Modales | Ancho con márgenes, altura máxima de la pantalla, scroll interno y campos de 16 px para evitar el zoom automático de iOS. |
+| Accesibilidad | Objetivos táctiles de 44 px o más (52 px en acciones primarias), foco visible, respeto de `prefers-reduced-motion` y uso de `env(safe-area-inset-*)`. |
+
+Paleta: marfil cálido `#f7f5f0`, tarjetas blancas, borgoña `#8d2838` como color primario, dorado contenido y verde apagado para estados. Sin degradados, sin fuentes externas y sin frameworks nuevos.
 
 ## Notificaciones push (estado actual: DESACTIVADO)
 
@@ -51,16 +70,28 @@ La instalable Android/iOS se derivará de esta misma carpeta (p. ej. contenedor 
 
 ```
 node --test mi-barrio-tpv-celular/test.mjs
+node --test mi-barrio-tpv-celular/mobile-styles.test.mjs
 ```
 
-Cubre: compuerta de admin, plan de cobro transaccional (`en_camino` para todo tipo; cancelado/archivado/ya cobrado = sin escritura), parser del service worker contra envelopes FCM anidados (tests VM), orquestación de push en orden (revoca-servidor → token-navegador → signOut; logout aborta ante fallo), config/permiso/estados UI de push, registro y revocación, y huellas SHA256 de `panel_nuevo.html` (`940A51D4…`), `index.html` (`9E9A2D29…`) y reglas. Cero llamadas de red en los tests.
+La primera suite cubre: compuerta de admin, plan de cobro transaccional (`en_camino` para todo tipo; cancelado/archivado/ya cobrado = sin escritura), parser del service worker contra envelopes FCM anidados (tests VM), orquestación de push en orden (revoca-servidor → token-navegador → signOut; logout aborta ante fallo), config/permiso/estados UI de push, registro y revocación, y huellas SHA256 de `panel_nuevo.html` (`940A51D4…`), `index.html` (`9E9A2D29…`) y reglas. Cero llamadas de red en los tests.
+
+La segunda suite es un contrato de estilos: lee `mobile.css` y comprueba cabecera compacta, navegación de cuatro columnas, hoja de herramientas, filtros con scroll interno, modales dentro del viewport, objetivos táctiles, foco visible, movimiento reducido, semántica de `hidden` y que el escritorio no herede la navegación fija. Tampoco usa navegador ni Firebase.
+
+### Vista previa del diseño
+
+1. Serví esta carpeta: `python -m http.server` dentro de `mi-barrio-tpv-celular/`.
+2. Abrí `http://localhost:8000` y usá el modo dispositivo del navegador (320×568, 390×844 y 768×1024) para revisar la franja móvil; en ≥ 900 px debe verse el panel original.
+3. La app real pide Firebase y credenciales de administrador. Para inspeccionar solo la capa visual hace falta un fixture aislado que bloquee scripts externos y agregue `body.tpv-mobile-ui.tpv-mobile-ready`; ese fixture pertenece a la unidad de interacción, no a esta hoja.
+
+La prueba visual en navegador queda pendiente hasta integrar ambas unidades. Esta unidad no generó capturas, no midió el render real y no ejecutó Firebase.
 
 ## Archivos
 
-`index.html` (app completa) · `push-helpers.js` (lógica testeable) · `push-config.js` (settings públicas, disabled) · `sw.js` · `manifest.json` · `icon*.svg|png` (regenerar: `node mi-barrio-tpv-celular/tools/generate-icons.mjs`) · `test.mjs` · `tools/` (generador y vista previa de iconos).
+`index.html` (app completa) · `mobile.css` (capa visual móvil, se carga última) · `push-helpers.js` (lógica testeable) · `push-config.js` (settings públicas, disabled) · `sw.js` · `manifest.json` · `icon*.svg|png` (regenerar: `node mi-barrio-tpv-celular/tools/generate-icons.mjs`) · `test.mjs` · `mobile-styles.test.mjs` (contrato de estilos) · `tools/` (generador y vista previa de iconos).
 
 ## Límites honestos
 
 - No desplegado, no probado en teléfono real, no probado contra Firebase en vivo (los tests usan mocks).
+- La prueba visual de `mobile.css` en navegador sigue pendiente hasta unir la hoja con la unidad de interacción; esta unidad solo verificó el contrato de estilos por texto.
 - La impresión en móvil depende del sistema de impresión del teléfono; por eso está desactivada la automática.
 - El cobrado a `en_camino` depende de que el backend del repartidor filtre `en_camino` (así es hoy, con cualquier tipo de pedido), y de aplicar `tpv-push-backend/firestore.rules.proposed.txt` tras autorización y verificación en emulador: **sin ella, el cobro muy probablemente será rechazado por las reglas actuales (no se escribe nada)**.
