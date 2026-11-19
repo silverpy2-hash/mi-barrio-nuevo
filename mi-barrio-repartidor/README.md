@@ -26,10 +26,21 @@ Requiere HTTPS (o localhost) para que funcionen el service worker y la instalaci
 
 Chrome en Android → menú ⋮ → «Añadir a pantalla de inicio». Se abre en pantalla completa como una app.
 
+## Enviar el resumen de un pedido por WhatsApp
+
+1. Tocá **Enviar resumen** en el pedido correspondiente.
+2. Revisá los datos y escribí el destinatario: un número paraguayo (por ejemplo, `0981 123456`) o un número internacional con código de país (por ejemplo, `+54 9 11 1234 5678`). No se selecciona automáticamente el teléfono del cliente.
+3. Tocá **Abrir WhatsApp con el resumen** y confirmá el envío dentro de WhatsApp.
+
+Incluye los datos registrados: número/fecha/estado/modalidad, mesa/origen si existen, cliente y contacto, dirección y ubicación, pizzas/sabores/borde, extras, delivery, importes, pago/cobro, recibido/vuelto y notas. No agrega precios que no estén guardados ni comparte identificadores internos. El texto se actualiza con la última lectura disponible y se elimina al cerrar la ventana, salir de la sesión o desaparecer el pedido.
+
+El botón **WhatsApp** anterior conserva su aviso al cliente. El resumen es otra acción, permite cualquier destinatario válido y no modifica Firestore ni envía mensajes automáticamente. Revisá el número: el resumen contiene datos personales del cliente. La cuenta de destino debe usar WhatsApp; esta app no comprueba si está registrada.
+
 ## Pruebas
 
 ```powershell
 node test.mjs
+node --test resumen.test.mjs
 ```
 
 Verifica: lógica de presentación (escapado, formato de moneda, ubicación, orden), consulta solo lectura sin funciones de escritura, manifest/iconos válidos, sintaxis de los tres scripts y requisitos mínimos de PWA.

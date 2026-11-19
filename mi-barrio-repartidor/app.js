@@ -6,8 +6,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, collection, query, where, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { renderListaHTML } from "./logica.js";
+import { instalarResumenPedidos } from "./resumen.js";
 
-const APP_VERSION = '2026-11-17 #1 · repartidor PWA';
+const APP_VERSION = '2026-11-18 #2 · resumen de pedido';
 
 // Actualizar junto con panel_nuevo.html si el proyecto de Firebase cambia.
 const firebaseConfig = {
@@ -31,6 +32,11 @@ const vacioEl = $('vacio');
 const avisoError = $('aviso-error');
 const btnSalir = $('btn-salir');
 const formLogin = $('form-login');
+let pedidosActuales = [];
+const resumenPedidos = instalarResumenPedidos({
+    document,
+    getPedido: id => pedidosActuales.find(p => p.id === id),
+});
 
 console.info('[Repartidor] versión:', APP_VERSION);
 
@@ -66,6 +72,8 @@ onAuthStateChanged(auth, (user) => {
         btnSalir.classList.remove('hidden');
         escucharPedidos();
     } else {
+        pedidosActuales = [];
+        resumenPedidos.cerrar();
         vistaLogin.classList.remove('hidden');
         vistaLista.classList.add('hidden');
         btnSalir.classList.add('hidden');
@@ -105,10 +113,12 @@ function escucharPedidos() {
 }
 
 function pintarPedidos(pedidos) {
+    pedidosActuales = pedidos;
     const { html, vacio } = renderListaHTML(pedidos);
     vacioEl.classList.toggle('hidden', !vacio);
     listaEl.classList.toggle('hidden', vacio);
     listaEl.innerHTML = vacio ? '' : html;
+    resumenPedidos.sincronizar();
 }
 
 // ===== Detalle desplegable (delegación: funciona en cada render) =====

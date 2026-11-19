@@ -23,6 +23,22 @@ body {
 
 .hidden { display: none !important; }
 
+/* Order sharing is an explicit, read-only action; never an automatic send. */
+.btn-resumen { grid-column: 1 / -1; background: #fff4cc; color: var(--navy); border: 1px solid #e6c85b; }
+.resumen-modal { width: calc(100% - 24px); max-width: 560px; max-height: 90dvh; padding: 0; border: 0; border-radius: 20px; color: var(--texto); box-shadow: 0 20px 80px #0005; }
+.resumen-modal::backdrop { background: #0b1728b3; }
+.resumen-contenido { display: grid; gap: 14px; padding: 20px; }
+.resumen-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.resumen-cabecera h2 { margin: 0; font-size: 20px; }
+#resumen-cerrar { flex: 0 0 44px; width: 44px; height: 44px; border: 0; border-radius: 12px; background: var(--fondo); font-size: 20px; cursor: pointer; }
+.resumen-contenido p { margin: 0; line-height: 1.5; font-size: 13px; color: var(--gris); }
+.resumen-contenido .campo { margin: 0; }
+#resumen-texto { width: 100%; min-height: 220px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; font: 14px/1.6 system-ui, sans-serif; resize: vertical; }
+#resumen-numero { font-size: 16px; }
+.resumen-enviar { width: 100%; cursor: pointer; }
+.resumen-contenido .resumen-error { color: #b91c1c; }
+.resumen-modal :focus-visible { outline: 3px solid #c29716; outline-offset: 3px; }
+
 .topbar {
     background: var(--navy);
     color: #fff;

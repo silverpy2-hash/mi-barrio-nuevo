@@ -11,7 +11,7 @@
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
     <link rel="stylesheet" href="./styles.css">
-    <script type="module" src="./app.js?v=1"></script>
+    <script type="module" src="./app.js?v=2"></script>
 </head>
 <body>
 
@@ -64,5 +64,26 @@
         </section>
 
     </main>
+
+    <dialog id="resumen-modal" class="resumen-modal" aria-labelledby="resumen-titulo" aria-describedby="resumen-ayuda">
+        <form id="resumen-form" class="resumen-contenido">
+            <div class="resumen-cabecera">
+                <h2 id="resumen-titulo">Resumen del pedido</h2>
+                <button id="resumen-cerrar" type="button" aria-label="Cerrar resumen">✕</button>
+            </div>
+            <p id="resumen-ayuda">Incluye datos del cliente. Revisá el destinatario y el resumen antes de continuar.</p>
+            <label class="campo" for="resumen-numero">
+                <span>Número de destino de WhatsApp</span>
+                <input id="resumen-numero" type="tel" inputmode="tel" autocomplete="off" placeholder="0981 123456 o +54 9 11…" required>
+            </label>
+            <p id="resumen-error" class="resumen-error" role="alert" hidden></p>
+            <label class="campo" for="resumen-texto">
+                <span>Resumen completo</span>
+                <textarea id="resumen-texto" rows="12" readonly></textarea>
+            </label>
+            <button class="btn btn-whatsapp resumen-enviar" type="submit">Abrir WhatsApp con el resumen</button>
+            <p class="resumen-aviso">No se envía automáticamente. Confirmá el envío dentro de WhatsApp.</p>
+        </form>
+    </dialog>
 </body>
 </html>

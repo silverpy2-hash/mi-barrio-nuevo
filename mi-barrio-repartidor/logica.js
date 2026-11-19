@@ -211,6 +211,7 @@ export function renderTarjetaHTML(p) {
             ${tel ? `<a class="btn btn-llamar" href="tel:+${esc(tel)}">📞 Llamar<span class="btn-numero">${esc(c.celular)}</span></a>` : ''}
             ${wsp ? `<a class="btn btn-whatsapp" href="${esc(wsp)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
             ${ubicacion ? `<a class="btn btn-mapa" href="${esc(ubicacion)}" target="_blank" rel="noopener">🗺️ Ver ubicación</a>` : ''}
+            <button class="btn btn-resumen" type="button" data-accion="resumen">Enviar resumen</button>
         </div>
         ${botonDetalle}
     </article>`;
