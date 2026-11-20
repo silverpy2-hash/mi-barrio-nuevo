@@ -30,10 +30,23 @@ service cloud.firestore {
           || (de == 'cancelado'   && a == 'archivado');
     }
 
+    // Optional web-promotion snapshot; legacy orders remain valid without it.
+    // Existing rules trust client prices; this does not make them server-authoritative.
+    function descuentoWebValido() {
+      let d = request.resource.data;
+      return (!('descuento' in d) && !('porcentajeDescuento' in d))
+        || (d.keys().hasAll(['descuento', 'porcentajeDescuento'])
+            && d.descuento is int && d.descuento > 0
+            && d.descuento < 5000000
+            && d.porcentajeDescuento in [10, 15, 20, 25]
+            && d.total + d.descuento < 5000000);
+    }
+
     match /pedidos/{id} {
       // Cualquier cliente puede CREAR un pedido
       allow create: if request.resource.data.keys().hasOnly(
-                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm'])
+                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm', 'descuento', 'porcentajeDescuento'])
+                    && descuentoWebValido()
                     && (!('pago' in request.resource.data) || request.resource.data.pago in ['efectivo', 'transferencia'])
                     && request.resource.data.estado == 'nuevo'
                     && request.resource.data.creado == request.time

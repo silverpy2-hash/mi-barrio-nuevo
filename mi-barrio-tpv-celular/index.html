@@ -2185,6 +2185,7 @@
                 manualHasta: Number(d.manualHasta) || null,
                 horarios: d.horarios || {},
                 mensaje: d.mensaje || '',
+                descuentoWeb: d.descuentoWeb || null,
                 agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
                 tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
                 delivery: (d.delivery && Array.isArray(d.delivery.tramos))
@@ -2570,7 +2571,7 @@
             const bloqueDescTicket = descTicket > 0 ? `
   <div>SUBTOTAL<div class="r">${gs(subtotalTicket)}</div></div>
   ${envioTicket > 0 ? `<div>DELIVERY<div class="r">+ ${gs(envioTicket)}</div></div>` : ''}
-  <div>DESCUENTO<div class="r">- ${gs(descTicket)}</div></div>` : '';
+  <div>${[10, 15, 20, 25].includes(p.porcentajeDescuento) ? 'DESCUENTO WEB ' + p.porcentajeDescuento + '%' : 'DESCUENTO'}<div class="r">- ${gs(descTicket)}</div></div>` : '';
 
             const html = `<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><title>Ticket ${esc(numeroCorto(p))}</title>
@@ -4449,9 +4450,39 @@ let stops = [];
 let hdraft = null;
 let ddraft = null;
 
+// ===== Web promotion (independent from manual order discounts) =====
+let descuentoGuardando = false;
+function vistaDescuento() {
+    const promo = localCfg.descuentoWeb;
+    const actual = promo && promo.activo === true && [10, 15, 20, 25].includes(promo.porcentaje) ? promo.porcentaje : 0;
+    $('cfg-vista').innerHTML = `<section class="${CARD}">
+        <h3 class="font-extrabold">Descuento para pedidos web</h3>
+        <p class="text-sm">Solo pizzas de todos los tamaños y variedades, incluido el borde relleno. No incluye delivery, papas, gaseosas ni otros extras. No modifica los pedidos manuales ni los pedidos ya recibidos.</p>
+        <p role="status" class="text-sm font-bold">${descuentoGuardando ? 'Guardando…' : actual ? 'Vigente: ' + actual + '%' : 'Sin descuento web activo'}</p>
+        <div class="flex flex-wrap gap-2">${[0, 10, 15, 20, 25].map(n => `<button type="button" data-descuento-web="${n}" aria-pressed="${n === actual}" ${descuentoGuardando ? 'disabled' : ''} class="${BTN} ${n === actual ? 'bg-green-700 text-white' : 'bg-neutral-100 text-neutral-900'}">${n ? n + '%' : 'Desactivar'}</button>`).join('')}</div>
+        <p class="text-xs text-neutral-500">Se aplica en la web al guardar. El cliente verá el descuento y el pedido conservará el porcentaje y el importe en el ticket y en WhatsApp.</p>
+    </section>`;
+}
+async function guardarDescuentoWeb(porcentaje) {
+    if (!adminActivo() || ![0, 10, 15, 20, 25].includes(porcentaje) || descuentoGuardando) return;
+    descuentoGuardando = true;
+    vistaDescuento();
+    try {
+        await setDoc(doc(db, 'config', 'local'), { descuentoWeb: { activo: porcentaje > 0, porcentaje }, actualizado: serverTimestamp() }, { merge: true });
+        toast(porcentaje ? 'Descuento web activado: ' + porcentaje + '%' : 'Descuento web desactivado');
+    } catch (e) {
+        toast('No se pudo guardar el descuento web: ' + e.message);
+    } finally {
+        descuentoGuardando = false;
+        if (tab === 'descuento') vistaDescuento();
+    }
+}
+// ===== End web promotion =====
+
 // ===== Navegación =====
 const TABS = [['menu', '💲 Menú y precios'], ['clientes', '👥 Clientes'], ['reportes', '📊 Reportes'], ['horario', '🕒 Horario'], ['delivery', '🛵 Delivery'], ['apariencia', '🎨 Apariencia'], ['mesas', '🪑 Mesas'], ['datos', '🧹 Datos']];
-const TABS_PRIM = ['menu', 'horario', 'delivery', 'apariencia'];
+TABS.splice(1, 0, ['descuento', 'Descuento web']);
+const TABS_PRIM = ['menu', 'descuento', 'horario', 'delivery', 'apariencia'];
 function esTemaCompactoPanel() { return ['simple', 'moderno'].includes(document.body.dataset.temaPanel || 'clasico'); }
 function render() {
     const compacto = esTemaCompactoPanel();
@@ -4461,6 +4492,7 @@ function render() {
         : '';
     $('cfg-tabs').innerHTML = visibles.map(([k, t]) => `<button type="button" data-tab="${k}" class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full ${tab === k ? 'bg-white text-neutral-900' : 'bg-white/20 text-white hover:bg-white/30'}">${t}</button>`).join('') + btnMas;
     if (tab === 'menu') vistaMenu();
+    else if (tab === 'descuento') vistaDescuento();
     else if (tab === 'clientes') vistaClientes();
     else if (tab === 'reportes') vistaReportes();
     else if (tab === 'horario') vistaHorario();
@@ -4703,7 +4735,7 @@ function pintaEstadoHorario() {
             <button type="button" data-hloc="auto" class="${BTN} bg-white border border-neutral-300">↺ Volver a automático</button>
         </div>`;
 }
-window.refrescarHorarioUI = () => { if (tab === 'horario') pintaEstadoHorario(); else if (tab === 'apariencia') vistaApariencia(); };
+window.refrescarHorarioUI = () => { if (tab === 'horario') pintaEstadoHorario(); else if (tab === 'apariencia') vistaApariencia(); else if (tab === 'descuento') vistaDescuento(); };
 function vistaHorario() {
     if (!hdraft) hdraft = clone(localCfg);
     const filas = ORDEN_DIAS.map(d => {
@@ -4951,7 +4983,8 @@ $('cfg-vista').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
     const d = b.dataset;
-    if (d.addSabor) {
+    if (d.descuentoWeb !== undefined) guardarDescuentoWeb(Number(d.descuentoWeb));
+    else if (d.addSabor) {
         const v = $('add-' + d.addSabor).value.trim();
         if (!v) return;
         if (Object.values(draft.sabores).some(a => a.some(x => x.toLowerCase() === v.toLowerCase()))) { toast('Ese sabor ya existe.'); return; }

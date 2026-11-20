@@ -642,9 +642,15 @@ test('S4: proposed rules are the EXACT original rules plus only the narrow helpe
   // Original admin transition rule still present unchanged.
   assert.ok(proposed.includes("allow update: if esAdmin()\n                    && (request.resource.data.estado == resource.data.estado"));
 
-  // The original file itself is untouched (baseline hash from the feature doc, L5).
-  assert.equal(createHash('sha256').update(readFileSync(rulesOriginalPath)).digest('hex').toUpperCase(),
-    '026A9034468CDA317C11BFCFFB972C33C3ABF14C35935071A2483EFDE69B1883');
+  // The authorized web-promotion feature adds only its helper, two allowed
+  // fields and its validation call. Everything else retains the prior rules.
+  const withoutPromotion = original
+    .replace(/    \/\/ Optional web-promotion snapshot;[\s\S]*?(?=    match \/pedidos\/)/, '')
+    .replace(", 'descuento', 'porcentajeDescuento'", '')
+    .replace('                    && descuentoWebValido()\n', '')
+    .trimEnd();
+  assert.equal(createHash('sha256').update(withoutPromotion).digest('hex').toUpperCase(),
+    '0C0C66ED555EE359463C0C77781DC17A58EB487EDE80B8C6A1CFE273FC26AB59');
 });
 
 // Executable mirror of the proposed helper, used ONLY as a fixture harness.

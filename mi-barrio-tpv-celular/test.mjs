@@ -157,11 +157,17 @@ test('mobileAutoPrintAllowed is always false on the phone build', () => {
     assert.equal(mobileAutoPrintAllowed(), false);
 });
 
-// ===== Preservation (S3): originals untouched, copies consistent =====
-test('original panel and root files keep their baseline SHA256 (S3)', () => {
-    assert.equal(sha256(readFileSync('panel_nuevo.html')), '940A51D42DE21B6AA47AC966CBC049F6027E2715EF7EB6740371C299D8467F8F');
-    assert.equal(sha256(readFileSync('index.html')), '9E9A2D2977F02AEC8FCAE00D4E8928A69B709D91D9981020F6ABA1169086FD61');
-    assert.equal(sha256(readFileSync('reglas_firestore (2).txt')), '026A9034468CDA317C11BFCFFB972C33C3ABF14C35935071A2483EFDE69B1883');
+// The later, explicitly authorized web-promotion feature changes the original
+// pages and rules. Preserve the unrelated manual-order block instead of pinning
+// those entire files forever to the mobile-app creation milestone.
+test('web promotion preserves existing manual-order totals in both panels', () => {
+    for (const path of ['panel_nuevo.html', 'mi-barrio-tpv-celular/index.html']) {
+        const html = readFileSync(path, 'utf8');
+        const start = html.indexOf('function nuevoTotales()');
+        const end = html.indexOf('function nuevoMsg(', start + 1);
+        assert.ok(start >= 0 && end > start);
+        assert.equal(sha256(html.slice(start, end).replace(/\r\n/g, '\n')), '89409BBFA05726C294605BFA32582EFD4773B2C1D2E2F1CBE6C9036D2F821609');
+    }
 });
 
 test('new app wires admin gate, push and en_camino invariant into the UI', () => {

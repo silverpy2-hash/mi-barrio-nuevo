@@ -609,6 +609,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             <div>
                 <span class="text-xs uppercase font-bold tracking-wider text-neutral-400 block">Total Estimado</span>
                 <span id="total-pantalla" class="text-2xl font-black text-red-700">0 Gs</span>
+                <div id="detalle-descuento-web" hidden class="text-xs font-bold text-green-700" aria-live="polite"></div>
             </div>
             <button type="button" id="btn-enviar" onclick="enviarPedido()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md transition transform active:scale-[0.98] text-center text-sm tracking-wide">
                 🚀 Confirmar y Enviar
@@ -1170,6 +1171,25 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             calcularTotal();
         }
 
+        window.DESCUENTO_WEB = 0;
+        window.DESCUENTO_WEB_LISTO = false;
+        window.aplicarDescuentoCliente = function (promocion) {
+            const porcentaje = promocion && promocion.activo === true && [10, 15, 20, 25].includes(promocion.porcentaje) ? promocion.porcentaje : 0;
+            window.DESCUENTO_WEB = porcentaje;
+            window.DESCUENTO_WEB_LISTO = true;
+            let aviso = document.getElementById('aviso-descuento-web');
+            if (!aviso) {
+                aviso = document.createElement('div');
+                aviso.id = 'aviso-descuento-web';
+                aviso.className = 'max-w-xl mx-auto px-4 py-3 text-sm font-bold text-green-800 bg-green-50';
+                aviso.setAttribute('role', 'status');
+                document.querySelector('main').prepend(aviso);
+            }
+            aviso.hidden = !porcentaje;
+            aviso.textContent = porcentaje ? porcentaje + '% de descuento en todas las pizzas y bordes rellenos al pedir por esta web. No incluye extras ni delivery.' : '';
+            calcularTotal();
+        };
+
         function calcularTotal() {
             const tamano = obtenerTamanoSeleccionado();
             const saboresSeleccionados = document.querySelectorAll('input[name="sabor"]:checked');
@@ -1207,10 +1227,16 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             }
 
             const envio = window.MESA_ACTUAL ? 0 : deliveryCosto;
-            const totalGeneral = precioBasePizza + subtotalAdicionales + pedido.reduce((a, p) => a + p.precio, 0) + envio;
+            const subtotalPizzas = precioBasePizza + (adicionales['borde-piz'] === 1 && saboresSeleccionados.length > 0 ? precioBorde(tamano) : 0) + pedido.reduce((a, p) => a + p.precio, 0);
+            const porcentajeDescuento = window.DESCUENTO_WEB || 0;
+            const descuento = Math.round(subtotalPizzas * porcentajeDescuento / 100);
+            const totalGeneral = precioBasePizza + subtotalAdicionales + pedido.reduce((a, p) => a + p.precio, 0) + envio - descuento;
             document.getElementById('total-pantalla').innerText = totalGeneral.toLocaleString('es-PY') + " Gs";
+            const detalle = document.getElementById('detalle-descuento-web');
+            detalle.hidden = descuento <= 0;
+            detalle.textContent = descuento > 0 ? 'Descuento ' + porcentajeDescuento + '%: -' + descuento.toLocaleString('es-PY') + ' Gs' : '';
             
-            return { totalGeneral, precioBasePizza, subtotalAdicionales };
+            return { totalGeneral, precioBasePizza, subtotalAdicionales, descuento, porcentajeDescuento };
         }
 
         // Celular de Paraguay: acepta 0981 123 456, 981123456, +595 981 123 456, etc.
@@ -1230,7 +1256,9 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         function cerrarModalPago() { document.getElementById('modal-pago').style.display = 'none'; }
         function confirmarPago(pago) { cerrarModalPago(); enviarPedido(pago); }
 
-        function enviarPedido(pago) {
+        async function enviarPedido(pago) {
+            if (window.PEDIDO_WEB_ENVIANDO) return;
+            if (window.DESCUENTO_WEB > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
             if (window.LOCAL_CERRADO) { alert('⛔ Nos encontramos cerrados en este momento. No podemos tomar pedidos ahora.'); return; }
             const nombre = document.getElementById('nombre').value.trim();
             const direccion = document.getElementById('direccion').value.trim();
@@ -1277,7 +1305,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 return;
             }
 
-            const { totalGeneral, precioBasePizza } = calcularTotal();
+            const { totalGeneral, precioBasePizza, descuento, porcentajeDescuento } = calcularTotal();
 
             const nombreTamano = nombresTamano[tamano] || tamano;
 
@@ -1312,6 +1340,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 if ((adicionales[k] || 0) > 0) mensaje += `• ${nombresExtras[k]} x${adicionales[k]}\n`;
             });
 
+            if (descuento > 0) mensaje += `\n*Descuento web ${porcentajeDescuento}% en pizzas y borde:* -${descuento.toLocaleString('es-PY')} Gs\n`;
             if (!window.MESA_ACTUAL) {
                 if (deliveryCosto > 0) mensaje += `\n*🛵 Delivery:* ${deliveryCosto.toLocaleString('es-PY')} Gs (${deliveryKm.toFixed(1)} km)\n`;
             }
@@ -1319,29 +1348,48 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             mensaje += `*💳 Forma de pago:* ${PAGOS_TXT[pago]}\n\n`;
             mensaje += `¡Muchas gracias! Quedo a la espera de la confirmación de mi pedido.`;
 
-            // Guardar copia del pedido en Firebase (no frena ni bloquea el envío por WhatsApp)
+            // Reserve the popup during the user gesture, before waiting for Firestore.
+            const ventanaPedido = descuento > 0 ? window.open('', '_blank') : null;
+            if (descuento > 0 && !ventanaPedido) { alert('Permití las ventanas emergentes para enviar el pedido por WhatsApp.'); return; }
+            if (ventanaPedido) ventanaPedido.document.body.textContent = 'Guardando tu pedido con descuento…';
+            if (descuento > 0) window.PEDIDO_WEB_ENVIANDO = true;
+            // A discounted order must retain its promotion metadata before it is sent.
             try {
+                if (descuento > 0 && !window.guardarPedidoFirebase) throw new Error('No se pudo conectar con la base de pedidos.');
                 if (window.guardarPedidoFirebase) {
                     const extras = Object.keys(nombresExtras)
                         .filter(k => (adicionales[k] || 0) > 0)
                         .map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] }));
-                    window.guardarPedidoFirebase({
+                    const guardado = window.guardarPedidoFirebase({
                         cliente: { nombre: nombre, direccion: direccion, celular: celular, lat: Number(lat), lng: Number(lng), mapa: enlaceGoogleMaps },
                         pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
                         extras: extras,
                         total: totalGeneral,
+                        ...(descuento > 0 ? { descuento, porcentajeDescuento } : {}),
                         pago: pago,
                         costoDelivery: window.MESA_ACTUAL ? 0 : deliveryCosto,
                         distanciaKm: deliveryKm ? Number(deliveryKm.toFixed(2)) : null,
                         mensaje: mensaje
-                    }).catch(err => console.error('Firebase:', err));
+                    });
+                    if (descuento > 0) await guardado;
+                    else guardado.catch(err => console.error('Firebase:', err));
                 }
-            } catch (e) { console.error('Firebase:', e); }
+            } catch (e) {
+                console.error('Firebase:', e);
+                if (descuento > 0) {
+                    if (ventanaPedido) ventanaPedido.close();
+                    window.PEDIDO_WEB_ENVIANDO = false;
+                    alert('No se pudo guardar el pedido con descuento. No se envió por WhatsApp. Volvé a intentar; si el problema continúa, contactá al local.');
+                    return;
+                }
+            }
 
             const numeroDestino = "595986368904"; 
             const urlWhatsApp = `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
             
-            window.open(urlWhatsApp, '_blank');
+            if (ventanaPedido) ventanaPedido.location.href = urlWhatsApp;
+            else window.open(urlWhatsApp, '_blank');
+            window.PEDIDO_WEB_ENVIANDO = false;
 
             // Copia por correo (FormSubmit)
             const correoDestino = "silverpy2@gmail.com";
@@ -1447,6 +1495,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 manualHasta: Number(d.manualHasta) || null,
                 horarios: d.horarios || {},
                 mensaje: d.mensaje || '',
+                descuentoWeb: d.descuentoWeb || null,
                 agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
                 tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
                 delivery: (d.delivery && Array.isArray(d.delivery.tramos))
@@ -1517,7 +1566,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
         pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
-        onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarDeliveryCliente) window.aplicarDeliveryCliente(cfgLocal); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); }, () => {});
+        onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarDeliveryCliente) window.aplicarDeliveryCliente(cfgLocal); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); window.aplicarDescuentoCliente(cfgLocal ? cfgLocal.descuentoWeb : null); }, () => { window.DESCUENTO_WEB_LISTO = false; });
 
         // Menú y precios cargados desde el panel (config/menu): se aplican al instante
         onSnapshot(doc(db, "config", "menu"), (s) => {
@@ -1543,6 +1592,9 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (Number.isFinite(datos.distanciaKm)) extra.distanciaKm = datos.distanciaKm;
             const pago = conPago ? { pago: datos.pago } : {};
             const con = (o) => addDoc(collection(db, "pedidos"), o);
+            if (datos.descuento > 0) {
+                return con({ ...base, ...extra, ...pago, descuento: datos.descuento, porcentajeDescuento: datos.porcentajeDescuento });
+            }
             // 1) intento completo. Si las reglas publicadas todavía no permiten los campos nuevos,
             // reintenta sin ellos (y después sin "pago") para no perder el pedido.
             return con({ ...base, ...extra, ...pago }).catch((err) => {
