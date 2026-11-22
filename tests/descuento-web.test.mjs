@@ -20,7 +20,8 @@ function cart({ percent = 0, selected = true, category = 'clasico', size = 'gran
         return nodes.get(id);
     };
     const context = vm.createContext({
-        window: { DESCUENTO_WEB: percent, DESCUENTO_WEB_LISTO: true, MESA_ACTUAL: mesa },
+        window: { DESCUENTO_WEB: percent, DESCUENTO_WEB_LISTO: true, MESA_ACTUAL: mesa, MODALIDAD_PEDIDO: 'delivery' },
+        deliveryPendiente: false,
         document: { getElementById: element, querySelectorAll: () => selected ? [{ getAttribute: () => category }] : [] },
         obtenerTamanoSeleccionado: () => size,
         matrizPrecios: { [size]: { clasico: 60000, especial: 75000, gourmet: 90000 } },
@@ -127,7 +128,7 @@ test('legacy order still saves and sends when no promotion is known and config i
     });
     c.context.document.querySelectorAll = () => [{ value: 'Muzza', getAttribute: () => 'clasico' }];
     c.context.window.guardarPedidoFirebase = async data => { calls.stored.push(data); };
-    c.context.window.open = url => calls.messages.push(url);
+    c.context.window.open = () => ({ document: { body: {} }, location: { set href(url) { calls.messages.push(url); } }, close() {} });
     vm.runInContext(between(web, 'async function enviarPedido(', '// Botones de cantidad'), c.context);
     await vm.runInContext("enviarPedido('efectivo')", c.context);
     assert.equal(calls.stored.length, 1);

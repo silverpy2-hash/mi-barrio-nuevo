@@ -42,11 +42,22 @@ service cloud.firestore {
             && d.total + d.descuento < 5000000);
     }
 
+    // Web customers may choose pickup/delivery, never waiter-only local orders.
+    function tipoWebValido() {
+      let d = request.resource.data;
+      return !('tipo' in d)
+        || (d.tipo in ['delivery', 'retiro']
+            && (d.tipo != 'retiro'
+                || (d.costoDelivery is number && d.costoDelivery == 0
+                    && (!('distanciaKm' in d) || d.distanciaKm == null))));
+    }
+
     match /pedidos/{id} {
       // Cualquier cliente puede CREAR un pedido
       allow create: if request.resource.data.keys().hasOnly(
-                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm', 'descuento', 'porcentajeDescuento'])
+                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm', 'descuento', 'porcentajeDescuento', 'tipo'])
                     && descuentoWebValido()
+                    && tipoWebValido()
                     && (!('pago' in request.resource.data) || request.resource.data.pago in ['efectivo', 'transferencia'])
                     && request.resource.data.estado == 'nuevo'
                     && request.resource.data.creado == request.time

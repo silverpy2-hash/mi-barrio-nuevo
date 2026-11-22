@@ -328,7 +328,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         <!-- 1. Datos del Cliente y Ubicación -->
         <section id="seccion-cliente" class="bg-white p-5 rounded-2xl shadow-sm border border-neutral-200">
             <h2 class="text-lg font-bold text-red-700 mb-3 border-b pb-2 flex items-center gap-2">
-                👤 Datos para el Delivery
+                👤 Datos del pedido
             </h2>
             <div class="space-y-3">
                 <div>
@@ -339,6 +339,14 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                     <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-1">Número de Celular</label>
                     <input type="tel" id="celular" inputmode="tel" autocomplete="tel" placeholder="Ej. 0981 123 456" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500">
                 </div>
+                <div id="selector-modalidad" role="group" aria-label="Cómo recibir tu pedido">
+                    <span class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">¿Cómo querés recibir tu pedido?</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="modalidad-retiro" onclick="seleccionarModalidad('retiro')" aria-pressed="false" class="border-2 border-neutral-200 rounded-xl px-3 py-3 text-sm font-bold">Retiro en el local</button>
+                        <button type="button" id="modalidad-delivery" onclick="seleccionarModalidad('delivery')" aria-pressed="false" class="border-2 border-neutral-200 rounded-xl px-3 py-3 text-sm font-bold">Delivery</button>
+                    </div>
+                </div>
+                <div id="datos-delivery" class="hidden space-y-3">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-1">Dirección Escrita (Barrio / Referencia)</label>
                     <input type="text" id="direccion" placeholder="Ej. Calle Principal e/ 14 de Mayo" class="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500">
@@ -351,7 +359,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                     <!-- Casilla obligatoria para recoger ubicación -->
                     <div id="caja-ubicacion" class="mb-3 p-3 bg-amber-50 border-2 border-amber-400 rounded-xl">
                         <button type="button" onclick="recogerUbicacionObligatoria()" id="btn-recoger-ubicacion" class="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
-                            📍 Tocar aquí para marcar mi ubicación
+                            📍 Actualizar mi ubicación
                         </button>
                         <p class="text-xs text-amber-700 mt-2 text-center font-semibold">⚠️ OBLIGATORIO: Debes marcar tu ubicación para poder enviar el pedido</p>
                     </div>
@@ -367,7 +375,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                                 </div>
                             </div>
                             <button type="button" onclick="recogerUbicacionObligatoria()" class="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-lg transition">
-                                📍 Actualizar
+                                📍 Actualizar mi ubicación
                             </button>
                         </div>
                     </div>
@@ -379,6 +387,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                     <input type="hidden" id="longitud">
                     <input type="hidden" id="ubicacion-recogida" value="0">
                     <div id="delivery-info" class="mt-2 text-xs font-semibold text-neutral-500">🛵 Calculando costo de delivery...</div>
+                </div>
                 </div>
 
             </div>
@@ -621,9 +630,66 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
     <script>
         let map;
         let marker;
+        window.MODALIDAD_PEDIDO = null;
+        let ubicacionVersion = 0;
+        let gpsSolicitud = 0;
+        let deliveryPendiente = false;
+
+        function esDeliveryWeb() {
+            return !window.MESA_ACTUAL && window.MODALIDAD_PEDIDO === 'delivery';
+        }
+
+        function seleccionarModalidad(tipo) {
+            if (window.MESA_ACTUAL || window.PEDIDO_WEB_ENVIANDO || !['retiro', 'delivery'].includes(tipo) || tipo === window.MODALIDAD_PEDIDO) return;
+            window.MODALIDAD_PEDIDO = tipo;
+            reiniciarUbicacion();
+            document.getElementById('datos-delivery').classList.toggle('hidden', tipo !== 'delivery');
+            for (const valor of ['retiro', 'delivery']) {
+                const boton = document.getElementById('modalidad-' + valor);
+                boton.setAttribute('aria-pressed', String(tipo === valor));
+                boton.classList.toggle('border-red-500', tipo === valor);
+                boton.classList.toggle('bg-red-50', tipo === valor);
+                boton.classList.toggle('border-neutral-200', tipo !== valor);
+            }
+            calcularTotal();
+            actualizarBotonEnviar();
+            if (tipo === 'delivery') {
+                initMap();
+                recogerUbicacionObligatoria();
+            }
+        }
+
+        function restaurarBotonUbicacion() {
+            const btn = document.getElementById('btn-recoger-ubicacion');
+            btn.textContent = '📍 Actualizar mi ubicación';
+            btn.disabled = false;
+        }
+
+        function reiniciarUbicacion() {
+            ubicacionVersion++;
+            gpsSolicitud++;
+            clearTimeout(deliveryTimer);
+            deliveryKm = null;
+            deliveryCosto = 0;
+            deliveryFuera = false;
+            deliveryPendiente = false;
+            document.getElementById('latitud').value = '';
+            document.getElementById('longitud').value = '';
+            document.getElementById('ubicacion-recogida').value = '0';
+            document.getElementById('caja-ubicacion').classList.remove('hidden');
+            document.getElementById('ubicacion-confirmada').classList.add('hidden');
+            document.getElementById('texto-ubicacion-confirmada').textContent = '';
+            restaurarBotonUbicacion();
+        }
 
         // Inicializar Mapa Gratuito (centrado en Caaguazú / Paraguay por defecto)
         function initMap() {
+            if (!esDeliveryWeb()) return;
+            if (map) { map.invalidateSize({ pan: false }); return; }
+            if (typeof L === 'undefined') {
+                document.getElementById('delivery-info').textContent = 'No se pudo cargar el mapa. Podés intentar actualizar tu ubicación por GPS.';
+                return;
+            }
             const defaultLat = -25.4677519;
             const defaultLng = -56.0124691;
 
@@ -637,24 +703,39 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
 
             marker.on('dragend', function(event) {
+                if (window.PEDIDO_WEB_ENVIANDO) {
+                    marker.setLatLng([Number(document.getElementById('latitud').value), Number(document.getElementById('longitud').value)]);
+                    return;
+                }
+                if (!esDeliveryWeb()) return;
                 const position = marker.getLatLng();
                 actualizarCoordenadas(position.lat, position.lng);
                 marcarUbicacionRecogida();
             });
 
             map.on('click', function(event) {
+                if (!esDeliveryWeb() || window.PEDIDO_WEB_ENVIANDO) return;
                 marker.setLatLng(event.latlng);
                 actualizarCoordenadas(event.latlng.lat, event.latlng.lng);
                 marcarUbicacionRecogida();
             });
 
-            actualizarCoordenadas(defaultLat, defaultLng);
+            map.invalidateSize({ pan: false });
         }
 
         function actualizarCoordenadas(lat, lng) {
+            if (!esDeliveryWeb() || window.PEDIDO_WEB_ENVIANDO) return;
+            ubicacionVersion++;
+            gpsSolicitud++;
+            deliveryKm = null;
+            deliveryCosto = 0;
+            deliveryFuera = false;
+            deliveryPendiente = true;
+            restaurarBotonUbicacion();
             document.getElementById('latitud').value = lat;
             document.getElementById('longitud').value = lng;
             programarDelivery();
+            calcularTotal();
         }
 
         // ===== Costo de delivery por distancia (ruta por calles con OSRM) =====
@@ -689,19 +770,20 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (cfg && Array.isArray(cfg.delivery) && cfg.delivery.length) {
                 TRAMOS_DELIVERY = cfg.delivery.slice().sort((a, b) => a.max - b.max);
             }
-            if (deliveryKm != null) {
+            if (esDeliveryWeb() && deliveryKm != null) {
                 const c = costoPorKm(deliveryKm);
                 deliveryCosto = c || 0;
                 deliveryFuera = (c === null);
                 pintarDelivery();
                 calcularTotal();
+                actualizarBotonEnviar();
             }
         };
 
         function pintarDelivery() {
             const el = document.getElementById('delivery-info');
             if (!el) return;
-            if (window.MESA_ACTUAL) { el.textContent = ''; return; }
+            if (!esDeliveryWeb()) { el.textContent = ''; return; }
             if (deliveryFuera) {
                 el.className = 'mt-2 text-sm font-bold text-red-600';
                 el.textContent = '❌ Zona no cubierta (' + deliveryKm.toFixed(1) + ' km). El delivery llega hasta 6.5 km.';
@@ -717,26 +799,29 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
 
         async function calcularDelivery() {
-            if (window.MESA_ACTUAL) return;
+            if (!esDeliveryWeb() || !document.getElementById('latitud').value || !document.getElementById('longitud').value) return;
+            const version = ubicacionVersion;
             const lat = Number(document.getElementById('latitud').value);
             const lng = Number(document.getElementById('longitud').value);
             if (!isFinite(lat) || !isFinite(lng)) return;
             let km = null;
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 6000);
             try {
-                const ctrl = new AbortController();
-                const t = setTimeout(() => ctrl.abort(), 6000);
                 const r = await fetch('https://router.project-osrm.org/route/v1/driving/' + LOCAL_LNG + ',' + LOCAL_LAT + ';' + lng + ',' + lat + '?overview=false', { signal: ctrl.signal });
-                clearTimeout(t);
                 const j = await r.json();
                 if (j && j.routes && j.routes[0]) km = j.routes[0].distance / 1000;
-            } catch (e) {}
+            } catch (e) {} finally { clearTimeout(t); }
+            if (!esDeliveryWeb() || version !== ubicacionVersion) return;
             if (km == null) km = haversineKm(LOCAL_LAT, LOCAL_LNG, lat, lng) * 1.3; // estimado de ruta por calles
             deliveryKm = km;
             const c = costoPorKm(km);
             deliveryCosto = c || 0;
             deliveryFuera = (c === null);
+            deliveryPendiente = false;
             pintarDelivery();
             calcularTotal();
+            actualizarBotonEnviar();
             // Actualizar texto de confirmación de ubicación
             const textoConf = document.getElementById('texto-ubicacion-confirmada');
             if (textoConf && document.getElementById('ubicacion-recogida').value === '1') {
@@ -746,14 +831,18 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
         function programarDelivery() {
             clearTimeout(deliveryTimer);
+            if (!esDeliveryWeb()) return;
             deliveryTimer = setTimeout(calcularDelivery, 700);
         }
 
         // Obtener la ubicación actual por GPS del celular
         function centrarEnUbicacionActual() {
+            if (!esDeliveryWeb() || window.PEDIDO_WEB_ENVIANDO) return;
+            const solicitud = ++gpsSolicitud;
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        if (!esDeliveryWeb() || solicitud !== gpsSolicitud) return;
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
                         // Solo tomamos la ubicacion si la precision alcanza ~20 metros (silencioso en segundo plano)
@@ -764,6 +853,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                         marcarUbicacionRecogida();
                     },
                     (err) => {
+                        if (!esDeliveryWeb() || solicitud !== gpsSolicitud) return;
                         alert("⚠️ No se pudo obtener tu ubicación actual. Arrastra el marcador en el mapa.");
                     },
                     // Precisión: pedirle al GPS del celular datos más exactos (hasta ~20 m / nivel GPS)
@@ -776,6 +866,12 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
         // Función para recoger ubicación (casilla obligatoria)
         function recogerUbicacionObligatoria() {
+            if (!esDeliveryWeb() || window.PEDIDO_WEB_ENVIANDO) return;
+            reiniciarUbicacion();
+            initMap();
+            calcularTotal();
+            actualizarBotonEnviar();
+            const solicitud = ++gpsSolicitud;
             const btn = document.getElementById('btn-recoger-ubicacion');
             if (btn) {
                 btn.textContent = '⏳ Obteniendo ubicación...';
@@ -785,21 +881,25 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        if (!esDeliveryWeb() || solicitud !== gpsSolicitud) return;
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        map.setView([lat, lng], 16);
-                        marker.setLatLng([lat, lng]);
+                        if (map && marker) {
+                            map.setView([lat, lng], 16);
+                            marker.setLatLng([lat, lng]);
+                        }
                         actualizarCoordenadas(lat, lng);
                         marcarUbicacionRecogida();
                         if (btn) {
-                            btn.textContent = '📍 Tocar aquí para marcar mi ubicación';
+                            btn.textContent = '📍 Actualizar mi ubicación';
                             btn.disabled = false;
                         }
                     },
                     (err) => {
+                        if (!esDeliveryWeb() || solicitud !== gpsSolicitud) return;
                         alert("⚠️ No se pudo obtener tu ubicación. Permite el acceso a la ubicación en tu navegador o mueve el marcador manualmente en el mapa.");
                         if (btn) {
-                            btn.textContent = '📍 Tocar aquí para marcar mi ubicación';
+                            btn.textContent = '📍 Actualizar mi ubicación';
                             btn.disabled = false;
                         }
                     },
@@ -808,7 +908,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             } else {
                 alert("⚠️ Tu navegador no soporta geolocalización. Mueve el marcador en el mapa.");
                 if (btn) {
-                    btn.textContent = '📍 Tocar aquí para marcar mi ubicación';
+                    btn.textContent = '📍 Actualizar mi ubicación';
                     btn.disabled = false;
                 }
             }
@@ -816,6 +916,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
         // Marcar que el usuario ya recogió/confirmó su ubicación
         function marcarUbicacionRecogida() {
+            if (!esDeliveryWeb()) return;
             document.getElementById('ubicacion-recogida').value = '1';
             document.getElementById('caja-ubicacion').classList.add('hidden');
             document.getElementById('ubicacion-confirmada').classList.remove('hidden');
@@ -841,10 +942,14 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 return;
             }
             
-            if (!ubicacionOk) {
+            if (!['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) {
                 btn.disabled = true;
                 btn.classList.add('opacity-50', 'cursor-not-allowed');
-                btn.innerHTML = '⚠️ Primero marca tu ubicación';
+                btn.textContent = 'Elegí Retiro o Delivery';
+            } else if (window.MODALIDAD_PEDIDO === 'delivery' && (!ubicacionOk || deliveryPendiente || deliveryKm == null || deliveryFuera)) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.textContent = deliveryFuera ? 'Zona de delivery no cubierta' : deliveryPendiente ? 'Calculando costo de delivery...' : '⚠️ Primero marca tu ubicación';
             } else {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -852,8 +957,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             }
         }
 
-        // Ejecutar mapa al cargar la página
-        window.onload = initMap;
+        // The map and GPS are initialized only after an explicit Delivery choice.
 
         // ===== Ingredientes básicos de cada sabor (letra chica debajo del nombre) =====
         // Completá el texto entre comillas; si queda vacío, no se muestra nada.
@@ -1226,7 +1330,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 subtotalAdicionales += adicionales[key] * preciosAdicionales[key];
             }
 
-            const envio = window.MESA_ACTUAL ? 0 : deliveryCosto;
+            const envio = window.MESA_ACTUAL || window.MODALIDAD_PEDIDO !== 'delivery' ? 0 : deliveryCosto;
             const subtotalPizzas = precioBasePizza + (adicionales['borde-piz'] === 1 && saboresSeleccionados.length > 0 ? precioBorde(tamano) : 0) + pedido.reduce((a, p) => a + p.precio, 0);
             const porcentajeDescuento = window.DESCUENTO_WEB || 0;
             const descuento = Math.round(subtotalPizzas * porcentajeDescuento / 100);
@@ -1258,19 +1362,24 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
         async function enviarPedido(pago) {
             if (window.PEDIDO_WEB_ENVIANDO) return;
+            if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) { alert('Elegí Retiro en el local o Delivery antes de confirmar.'); return; }
             if (window.DESCUENTO_WEB > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
             if (window.LOCAL_CERRADO) { alert('⛔ Nos encontramos cerrados en este momento. No podemos tomar pedidos ahora.'); return; }
             const nombre = document.getElementById('nombre').value.trim();
-            const direccion = document.getElementById('direccion').value.trim();
+            const entrega = !window.MESA_ACTUAL && window.MODALIDAD_PEDIDO === 'delivery';
+            const direccion = entrega ? document.getElementById('direccion').value.trim() : '';
             const celular = normalizarCelularPY(document.getElementById('celular').value);
-            const lat = document.getElementById('latitud').value;
-            const lng = document.getElementById('longitud').value;
+            const lat = entrega ? document.getElementById('latitud').value : '';
+            const lng = entrega ? document.getElementById('longitud').value : '';
             const tamano = obtenerTamanoSeleccionado();
             const saboresChecked = document.querySelectorAll('input[name="sabor"]:checked');
 
             if (!window.MESA_ACTUAL) {
-                if (!nombre || !direccion) { alert("⚠️ Por favor, ingresa tu nombre y dirección completa de entrega."); return; }
+                if (!nombre) { alert('Ingresá tu nombre para confirmar el pedido.'); return; }
                 if (!celular) { alert("⚠️ Ingresá un número de celular válido de Paraguay. Ejemplo: 0981 123 456"); return; }
+            }
+            if (entrega) {
+                if (!direccion) { alert('Ingresá la dirección de entrega.'); return; }
                 // Verificar que el usuario haya recogido su ubicación con el botón obligatorio
                 const ubicacionRecogida = document.getElementById('ubicacion-recogida').value === '1';
                 if (!ubicacionRecogida) { 
@@ -1279,15 +1388,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                     return; 
                 }
                 if (!lat || !lng) { alert("⚠️ Marcá tu ubicación exacta en el mapa para calcular el delivery."); return; }
-                // Si todavía no se calculó la distancia (sin internet, etc.), estimamos por ruta
-                if (deliveryKm == null) {
-                    const kmAprox = haversineKm(LOCAL_LAT, LOCAL_LNG, Number(lat), Number(lng)) * 1.3;
-                    deliveryKm = kmAprox;
-                    const cAprox = costoPorKm(kmAprox);
-                    deliveryCosto = cAprox || 0;
-                    deliveryFuera = (cAprox === null);
-                    pintarDelivery();
-                }
+                if (deliveryPendiente || deliveryKm == null) { alert('Esperá a que termine de calcularse el costo del delivery.'); return; }
                 if (deliveryFuera) {
                     alert("❌ No cubrimos esa zona (" + deliveryKm.toFixed(1) + " km). El delivery llega hasta 6.5 km.");
                     return;
@@ -1313,10 +1414,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             saboresChecked.forEach(cb => listaSabores.push(cb.value));
 
             // Enlace directo de Google Maps generado con las coordenadas del mapa
-            const enlaceGoogleMaps = `https://maps.google.com/?q=${lat},${lng}`;
+            const enlaceGoogleMaps = entrega ? `https://maps.google.com/?q=${lat},${lng}` : '';
 
             // Construcción del mensaje de WhatsApp
             let mensaje = `*🍕 NUEVO PEDIDO - MI BARRIO 🍕*\n\n`;
+            if (!window.MESA_ACTUAL) mensaje += `*Modalidad:* ${entrega ? 'Delivery' : 'Retiro en el local'}\n`;
             mensaje += `*👤 Cliente:* ${window.MESA_ACTUAL ? 'Mesa ' + window.MESA_ACTUAL : nombre}\n`;
             if (celular) mensaje += `*📞 Celular:* ${formatearCelularPY(celular)}\n`;
             if (direccion) mensaje += `*📍 Dirección:* ${direccion}\n`;
@@ -1341,7 +1443,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             });
 
             if (descuento > 0) mensaje += `\n*Descuento web ${porcentajeDescuento}% en pizzas y borde:* -${descuento.toLocaleString('es-PY')} Gs\n`;
-            if (!window.MESA_ACTUAL) {
+            if (entrega) {
                 if (deliveryCosto > 0) mensaje += `\n*🛵 Delivery:* ${deliveryCosto.toLocaleString('es-PY')} Gs (${deliveryKm.toFixed(1)} km)\n`;
             }
             mensaje += `*💰 TOTAL A PAGAR:* ${totalGeneral.toLocaleString('es-PY')} Gs\n`;
@@ -1349,37 +1451,39 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             mensaje += `¡Muchas gracias! Quedo a la espera de la confirmación de mi pedido.`;
 
             // Reserve the popup during the user gesture, before waiting for Firestore.
-            const ventanaPedido = descuento > 0 ? window.open('', '_blank') : null;
-            if (descuento > 0 && !ventanaPedido) { alert('Permití las ventanas emergentes para enviar el pedido por WhatsApp.'); return; }
-            if (ventanaPedido) ventanaPedido.document.body.textContent = 'Guardando tu pedido con descuento…';
-            if (descuento > 0) window.PEDIDO_WEB_ENVIANDO = true;
+            const guardarAntesDeEnviar = !window.MESA_ACTUAL || descuento > 0;
+            const ventanaPedido = guardarAntesDeEnviar ? window.open('', '_blank') : null;
+            if (guardarAntesDeEnviar && !ventanaPedido) { alert('Permití las ventanas emergentes para enviar el pedido por WhatsApp.'); return; }
+            if (ventanaPedido) ventanaPedido.document.body.textContent = 'Guardando tu pedido…';
+            if (guardarAntesDeEnviar) window.PEDIDO_WEB_ENVIANDO = true;
             // A discounted order must retain its promotion metadata before it is sent.
             try {
-                if (descuento > 0 && !window.guardarPedidoFirebase) throw new Error('No se pudo conectar con la base de pedidos.');
+                if (guardarAntesDeEnviar && !window.guardarPedidoFirebase) throw new Error('No se pudo conectar con la base de pedidos.');
                 if (window.guardarPedidoFirebase) {
                     const extras = Object.keys(nombresExtras)
                         .filter(k => (adicionales[k] || 0) > 0)
                         .map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] }));
                     const guardado = window.guardarPedidoFirebase({
-                        cliente: { nombre: nombre, direccion: direccion, celular: celular, lat: Number(lat), lng: Number(lng), mapa: enlaceGoogleMaps },
+                        cliente: { nombre: nombre, direccion: direccion, celular: celular, lat: entrega ? Number(lat) : null, lng: entrega ? Number(lng) : null, mapa: enlaceGoogleMaps },
                         pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
                         extras: extras,
                         total: totalGeneral,
+                        ...(!window.MESA_ACTUAL ? { tipo: entrega ? 'delivery' : 'retiro' } : {}),
                         ...(descuento > 0 ? { descuento, porcentajeDescuento } : {}),
                         pago: pago,
-                        costoDelivery: window.MESA_ACTUAL ? 0 : deliveryCosto,
-                        distanciaKm: deliveryKm ? Number(deliveryKm.toFixed(2)) : null,
+                        costoDelivery: entrega ? deliveryCosto : 0,
+                        distanciaKm: entrega && deliveryKm != null ? Number(deliveryKm.toFixed(2)) : null,
                         mensaje: mensaje
                     });
-                    if (descuento > 0) await guardado;
+                    if (guardarAntesDeEnviar) await guardado;
                     else guardado.catch(err => console.error('Firebase:', err));
                 }
             } catch (e) {
                 console.error('Firebase:', e);
-                if (descuento > 0) {
+                if (guardarAntesDeEnviar) {
                     if (ventanaPedido) ventanaPedido.close();
                     window.PEDIDO_WEB_ENVIANDO = false;
-                    alert('No se pudo guardar el pedido con descuento. No se envió por WhatsApp. Volvé a intentar; si el problema continúa, contactá al local.');
+                    alert('No se pudo guardar el pedido. No se envió por WhatsApp. Volvé a intentar; si el problema continúa, contactá al local.');
                     return;
                 }
             }
@@ -1586,14 +1690,15 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 total: datos.total,
                 mensaje: datos.mensaje
             };
+            if (datos.tipo === 'retiro' || datos.tipo === 'delivery') base.tipo = datos.tipo;
             const conPago = (datos.pago === 'efectivo' || datos.pago === 'transferencia');
             const extra = {};
             if (Number.isFinite(datos.costoDelivery)) extra.costoDelivery = datos.costoDelivery;
             if (Number.isFinite(datos.distanciaKm)) extra.distanciaKm = datos.distanciaKm;
             const pago = conPago ? { pago: datos.pago } : {};
             const con = (o) => addDoc(collection(db, "pedidos"), o);
-            if (datos.descuento > 0) {
-                return con({ ...base, ...extra, ...pago, descuento: datos.descuento, porcentajeDescuento: datos.porcentajeDescuento });
+            if (base.tipo || datos.descuento > 0) {
+                return con({ ...base, ...extra, ...pago, ...(datos.descuento > 0 ? { descuento: datos.descuento, porcentajeDescuento: datos.porcentajeDescuento } : {}) });
             }
             // 1) intento completo. Si las reglas publicadas todavía no permiten los campos nuevos,
             // reintenta sin ellos (y después sin "pago") para no perder el pedido.

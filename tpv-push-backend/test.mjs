@@ -642,12 +642,14 @@ test('S4: proposed rules are the EXACT original rules plus only the narrow helpe
   // Original admin transition rule still present unchanged.
   assert.ok(proposed.includes("allow update: if esAdmin()\n                    && (request.resource.data.estado == resource.data.estado"));
 
-  // The authorized web-promotion feature adds only its helper, two allowed
-  // fields and its validation call. Everything else retains the prior rules.
+  // Promotion and web modality add only bounded helpers/fields/validation.
+  // All unrelated permissions retain their original baseline bytes.
   const withoutPromotion = original
     .replace(/    \/\/ Optional web-promotion snapshot;[\s\S]*?(?=    match \/pedidos\/)/, '')
     .replace(", 'descuento', 'porcentajeDescuento'", '')
+    .replace(", 'tipo'", '')
     .replace('                    && descuentoWebValido()\n', '')
+    .replace('                    && tipoWebValido()\n', '')
     .trimEnd();
   assert.equal(createHash('sha256').update(withoutPromotion).digest('hex').toUpperCase(),
     '0C0C66ED555EE359463C0C77781DC17A58EB487EDE80B8C6A1CFE273FC26AB59');
