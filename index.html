@@ -295,6 +295,22 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         </div>
     </div>
 
+    <!-- A saved order and its WhatsApp draft are separate, explicit steps. -->
+    <div id="modal-confirmacion" style="display:none" class="fixed inset-0 z-[9500] bg-black/70 items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="confirmacion-titulo" tabindex="-1">
+        <div class="max-w-md w-full max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl space-y-4">
+            <h2 id="confirmacion-titulo" class="text-xl font-extrabold text-neutral-900">Confirmación de tu pedido</h2>
+            <p id="confirmacion-estado" role="status" aria-live="polite" class="text-sm font-semibold text-neutral-700"></p>
+            <p id="confirmacion-referencia" class="text-xs font-mono break-all text-neutral-500"></p>
+            <p id="confirmacion-total" class="font-bold text-red-700"></p>
+            <a id="confirmacion-whatsapp" style="display:none" target="_blank" rel="noopener noreferrer" onclick="return abrirWhatsAppPedido()" class="w-full bg-green-600 hover:bg-green-700 text-white text-center font-bold py-3 px-4 rounded-xl">Abrir WhatsApp para enviar</a>
+            <p class="text-xs text-neutral-500">WhatsApp prepara el mensaje: todavía tenés que tocar Enviar allí. Si ya lo enviaste, no hace falta repetirlo.</p>
+            <button id="confirmacion-reintentar" type="button" style="display:none" onclick="reintentarConfirmacionPedido()" class="w-full bg-amber-100 text-amber-900 font-bold py-3 rounded-xl">Reintentar guardar el mismo pedido</button>
+            <details class="text-sm"><summary class="cursor-pointer font-semibold">Ver o copiar el mensaje del pedido</summary><textarea id="confirmacion-mensaje" readonly rows="7" aria-label="Mensaje completo del pedido" class="mt-2 w-full border border-neutral-300 rounded-xl p-3 text-xs"></textarea></details>
+            <button id="confirmacion-nuevo" type="button" style="display:none" onclick="iniciarNuevoPedido()" class="w-full border border-neutral-300 font-bold py-3 rounded-xl">Hacer otro pedido</button>
+            <button type="button" onclick="cerrarConfirmacionPedido()" class="w-full text-neutral-500 py-2 text-sm">Volver a la página</button>
+        </div>
+    </div>
+
     <!-- Cartel de local cerrado (lo maneja el panel: botón Abierto/Cerrado y horarios) -->
     <div id="cartel-cerrado" style="display:none" class="fixed inset-0 z-[9999] bg-black/90 items-center justify-center p-6 text-center">
         <div class="max-w-sm w-full bg-white rounded-3xl p-8 shadow-2xl border-4 border-yellow-500">
@@ -933,6 +949,13 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         // Actualizar estado del botón de enviar
         function actualizarBotonEnviar() {
             const btn = document.getElementById('btn-enviar');
+            const confirmacion = leerConfirmacionPedido();
+            if (confirmacion) {
+                btn.disabled = !!window.PEDIDO_WEB_ENVIANDO;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.textContent = window.PEDIDO_WEB_ENVIANDO ? 'Guardando tu pedido...' : confirmacion.guardado ? 'Ver pedido registrado' : 'Ver intento de pedido';
+                return;
+            }
             const ubicacionOk = document.getElementById('ubicacion-recogida').value === '1';
             
             if (window.MESA_ACTUAL) {
@@ -1361,6 +1384,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         function confirmarPago(pago) { cerrarModalPago(); enviarPedido(pago); }
 
         async function enviarPedido(pago) {
+            const existente = leerConfirmacionPedido();
+            if (existente) { mostrarConfirmacionPedido(existente); return; }
             if (window.PEDIDO_WEB_ENVIANDO) return;
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) { alert('Elegí Retiro en el local o Delivery antes de confirmar.'); return; }
             if (window.DESCUENTO_WEB > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
@@ -1450,78 +1475,127 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             mensaje += `*💳 Forma de pago:* ${PAGOS_TXT[pago]}\n\n`;
             mensaje += `¡Muchas gracias! Quedo a la espera de la confirmación de mi pedido.`;
 
-            // Reserve the popup during the user gesture, before waiting for Firestore.
-            const guardarAntesDeEnviar = !window.MESA_ACTUAL || descuento > 0;
-            const ventanaPedido = guardarAntesDeEnviar ? window.open('', '_blank') : null;
-            if (guardarAntesDeEnviar && !ventanaPedido) { alert('Permití las ventanas emergentes para enviar el pedido por WhatsApp.'); return; }
-            if (ventanaPedido) ventanaPedido.document.body.textContent = 'Guardando tu pedido…';
-            if (guardarAntesDeEnviar) window.PEDIDO_WEB_ENVIANDO = true;
-            // A discounted order must retain its promotion metadata before it is sent.
-            try {
-                if (guardarAntesDeEnviar && !window.guardarPedidoFirebase) throw new Error('No se pudo conectar con la base de pedidos.');
-                if (window.guardarPedidoFirebase) {
-                    const extras = Object.keys(nombresExtras)
-                        .filter(k => (adicionales[k] || 0) > 0)
-                        .map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] }));
-                    const guardado = window.guardarPedidoFirebase({
-                        cliente: { nombre: nombre, direccion: direccion, celular: celular, lat: entrega ? Number(lat) : null, lng: entrega ? Number(lng) : null, mapa: enlaceGoogleMaps },
-                        pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
-                        extras: extras,
-                        total: totalGeneral,
-                        ...(!window.MESA_ACTUAL ? { tipo: entrega ? 'delivery' : 'retiro' } : {}),
-                        ...(descuento > 0 ? { descuento, porcentajeDescuento } : {}),
-                        pago: pago,
-                        costoDelivery: entrega ? deliveryCosto : 0,
-                        distanciaKm: entrega && deliveryKm != null ? Number(deliveryKm.toFixed(2)) : null,
-                        mensaje: mensaje
-                    });
-                    if (guardarAntesDeEnviar) await guardado;
-                    else guardado.catch(err => console.error('Firebase:', err));
-                }
-            } catch (e) {
-                console.error('Firebase:', e);
-                if (guardarAntesDeEnviar) {
-                    if (ventanaPedido) ventanaPedido.close();
-                    window.PEDIDO_WEB_ENVIANDO = false;
-                    alert('No se pudo guardar el pedido. No se envió por WhatsApp. Volvé a intentar; si el problema continúa, contactá al local.');
-                    return;
-                }
-            }
-
-            const numeroDestino = "595986368904"; 
-            const urlWhatsApp = `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
-            
-            if (ventanaPedido) ventanaPedido.location.href = urlWhatsApp;
-            else window.open(urlWhatsApp, '_blank');
-            window.PEDIDO_WEB_ENVIANDO = false;
-
-            // Copia por correo (FormSubmit)
-            const correoDestino = "silverpy2@gmail.com";
-            const datosCorreo = {
-                nombre: nombre,
-                direccion: direccion,
-                ubicacion_gps: enlaceGoogleMaps,
-                celular: formatearCelularPY(celular),
-                pedido: mensaje,
-                total: totalGeneral.toLocaleString('es-PY') + " Gs",
-                _subject: "🍕 NUEVO PEDIDO - MI BARRIO",
-                _template: "table"
+            const id = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID()
+                : 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+            const datos = {
+                cliente: { nombre, direccion, celular, lat: entrega ? Number(lat) : null, lng: entrega ? Number(lng) : null, mapa: enlaceGoogleMaps },
+                pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
+                extras: Object.keys(nombresExtras).filter(k => (adicionales[k] || 0) > 0).map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] })),
+                total: totalGeneral,
+                ...(!window.MESA_ACTUAL ? { tipo: entrega ? 'delivery' : 'retiro' } : {}),
+                ...(descuento > 0 ? { descuento, porcentajeDescuento } : {}),
+                pago, costoDelivery: entrega ? deliveryCosto : 0,
+                distanciaKm: entrega && deliveryKm != null ? Number(deliveryKm.toFixed(2)) : null,
+                mensaje: mensaje + '\n\nReferencia del pedido: ' + id
             };
+            const estado = { version: 1, ambito: claveConfirmacionPedido(), id, guardado: false, datos: JSON.parse(JSON.stringify(datos)) };
+            conservarConfirmacionPedido(estado);
+            await guardarConfirmacionPedido(estado);
+        }
 
-            fetch(`https://formsubmit.co/ajax/${correoDestino}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify(datosCorreo)
-            })
-            .then(response => {
-                if (!response.ok) throw new Error("No se pudo enviar el correo");
-                return response.json();
-            })
-            .then(data => console.log("Copia enviada por correo", data))
-            .catch(error => console.error("Error:", error));
+        function claveConfirmacionPedido() {
+            return 'mi-barrio.confirmacion.v1.' + (window.MESA_ACTUAL ? 'mesa-' + window.MESA_ACTUAL : 'web');
+        }
+        function leerConfirmacionPedido() {
+            const clave = claveConfirmacionPedido();
+            const actual = window.PEDIDO_WEB_CONFIRMACION;
+            if (actual && actual.ambito === clave) return actual;
+            try {
+                const guardado = JSON.parse(window.sessionStorage.getItem(clave));
+                if (guardado && guardado.version === 1 && guardado.ambito === clave && /^[A-Za-z0-9_-]{10,80}$/.test(guardado.id)
+                    && typeof guardado.guardado === 'boolean' && guardado.datos && Number.isFinite(guardado.datos.total)
+                    && typeof guardado.datos.mensaje === 'string' && guardado.datos.cliente) {
+                    window.PEDIDO_WEB_CONFIRMACION = guardado;
+                    return guardado;
+                }
+            } catch (e) { /* sessionStorage can be unavailable in private/restricted browsers. */ }
+            return null;
+        }
+        function conservarConfirmacionPedido(estado) {
+            window.PEDIDO_WEB_CONFIRMACION = estado;
+            try { window.sessionStorage.setItem(estado.ambito, JSON.stringify(estado)); } catch (e) {}
+        }
+        function mostrarConfirmacionPedido(estado) {
+            const ocupado = !!window.PEDIDO_WEB_ENVIANDO;
+            document.getElementById('confirmacion-estado').textContent = estado.guardado
+                ? 'Tu pedido ya está registrado en el TPV. Abrí WhatsApp y tocá Enviar para mandar el mensaje al local.'
+                : ocupado ? 'Guardando en el TPV. No vuelvas a crear el pedido: esperá la confirmación.'
+                : 'No pudimos confirmar el guardado. Reintentá este mismo pedido; si continúa el problema, contactá al local con esta referencia.';
+            document.getElementById('confirmacion-referencia').textContent = 'Referencia: ' + estado.id;
+            document.getElementById('confirmacion-total').textContent = 'Total: ' + estado.datos.total.toLocaleString('es-PY') + ' Gs';
+            document.getElementById('confirmacion-mensaje').value = estado.datos.mensaje;
+            const enlace = document.getElementById('confirmacion-whatsapp');
+            enlace.style.display = estado.guardado ? 'block' : 'none';
+            enlace.href = estado.guardado ? 'https://wa.me/595986368904?text=' + encodeURIComponent(estado.datos.mensaje) : '';
+            document.getElementById('confirmacion-reintentar').style.display = !estado.guardado && !ocupado ? 'block' : 'none';
+            document.getElementById('confirmacion-nuevo').style.display = estado.guardado ? 'block' : 'none';
+            const modal = document.getElementById('modal-confirmacion');
+            const abierto = modal.style.display === 'flex';
+            modal.style.display = 'flex';
+            if (!abierto) modal.focus();
+        }
+        async function guardarConfirmacionPedido(estado) {
+            if (window.PEDIDO_WEB_ENVIANDO || estado.guardado) return;
+            window.PEDIDO_WEB_ENVIANDO = true;
+            mostrarConfirmacionPedido(estado);
+            actualizarBotonEnviar();
+            const aviso = setTimeout(() => {
+                if (window.PEDIDO_WEB_ENVIANDO && !estado.guardado) document.getElementById('confirmacion-estado').textContent = 'La conexión está tardando. Conservamos este intento; no crees otro pedido. Si recargás, usá Reintentar con la misma referencia.';
+            }, 15000);
+            try {
+                if (!window.guardarPedidoFirebase) throw new Error('Database not ready');
+                await window.guardarPedidoFirebase({ ...estado.datos, intentoId: estado.id });
+                estado.guardado = true;
+                conservarConfirmacionPedido(estado);
+                enviarCopiaConfirmacion(estado);
+            } catch (e) {
+                // The same ID is kept even when acknowledgement is uncertain.
+                conservarConfirmacionPedido(estado);
+                console.error('No se pudo confirmar el guardado del pedido.');
+            } finally {
+                clearTimeout(aviso);
+                window.PEDIDO_WEB_ENVIANDO = false;
+                mostrarConfirmacionPedido(estado);
+                actualizarBotonEnviar();
+            }
+        }
+        async function reintentarConfirmacionPedido() {
+            const estado = leerConfirmacionPedido();
+            if (!estado) return;
+            if (estado.guardado) { mostrarConfirmacionPedido(estado); return; }
+            await guardarConfirmacionPedido(estado);
+        }
+        function abrirWhatsAppPedido() {
+            const estado = leerConfirmacionPedido();
+            if (!estado || !estado.guardado) return false;
+            document.getElementById('confirmacion-estado').textContent = 'El pedido ya está registrado. En WhatsApp tenés que tocar Enviar. Volver a abrir este mensaje no crea otro pedido.';
+            return true; // Let the real anchor use this click's browser activation.
+        }
+        function cerrarConfirmacionPedido() {
+            document.getElementById('modal-confirmacion').style.display = 'none';
+        }
+        function iniciarNuevoPedido() {
+            const estado = leerConfirmacionPedido();
+            if (!estado || !estado.guardado || window.PEDIDO_WEB_ENVIANDO) return;
+            if (!confirm('¿Querés iniciar OTRO pedido? El anterior ya está registrado. Para enviar su mensaje usá Abrir WhatsApp, sin crear otro.')) return;
+            window.PEDIDO_WEB_CONFIRMACION = null;
+            try { window.sessionStorage.removeItem(claveConfirmacionPedido()); } catch (e) {}
+            cerrarConfirmacionPedido();
+            actualizarBotonEnviar();
+        }
+        function enviarCopiaConfirmacion(estado) {
+            if (estado.emailIntentado) return;
+            estado.emailIntentado = true;
+            conservarConfirmacionPedido(estado);
+            const d = estado.datos, c = d.cliente;
+            try {
+                fetch('https://formsubmit.co/ajax/silverpy2@gmail.com', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ nombre: c.nombre, direccion: c.direccion, ubicacion_gps: c.mapa,
+                        celular: c.celular ? formatearCelularPY(c.celular) : '', pedido: d.mensaje,
+                        total: d.total.toLocaleString('es-PY') + ' Gs', _subject: '🍕 NUEVO PEDIDO - MI BARRIO', _template: 'table' })
+                }).catch(() => console.error('No se pudo enviar la copia por correo.'));
+            } catch (e) { console.error('No se pudo enviar la copia por correo.'); }
         }
 
         // Botones de cantidad de los extras (funciona también con los extras que agrega el panel)
@@ -1540,7 +1614,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
     <!-- Firebase: guarda cada pedido en la base de datos (además del WhatsApp) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, setDoc, serverTimestamp, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBczdHiqe4fO6XThYRQky-WBlwgdhWDYCI",
@@ -1696,8 +1770,15 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (Number.isFinite(datos.costoDelivery)) extra.costoDelivery = datos.costoDelivery;
             if (Number.isFinite(datos.distanciaKm)) extra.distanciaKm = datos.distanciaKm;
             const pago = conPago ? { pago: datos.pago } : {};
-            const con = (o) => addDoc(collection(db, "pedidos"), o);
-            if (base.tipo || datos.descuento > 0) {
+            const intentoValido = typeof datos.intentoId === 'string' && /^[A-Za-z0-9_-]{10,80}$/.test(datos.intentoId);
+            const con = (o) => {
+                if (intentoValido) {
+                    const referencia = doc(db, 'pedidos', datos.intentoId);
+                    return setDoc(referencia, o).then(() => ({ id: referencia.id }));
+                }
+                return addDoc(collection(db, "pedidos"), o);
+            };
+            if (intentoValido || base.tipo || datos.descuento > 0) {
                 return con({ ...base, ...extra, ...pago, ...(datos.descuento > 0 ? { descuento: datos.descuento, porcentajeDescuento: datos.porcentajeDescuento } : {}) });
             }
             // 1) intento completo. Si las reglas publicadas todavía no permiten los campos nuevos,

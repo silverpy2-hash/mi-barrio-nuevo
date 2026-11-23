@@ -16,12 +16,13 @@ function between(source, start, end) {
 function cart({ percent = 0, selected = true, category = 'clasico', size = 'grande', border = false, saved = [], mesa = false } = {}) {
     const nodes = new Map();
     const element = id => {
-        if (!nodes.has(id)) nodes.set(id, { innerText: '', textContent: '', hidden: true });
+        if (!nodes.has(id)) nodes.set(id, { innerText: '', textContent: '', hidden: true, style: {}, focus() {} });
         return nodes.get(id);
     };
     const context = vm.createContext({
         window: { DESCUENTO_WEB: percent, DESCUENTO_WEB_LISTO: true, MESA_ACTUAL: mesa, MODALIDAD_PEDIDO: 'delivery' },
         deliveryPendiente: false,
+        actualizarBotonEnviar() {}, setTimeout: () => 0, clearTimeout() {}, confirm: () => true,
         document: { getElementById: element, querySelectorAll: () => selected ? [{ getAttribute: () => category }] : [] },
         obtenerTamanoSeleccionado: () => size,
         matrizPrecios: { [size]: { clasico: 60000, especial: 75000, gourmet: 90000 } },
@@ -66,7 +67,7 @@ test('live promotion normalizes configuration, advertises it and recalculates im
     vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 99 })', c.context);
     assert.equal(c.total().descuento, 0);
 });
-test('web order persists promotion and message before opening WhatsApp; rejected write sends nothing', async () => {
+test('web order persists promotion before enabling WhatsApp; rejected new attempt offers no message', async () => {
     const c = cart({ percent: 20 });
     const fields = { nombre: 'Test', direccion: 'Test street', celular: '0981123456', latitud: '1', longitud: '2', 'ubicacion-recogida': '1' };
     for (const [id, value] of Object.entries(fields)) c.element(id).value = value;
@@ -92,11 +93,15 @@ test('web order persists promotion and message before opening WhatsApp; rejected
     assert.equal(stored.total, 86000);
     assert.match(stored.mensaje, /20%/);
     assert.match(stored.mensaje, /12[.,]000/);
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 0);
+    assert.match(c.element('confirmacion-whatsapp').href, /^https:\/\/wa\.me\//);
+    vm.runInContext('iniciarNuevoPedido()', c.context);
     c.context.window.guardarPedidoFirebase = async () => { throw new Error('permission-denied'); };
     await vm.runInContext("enviarPedido('efectivo')", c.context);
-    assert.equal(calls.length, 1);
-    assert.equal(c.context.alerts.length, 1);
+    assert.equal(calls.length, 0);
+    assert.equal(c.element('confirmacion-whatsapp').style.display, 'none');
+    assert.match(c.element('confirmacion-estado').textContent, /No pudimos confirmar/);
+    assert.equal(c.context.window.PEDIDO_WEB_ENVIANDO, false);
 });
 test('Firebase writer never strips promotion when rules reject it; old-order fallback stays available', async () => {
     const calls = [];
@@ -134,13 +139,15 @@ test('legacy order still saves and sends when no promotion is known and config i
     assert.equal(calls.stored.length, 1);
     assert.equal(calls.stored[0].total, 98000);
     assert.equal('descuento' in calls.stored[0], false);
-    assert.equal(calls.messages.length, 1);
+    assert.equal(calls.messages.length, 0);
+    assert.match(c.element('confirmacion-whatsapp').href, /^https:\/\/wa\.me\//);
     assert.equal(calls.emails.length, 1);
     assert.equal(calls.alerts.length, 0);
+    vm.runInContext('iniciarNuevoPedido()', c.context);
     c.context.window.DESCUENTO_WEB = 20;
     await vm.runInContext("enviarPedido('efectivo')", c.context);
     assert.equal(calls.stored.length, 1, 'a known promotion with failed config must still fail closed');
-    assert.equal(calls.messages.length, 1);
+    assert.equal(calls.messages.length, 0);
     assert.equal(calls.emails.length, 1);
     assert.equal(calls.alerts.length, 1);
 });
