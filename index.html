@@ -1452,6 +1452,9 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             mensaje += `*💰 TOTAL A PAGAR:* ${totalGeneral.toLocaleString('es-PY')} Gs\n`;
             mensaje += `*💳 Forma de pago:* ${PAGOS_TXT[pago]}\n\n`;
             mensaje += `¡Muchas gracias! Quedo a la espera de la confirmación de mi pedido.`;
+            if (pago === 'transferencia') {
+                mensaje += `\n\n*Datos para transferencia*\n*Alias:* 5714284\n*Titular:* Silver Escobar\nEsperamos su comprobante de pago.`;
+            }
 
             const id = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID()
                 : 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
@@ -1464,7 +1467,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 ...(descuento > 0 ? { descuento, porcentajeDescuento } : {}),
                 pago, costoDelivery: entrega ? deliveryCosto : 0,
                 distanciaKm: entrega && deliveryKm != null ? Number(deliveryKm.toFixed(2)) : null,
-                mensaje: mensaje + '\n\nReferencia del pedido: ' + id
+                mensaje
             };
             const intento = { id, datos, ambito: ambitoIntentoWeb() };
             window.PEDIDO_WEB_INTENTO = intento;

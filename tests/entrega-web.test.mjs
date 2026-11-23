@@ -20,6 +20,23 @@ test('WhatsApp uses same-tab navigation without retaining a successful order', a
     assert.equal(reload.sent.length, 0);
     assert.equal(reload.emails.length, 0);
 });
+test('transfer details appear only for bank transfer and public summaries omit order references', async () => {
+    for (const payment of ['efectivo', 'transferencia']) {
+        const p = page();
+        p.run("seleccionarModalidad('retiro')");
+        await p.run(`enviarPedido('${payment}')`);
+        const message = p.sent[0].mensaje;
+        assert.doesNotMatch(message, /Referencia del pedido:/);
+        assert.ok(p.sent[0].intentoId);
+        if (payment === 'transferencia') {
+            assert.match(message, /Alias:\* 5714284/);
+            assert.match(message, /Silver Escobar/);
+            assert.ok(message.endsWith('Esperamos su comprobante de pago.'));
+        } else {
+            assert.doesNotMatch(message, /5714284|Silver Escobar|comprobante de pago/);
+        }
+    }
+});
 test('uncertain save retries the immutable snapshot with the same ID after reload', async () => {
     const p = page();
     p.run("seleccionarModalidad('retiro')");
