@@ -936,6 +936,12 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         function actualizarBotonEnviar() {
             const btn = document.getElementById('btn-enviar');
             const ubicacionOk = document.getElementById('ubicacion-recogida').value === '1';
+            const pedidoEnviado = !window.MESA_ACTUAL && leerPedidoRegistrado();
+            if (pedidoEnviado) {
+                btn.disabled = false;
+                btn.textContent = 'Ver pedido registrado';
+                return;
+            }
             
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) {
                 btn.disabled = true;
@@ -1357,6 +1363,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
         async function enviarPedido(pago) {
             if (window.PEDIDO_WEB_ENVIANDO) return;
+            const registrado = !window.MESA_ACTUAL && leerPedidoRegistrado();
+            if (registrado) {
+                alert('Este pedido ya está registrado. No se creará otro pedido.');
+                return;
+            }
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) { alert('Elegí Retiro en el local o Delivery antes de confirmar.'); return; }
             if (window.DESCUENTO_WEB > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
             if (window.LOCAL_CERRADO) { alert('⛔ Nos encontramos cerrados en este momento. No podemos tomar pedidos ahora.'); return; }
@@ -1464,13 +1475,16 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const btn = document.getElementById('btn-enviar');
             try {
                 await window.guardarPedidoFirebase(datos);
+                if (!window.MESA_ACTUAL) {
+                    window.PEDIDO_WEB_REGISTRADO = { id, mensaje: datos.mensaje };
+                    try { window.sessionStorage.setItem('mi-barrio.pedido-registrado', JSON.stringify(window.PEDIDO_WEB_REGISTRADO)); } catch (e) {}
+                }
                 const numeroDestino = "595986368904";
             const urlWhatsApp = `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
             const w = window.open('', '_blank');
             if (w) w.location.href = urlWhatsApp;
             window.PEDIDO_WEB_ENVIANDO = false;
             actualizarBotonEnviar();
-            btn.textContent = '✅ Pedido enviado';
 
             // Copia por correo (FormSubmit)
             const correoDestino = "silverpy2@gmail.com";
@@ -1486,6 +1500,18 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 actualizarBotonEnviar();
                 alert('No se pudo guardar el pedido en el TPV. No se abrió WhatsApp. Volvé a intentar; si el problema continúa, contactá al local.');
             }
+        }
+
+        function leerPedidoRegistrado() {
+            if (window.PEDIDO_WEB_REGISTRADO) return window.PEDIDO_WEB_REGISTRADO;
+            try {
+                const saved = JSON.parse(window.sessionStorage.getItem('mi-barrio.pedido-registrado'));
+                if (saved && typeof saved.id === 'string' && typeof saved.mensaje === 'string') {
+                    window.PEDIDO_WEB_REGISTRADO = saved;
+                    return saved;
+                }
+            } catch (e) {}
+            return null;
         }
 
         // Botones de cantidad de los extras (funciona también con los extras que agrega el panel)

@@ -6,6 +6,17 @@ import { page } from './helpers/pagina-cliente.mjs';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const html = read('index.html');
+test('registered order cannot be submitted again or after reloading', async () => {
+    const p = page();
+    p.run("seleccionarModalidad('retiro')");
+    await p.run("enviarPedido('efectivo')");
+    await p.run("enviarPedido('efectivo')");
+    assert.equal(p.sent.length, 1);
+    assert.equal(p.get('btn-enviar').textContent, 'Ver pedido registrado');
+    const reload = page({ storage: p.storage });
+    await reload.run("enviarPedido('efectivo')");
+    assert.equal(reload.sent.length, 0);
+});
 function section(start, end) {
     const a = html.indexOf(start), b = html.indexOf(end, a + start.length);
     assert.ok(a >= 0 && b > a, start);
