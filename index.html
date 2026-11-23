@@ -623,7 +623,6 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             <button type="button" id="btn-enviar" onclick="enviarPedido()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md transition transform active:scale-[0.98] text-center text-sm tracking-wide">
                 🚀 Confirmar y Enviar
             </button>
-            <button type="button" id="btn-nuevo-pedido" hidden onclick="iniciarNuevoPedidoWeb()" class="bg-white text-red-700 font-bold py-3 px-4 rounded-xl border border-red-200">Hacer otro pedido</button>
         </div>
     </div>
 
@@ -937,14 +936,6 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         function actualizarBotonEnviar() {
             const btn = document.getElementById('btn-enviar');
             const ubicacionOk = document.getElementById('ubicacion-recogida').value === '1';
-            const pedidoEnviado = !window.MESA_ACTUAL && leerPedidoRegistrado();
-            const nuevoPedido = document.getElementById('btn-nuevo-pedido');
-            if (nuevoPedido) nuevoPedido.hidden = !pedidoEnviado || !!window.PEDIDO_WEB_ENVIANDO;
-            if (pedidoEnviado) {
-                btn.disabled = false;
-                btn.textContent = 'Ver pedido registrado';
-                return;
-            }
             if (leerIntentoWeb()) {
                 btn.disabled = !!window.PEDIDO_WEB_ENVIANDO;
                 btn.textContent = window.PEDIDO_WEB_ENVIANDO ? 'Guardando...' : 'Reintentar el mismo pedido';
@@ -1371,11 +1362,6 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
         async function enviarPedido(pago) {
             if (window.PEDIDO_WEB_ENVIANDO) return;
-            const registrado = !window.MESA_ACTUAL && leerPedidoRegistrado();
-            if (registrado) {
-                abrirMensajePedido(registrado.mensaje);
-                return;
-            }
             const pendiente = leerIntentoWeb();
             if (pendiente) { await guardarIntentoWeb(pendiente); return; }
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) { alert('Elegí Retiro en el local o Delivery antes de confirmar.'); return; }
@@ -1516,10 +1502,6 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             actualizarBotonEnviar();
             try {
                 await window.guardarPedidoFirebase({ ...datos, intentoId: id });
-                if (!window.MESA_ACTUAL) {
-                    window.PEDIDO_WEB_REGISTRADO = { id, mensaje: datos.mensaje };
-                    try { window.sessionStorage.setItem('mi-barrio.pedido-registrado', JSON.stringify(window.PEDIDO_WEB_REGISTRADO)); } catch (e) {}
-                }
                 window.PEDIDO_WEB_INTENTO = null;
                 try { window.sessionStorage.removeItem(intento.ambito); } catch (e) {}
             } catch (e) {
@@ -1543,36 +1525,16 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             } catch (e) {
                 console.error('No se pudo enviar la copia por correo.');
             }
+            // A confirmed order is finished: the next checkout starts a fresh cart and ID.
+            pedido.length = 0;
+            Object.keys(adicionales).forEach(key => { adicionales[key] = 0; });
+            document.querySelectorAll('input[name="sabor"]:checked').forEach(input => { input.checked = false; });
+            actualizarInterfaz();
             abrirMensajePedido(datos.mensaje);
         }
 
-        function iniciarNuevoPedidoWeb() {
-            if (window.PEDIDO_WEB_ENVIANDO || leerIntentoWeb()) return;
-            if (!leerPedidoRegistrado()) return;
-            if (!window.confirm('¿Iniciar otro pedido? El pedido anterior no se cancela. Se limpiará el carrito para armar uno nuevo.')) return;
-            try {
-                window.sessionStorage.removeItem('mi-barrio.pedido-registrado');
-                window.sessionStorage.removeItem(ambitoIntentoWeb());
-            } catch (e) {
-                alert('No pudimos liberar el pedido guardado. Habilitá el almacenamiento del navegador y volvé a intentar.');
-                return;
-            }
-            window.PEDIDO_WEB_REGISTRADO = null;
-            window.PEDIDO_WEB_INTENTO = null;
-            window.location.reload();
-        }
-
-        function leerPedidoRegistrado() {
-            if (window.PEDIDO_WEB_REGISTRADO) return window.PEDIDO_WEB_REGISTRADO;
-            try {
-                const saved = JSON.parse(window.sessionStorage.getItem('mi-barrio.pedido-registrado'));
-                if (saved && typeof saved.id === 'string' && typeof saved.mensaje === 'string') {
-                    window.PEDIDO_WEB_REGISTRADO = saved;
-                    return saved;
-                }
-            } catch (e) {}
-            return null;
-        }
+        // Remove the retired success-memory key, including orders saved by older versions.
+        try { window.sessionStorage.removeItem('mi-barrio.pedido-registrado'); } catch (e) {}
 
         // Botones de cantidad de los extras (funciona también con los extras que agrega el panel)
         document.getElementById('lista-extras').addEventListener('click', (e) => {

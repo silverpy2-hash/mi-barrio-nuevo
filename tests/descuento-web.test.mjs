@@ -22,7 +22,7 @@ function cart({ percent = 0, selected = true, category = 'clasico', size = 'gran
     const context = vm.createContext({
         window: { DESCUENTO_WEB: percent, DESCUENTO_WEB_LISTO: true, MESA_ACTUAL: mesa, MODALIDAD_PEDIDO: 'delivery' },
         deliveryPendiente: false,
-        actualizarBotonEnviar() {}, setTimeout: () => 0, clearTimeout() {}, confirm: () => true,
+        actualizarInterfaz() {}, actualizarBotonEnviar() {}, setTimeout: () => 0, clearTimeout() {}, confirm: () => true,
         document: { getElementById: element, querySelectorAll: () => selected ? [{ getAttribute: () => category }] : [] },
         obtenerTamanoSeleccionado: () => size,
         matrizPrecios: { [size]: { clasico: 60000, especial: 75000, gourmet: 90000 } },
@@ -136,14 +136,13 @@ test('legacy order still saves and sends when no promotion is known and config i
     assert.equal(calls.emails.length, 1);
     assert.equal(calls.alerts.length, 0);
     await vm.runInContext("enviarPedido('efectivo')", c.context);
-    assert.equal(calls.stored.length, 1, 'reopening WhatsApp never creates a second order');
+    assert.equal(calls.stored.length, 2, 'a newly selected cart creates an independent order');
     assert.equal(calls.messages.length, 2);
-    c.context.window.PEDIDO_WEB_REGISTRADO = null; // Isolate the new-order config guard.
     c.context.window.DESCUENTO_WEB = 20;
     await vm.runInContext("enviarPedido('efectivo')", c.context);
-    assert.equal(calls.stored.length, 1, 'a known promotion with failed config must still fail closed');
+    assert.equal(calls.stored.length, 2, 'a known promotion with failed config must still fail closed');
     assert.equal(calls.messages.length, 2);
-    assert.equal(calls.emails.length, 1);
+    assert.equal(calls.emails.length, 2);
     assert.equal(calls.alerts.length, 1);
 });
 for (const path of panels) {

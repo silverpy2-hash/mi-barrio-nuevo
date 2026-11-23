@@ -37,6 +37,7 @@ export function page({ storage = new Map() } = {}) {
         L: { map: () => { mapCount++; return map; }, tileLayer: () => ({ addTo() {} }), marker: () => marker },
         AbortController, setTimeout: (fn, delay) => { timers.set(++timer, { fn, delay }); return timer; }, clearTimeout: id => timers.delete(id),
         fetch: (url, options) => url.includes('router.project-osrm.org') ? route() : (emails.push(JSON.parse(options.body)), Promise.resolve({ ok: true, json: async () => ({}) })),
+        actualizarInterfaz() {},
         alert: x => alerts.push(x), confirm: () => true, console: { log() {}, error() {} },
         obtenerTamanoSeleccionado: () => 'grande', matrizPrecios: { grande: { clasico: 60000 } },
         adicionales: { 'borde-piz': 1, papas: 1, bebida: 1 }, preciosAdicionales: { papas: 15000, bebida: 8000 },

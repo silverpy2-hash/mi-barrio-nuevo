@@ -6,7 +6,7 @@ import { page } from './helpers/pagina-cliente.mjs';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const html = read('index.html');
-test('WhatsApp uses same-tab navigation and can be recovered without another save or email', async () => {
+test('WhatsApp uses same-tab navigation without retaining a successful order', async () => {
     const p = page();
     p.context.window.open = () => { throw new Error('Popups blocked'); };
     p.run("seleccionarModalidad('retiro')");
@@ -16,7 +16,7 @@ test('WhatsApp uses same-tab navigation and can be recovered without another sav
     assert.ok(decodeURIComponent(first).includes(p.sent[0].mensaje));
     const reload = page({ storage: p.storage });
     await reload.run('enviarPedido()');
-    assert.equal(reload.urls[0], first);
+    assert.equal(reload.urls.length, 0);
     assert.equal(reload.sent.length, 0);
     assert.equal(reload.emails.length, 0);
 });
@@ -49,27 +49,23 @@ test('retry writer always targets the original document and never falls back to 
     assert.equal(calls.length, 2);
     assert.equal(calls[0].ref.id, calls[1].ref.id);
 });
-test('registered order cannot be submitted again or after reloading', async () => {
+test('a successful checkout clears the cart to prevent accidental repeated submission', async () => {
     const p = page();
     p.run("seleccionarModalidad('retiro')");
     await p.run("enviarPedido('efectivo')");
+    p.context.document.querySelectorAll = () => [];
     await p.run("enviarPedido('efectivo')");
     assert.equal(p.sent.length, 1);
-    assert.equal(p.get('btn-enviar').textContent, 'Ver pedido registrado');
+    assert.notEqual(p.get('btn-enviar').textContent, 'Ver pedido registrado');
     const reload = page({ storage: p.storage });
     await reload.run("enviarPedido('efectivo')");
     assert.equal(reload.sent.length, 0);
 });
-test('explicit new order releases persisted success and registers fresh customer details', async () => {
+test('three visits can register three independent orders without releasing prior orders', async () => {
     const p = page();
     p.run("seleccionarModalidad('retiro')");
     await p.run("enviarPedido('efectivo')");
     const first = p.sent[0];
-    let reloaded = false;
-    p.context.window.confirm = () => true;
-    p.context.window.location.reload = () => { reloaded = true; };
-    p.run('iniciarNuevoPedidoWeb()');
-    assert.equal(reloaded, true);
     const next = page({ storage: p.storage });
     next.get('nombre').value = 'Otro cliente';
     next.run("seleccionarModalidad('retiro')");
@@ -77,16 +73,23 @@ test('explicit new order releases persisted success and registers fresh customer
     assert.equal(next.sent.length, 1);
     assert.equal(next.sent[0].cliente.nombre, 'Otro cliente');
     assert.notEqual(next.sent[0].mensaje, first.mensaje);
+    const third = page({ storage: next.storage });
+    third.get('nombre').value = 'Tercer pedido';
+    third.run("seleccionarModalidad('retiro')");
+    await third.run("enviarPedido('efectivo')");
+    assert.equal(third.sent.length, 1);
+    assert.equal(third.sent[0].cliente.nombre, 'Tercer pedido');
 });
-test('declining new order preserves the registered summary', async () => {
+test('legacy successful-order memory is discarded on page load', async () => {
     const p = page();
     p.run("seleccionarModalidad('retiro')");
     await p.run("enviarPedido('efectivo')");
-    p.context.window.confirm = () => false;
-    p.run('iniciarNuevoPedidoWeb()');
-    await p.run('enviarPedido()');
-    assert.equal(p.sent.length, 1);
-    assert.equal(p.urls[0], p.urls[1]);
+    p.context.window.sessionStorage.setItem('mi-barrio.pedido-registrado', JSON.stringify({ id: 'old', mensaje: 'Old summary' }));
+    const next = page({ storage: p.storage });
+    next.run("seleccionarModalidad('retiro')");
+    await next.run("enviarPedido('efectivo')");
+    assert.equal(next.sent.length, 1);
+    assert.notEqual(next.urls[0], 'Old summary');
 });
 function section(start, end) {
     const a = html.indexOf(start), b = html.indexOf(end, a + start.length);
