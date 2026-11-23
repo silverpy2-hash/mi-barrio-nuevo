@@ -6,6 +6,49 @@ import { page } from './helpers/pagina-cliente.mjs';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const html = read('index.html');
+test('WhatsApp uses same-tab navigation and can be recovered without another save or email', async () => {
+    const p = page();
+    p.context.window.open = () => { throw new Error('Popups blocked'); };
+    p.run("seleccionarModalidad('retiro')");
+    await p.run("enviarPedido('efectivo')");
+    const first = p.urls[0];
+    assert.match(first, /^https:\/\/wa\.me\//);
+    assert.ok(decodeURIComponent(first).includes(p.sent[0].mensaje));
+    const reload = page({ storage: p.storage });
+    await reload.run('enviarPedido()');
+    assert.equal(reload.urls[0], first);
+    assert.equal(reload.sent.length, 0);
+    assert.equal(reload.emails.length, 0);
+});
+test('uncertain save retries the immutable snapshot with the same ID after reload', async () => {
+    const p = page();
+    p.run("seleccionarModalidad('retiro')");
+    let attempted;
+    p.context.window.guardarPedidoFirebase = async data => { attempted = JSON.parse(JSON.stringify(data)); throw new Error('Lost acknowledgement'); };
+    await p.run("enviarPedido('efectivo')");
+    assert.equal(p.urls.length, 0);
+    assert.equal(p.emails.length, 0);
+    assert.equal(p.get('btn-enviar').textContent, 'Reintentar el mismo pedido');
+    const reload = page({ storage: p.storage });
+    reload.get('nombre').value = 'Changed after failed save';
+    await reload.run("enviarPedido('transferencia')");
+    assert.equal(reload.sent.length, 1);
+    assert.deepEqual(reload.sent[0], attempted);
+    assert.ok(reload.sent[0].intentoId);
+});
+test('retry writer always targets the original document and never falls back to addDoc', async () => {
+    const calls = [];
+    const c = vm.createContext({ window: {}, db: {}, serverTimestamp: () => 'now',
+        doc: (_, collection, id) => ({ id, collection }),
+        setDoc: async (ref, data) => { calls.push({ ref, data }); throw { code: 'permission-denied' }; },
+        addDoc: () => { throw new Error('A retry must not allocate another document'); } });
+    vm.runInContext(section('        window.guardarPedidoFirebase =', '    </script>'), c);
+    const data = { intentoId: 'web-retry-original-123', tipo: 'retiro', total: 10000, costoDelivery: 0 };
+    await assert.rejects(() => c.window.guardarPedidoFirebase(data));
+    await assert.rejects(() => c.window.guardarPedidoFirebase(data));
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].ref.id, calls[1].ref.id);
+});
 test('registered order cannot be submitted again or after reloading', async () => {
     const p = page();
     p.run("seleccionarModalidad('retiro')");

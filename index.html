@@ -942,6 +942,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 btn.textContent = 'Ver pedido registrado';
                 return;
             }
+            if (leerIntentoWeb()) {
+                btn.disabled = !!window.PEDIDO_WEB_ENVIANDO;
+                btn.textContent = window.PEDIDO_WEB_ENVIANDO ? 'Guardando...' : 'Reintentar el mismo pedido';
+                return;
+            }
             
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) {
                 btn.disabled = true;
@@ -1365,9 +1370,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (window.PEDIDO_WEB_ENVIANDO) return;
             const registrado = !window.MESA_ACTUAL && leerPedidoRegistrado();
             if (registrado) {
-                alert('Este pedido ya está registrado. No se creará otro pedido.');
+                abrirMensajePedido(registrado.mensaje);
                 return;
             }
+            const pendiente = leerIntentoWeb();
+            if (pendiente) { await guardarIntentoWeb(pendiente); return; }
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) { alert('Elegí Retiro en el local o Delivery antes de confirmar.'); return; }
             if (window.DESCUENTO_WEB > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
             if (window.LOCAL_CERRADO) { alert('⛔ Nos encontramos cerrados en este momento. No podemos tomar pedidos ahora.'); return; }
@@ -1470,36 +1477,70 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 distanciaKm: entrega && deliveryKm != null ? Number(deliveryKm.toFixed(2)) : null,
                 mensaje: mensaje + '\n\nReferencia del pedido: ' + id
             };
+            const intento = { id, datos, ambito: ambitoIntentoWeb() };
+            window.PEDIDO_WEB_INTENTO = intento;
+            try { window.sessionStorage.setItem(intento.ambito, JSON.stringify(intento)); } catch (e) {}
+            await guardarIntentoWeb(intento);
+        }
+
+        function abrirMensajePedido(mensaje) {
+            // Same-tab navigation does not depend on popup permissions after await.
+            window.location.assign('https://wa.me/595986368904?text=' + encodeURIComponent(mensaje));
+        }
+
+        function ambitoIntentoWeb() {
+            return 'mi-barrio.intento.v2.' + (window.MESA_ACTUAL ? 'mesa-' + window.MESA_ACTUAL : 'web');
+        }
+
+        function leerIntentoWeb() {
+            const ambito = ambitoIntentoWeb();
+            if (window.PEDIDO_WEB_INTENTO && window.PEDIDO_WEB_INTENTO.ambito === ambito) return window.PEDIDO_WEB_INTENTO;
+            try {
+                const saved = JSON.parse(window.sessionStorage.getItem(ambito));
+                if (saved && saved.ambito === ambito && /^[A-Za-z0-9_-]{10,80}$/.test(saved.id)
+                    && saved.datos && typeof saved.datos.mensaje === 'string') {
+                    window.PEDIDO_WEB_INTENTO = saved;
+                    return saved;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        async function guardarIntentoWeb(intento) {
+            if (window.PEDIDO_WEB_ENVIANDO) return;
+            const { id, datos } = intento;
             window.PEDIDO_WEB_ENVIANDO = true;
             actualizarBotonEnviar();
-            const btn = document.getElementById('btn-enviar');
             try {
-                await window.guardarPedidoFirebase(datos);
+                await window.guardarPedidoFirebase({ ...datos, intentoId: id });
                 if (!window.MESA_ACTUAL) {
                     window.PEDIDO_WEB_REGISTRADO = { id, mensaje: datos.mensaje };
                     try { window.sessionStorage.setItem('mi-barrio.pedido-registrado', JSON.stringify(window.PEDIDO_WEB_REGISTRADO)); } catch (e) {}
                 }
-                const numeroDestino = "595986368904";
-            const urlWhatsApp = `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
-            const w = window.open('', '_blank');
-            if (w) w.location.href = urlWhatsApp;
-            window.PEDIDO_WEB_ENVIANDO = false;
-            actualizarBotonEnviar();
+                window.PEDIDO_WEB_INTENTO = null;
+                try { window.sessionStorage.removeItem(intento.ambito); } catch (e) {}
+            } catch (e) {
+                console.error('No se pudo confirmar el guardado del pedido.');
+                alert('No pudimos confirmar el guardado. Reintentá el mismo pedido; conservamos su referencia para no crear otro.');
+                return;
+            } finally {
+                window.PEDIDO_WEB_ENVIANDO = false;
+                actualizarBotonEnviar();
+            }
 
             // Copia por correo (FormSubmit)
+            try {
             const correoDestino = "silverpy2@gmail.com";
             const c = datos.cliente;
             fetch(`https://formsubmit.co/ajax/${correoDestino}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                body: JSON.stringify({ nombre: c.nombre, direccion: c.direccion, ubicacion_gps: c.mapa, celular: c.celular ? formatearCelularPY(c.celular) : '', pedido: mensaje, total: totalGeneral.toLocaleString('es-PY') + ' Gs', _subject: '🍕 NUEVO PEDIDO - MI BARRIO', _template: 'table' })
+                body: JSON.stringify({ nombre: c.nombre, direccion: c.direccion, ubicacion_gps: c.mapa, celular: c.celular ? formatearCelularPY(c.celular) : '', pedido: datos.mensaje, total: datos.total.toLocaleString('es-PY') + ' Gs', _subject: '🍕 NUEVO PEDIDO - MI BARRIO', _template: 'table' })
             }).catch(() => console.error('No se pudo enviar la copia por correo.'));
             } catch (e) {
-                console.error('Firebase:', e);
-                window.PEDIDO_WEB_ENVIANDO = false;
-                actualizarBotonEnviar();
-                alert('No se pudo guardar el pedido en el TPV. No se abrió WhatsApp. Volvé a intentar; si el problema continúa, contactá al local.');
+                console.error('No se pudo enviar la copia por correo.');
             }
+            abrirMensajePedido(datos.mensaje);
         }
 
         function leerPedidoRegistrado() {

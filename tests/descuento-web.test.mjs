@@ -125,6 +125,7 @@ test('legacy order still saves and sends when no promotion is known and config i
     c.context.document.querySelectorAll = () => [{ value: 'Muzza', getAttribute: () => 'clasico' }];
     c.context.window.guardarPedidoFirebase = async data => { calls.stored.push(data); };
     c.context.window.open = () => ({ document: { body: {} }, location: { set href(url) { calls.messages.push(url); } }, close() {} });
+    c.context.window.location = { assign: url => calls.messages.push(url) };
     vm.runInContext(between(web, 'async function enviarPedido(', '// Botones de cantidad'), c.context);
     await vm.runInContext("enviarPedido('efectivo')", c.context);
     assert.equal(calls.stored.length, 1);
@@ -134,10 +135,14 @@ test('legacy order still saves and sends when no promotion is known and config i
     assert.match(calls.messages[0], /^https:\/\/wa\.me\//);
     assert.equal(calls.emails.length, 1);
     assert.equal(calls.alerts.length, 0);
+    await vm.runInContext("enviarPedido('efectivo')", c.context);
+    assert.equal(calls.stored.length, 1, 'reopening WhatsApp never creates a second order');
+    assert.equal(calls.messages.length, 2);
+    c.context.window.PEDIDO_WEB_REGISTRADO = null; // Isolate the new-order config guard.
     c.context.window.DESCUENTO_WEB = 20;
     await vm.runInContext("enviarPedido('efectivo')", c.context);
     assert.equal(calls.stored.length, 1, 'a known promotion with failed config must still fail closed');
-    assert.equal(calls.messages.length, 1);
+    assert.equal(calls.messages.length, 2);
     assert.equal(calls.emails.length, 1);
     assert.equal(calls.alerts.length, 1);
 });

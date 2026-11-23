@@ -28,6 +28,7 @@ export function page({ storage = new Map() } = {}) {
     const timers = new Map(); let timer = 0;
     const context = vm.createContext({
         window: { MESA_ACTUAL: null, DESCUENTO_WEB: 20, DESCUENTO_WEB_LISTO: true,
+            location: { assign: url => urls.push(url) },
             sessionStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
             guardarPedidoFirebase: async d => { sent.push(JSON.parse(JSON.stringify(d))); return { id: d.intentoId || 'fixture-id' }; },
             open: url => { opened.push(url); return { document: { body: {} }, location: { set href(u) { urls.push(u); } }, close() {} }; } },
