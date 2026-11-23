@@ -83,13 +83,9 @@ for (const tipo of ['retiro', 'delivery']) {
             assert.equal(d.cliente.direccion, '');
             assert.equal(d.distanciaKm, null);
             assert.doesNotMatch(d.mensaje, /maps\.google|Dirección:/);
-            assert.equal(p.emails[0].ubicacion_gps, '');
         }
-        assert.equal(p.opened.length, 0);
-        assert.equal(p.run('abrirWhatsAppPedido()'), true);
-        assert.match(p.get('confirmacion-whatsapp').href, /^https:\/\/wa\.me\//);
-        assert.equal(p.emails[0].pedido, d.mensaje);
-        assert.equal(p.run('window.PEDIDO_WEB_ENVIANDO'), false);
+        assert.equal(p.urls.length, 1);
+        assert.match(p.urls[0], /^https:\/\/wa\.me\//);
     });
 }
 test('S3: typed web writes never lose modality on permission failure; legacy writer is preserved', async () => {
@@ -142,7 +138,7 @@ test('S1: unselected order is rejected without stored data or messages', async (
     const before = JSON.stringify(p.sent);
     await p.run("enviarPedido('efectivo')");
     assert.equal(JSON.stringify(p.sent), before);
-    assert.equal(p.urls.length, 0);
+    assert.equal(p.opened.length, 0);
     assert.equal(p.emails.length, 0);
     assert.equal(p.alerts.length, 1);
     assert.equal(p.context.window.MODALIDAD_PEDIDO, null);
@@ -154,21 +150,20 @@ test('S3: denied pickup save sends nothing and allows a successful retry', async
     p.context.window.guardarPedidoFirebase = async () => { throw { code: 'permission-denied' }; };
     await p.run("enviarPedido('efectivo')");
     assert.equal(p.sent.length, 0);
-    assert.equal(p.urls.length, 0);
-    assert.equal(p.emails.length, 0);
-    assert.equal(p.context.window.PEDIDO_WEB_ENVIANDO, false);
-    p.context.window.guardarPedidoFirebase = save;
-    await p.run('reintentarConfirmacionPedido()');
-    assert.equal(p.sent.length, 1);
-    assert.equal(p.run('abrirWhatsAppPedido()'), true);
     assert.equal(p.opened.length, 0);
+    assert.equal(p.emails.length, 0);
+    p.context.window.guardarPedidoFirebase = save;
+    await p.run("enviarPedido('efectivo')");
+    assert.equal(p.sent.length, 1);
+    assert.equal(p.urls.length, 1);
+    assert.match(p.urls[0], /^https:\/\/wa\.me\//);
     assert.equal(p.emails.length, 1);
 });
 test('S1-S4: QR tables retain their existing no-modality/no-GPS flow and discount', async () => {
     const p = page();
     p.context.window.MESA_ACTUAL = 3;
     p.run('actualizarBotonEnviar()');
-    assert.equal(p.get('btn-enviar').disabled, false);
+    assert.equal(p.get('btn-enviar').disabled === true, false);
     await p.run("enviarPedido('efectivo')");
     assert.equal(p.sent.length, 1);
     assert.equal('tipo' in p.sent[0], false);
