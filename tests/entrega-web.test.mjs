@@ -60,6 +60,34 @@ test('registered order cannot be submitted again or after reloading', async () =
     await reload.run("enviarPedido('efectivo')");
     assert.equal(reload.sent.length, 0);
 });
+test('explicit new order releases persisted success and registers fresh customer details', async () => {
+    const p = page();
+    p.run("seleccionarModalidad('retiro')");
+    await p.run("enviarPedido('efectivo')");
+    const first = p.sent[0];
+    let reloaded = false;
+    p.context.window.confirm = () => true;
+    p.context.window.location.reload = () => { reloaded = true; };
+    p.run('iniciarNuevoPedidoWeb()');
+    assert.equal(reloaded, true);
+    const next = page({ storage: p.storage });
+    next.get('nombre').value = 'Otro cliente';
+    next.run("seleccionarModalidad('retiro')");
+    await next.run("enviarPedido('transferencia')");
+    assert.equal(next.sent.length, 1);
+    assert.equal(next.sent[0].cliente.nombre, 'Otro cliente');
+    assert.notEqual(next.sent[0].mensaje, first.mensaje);
+});
+test('declining new order preserves the registered summary', async () => {
+    const p = page();
+    p.run("seleccionarModalidad('retiro')");
+    await p.run("enviarPedido('efectivo')");
+    p.context.window.confirm = () => false;
+    p.run('iniciarNuevoPedidoWeb()');
+    await p.run('enviarPedido()');
+    assert.equal(p.sent.length, 1);
+    assert.equal(p.urls[0], p.urls[1]);
+});
 function section(start, end) {
     const a = html.indexOf(start), b = html.indexOf(end, a + start.length);
     assert.ok(a >= 0 && b > a, start);

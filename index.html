@@ -623,6 +623,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             <button type="button" id="btn-enviar" onclick="enviarPedido()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md transition transform active:scale-[0.98] text-center text-sm tracking-wide">
                 🚀 Confirmar y Enviar
             </button>
+            <button type="button" id="btn-nuevo-pedido" hidden onclick="iniciarNuevoPedidoWeb()" class="bg-white text-red-700 font-bold py-3 px-4 rounded-xl border border-red-200">Hacer otro pedido</button>
         </div>
     </div>
 
@@ -937,6 +938,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const btn = document.getElementById('btn-enviar');
             const ubicacionOk = document.getElementById('ubicacion-recogida').value === '1';
             const pedidoEnviado = !window.MESA_ACTUAL && leerPedidoRegistrado();
+            const nuevoPedido = document.getElementById('btn-nuevo-pedido');
+            if (nuevoPedido) nuevoPedido.hidden = !pedidoEnviado || !!window.PEDIDO_WEB_ENVIANDO;
             if (pedidoEnviado) {
                 btn.disabled = false;
                 btn.textContent = 'Ver pedido registrado';
@@ -1541,6 +1544,22 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 console.error('No se pudo enviar la copia por correo.');
             }
             abrirMensajePedido(datos.mensaje);
+        }
+
+        function iniciarNuevoPedidoWeb() {
+            if (window.PEDIDO_WEB_ENVIANDO || leerIntentoWeb()) return;
+            if (!leerPedidoRegistrado()) return;
+            if (!window.confirm('¿Iniciar otro pedido? El pedido anterior no se cancela. Se limpiará el carrito para armar uno nuevo.')) return;
+            try {
+                window.sessionStorage.removeItem('mi-barrio.pedido-registrado');
+                window.sessionStorage.removeItem(ambitoIntentoWeb());
+            } catch (e) {
+                alert('No pudimos liberar el pedido guardado. Habilitá el almacenamiento del navegador y volvé a intentar.');
+                return;
+            }
+            window.PEDIDO_WEB_REGISTRADO = null;
+            window.PEDIDO_WEB_INTENTO = null;
+            window.location.reload();
         }
 
         function leerPedidoRegistrado() {
