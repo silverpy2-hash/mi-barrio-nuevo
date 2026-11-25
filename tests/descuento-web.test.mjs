@@ -86,6 +86,17 @@ test('live promotion normalizes configuration, advertises it and recalculates im
     vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 99 }, { activo: true, porcentaje: 99 })', c.context);
     assert.equal(c.total().descuento, 0);
 });
+test('hero advertises the configured delivery and pickup discounts', () => {
+    const c = cart({ percent: 25, retiroPercent: 10 });
+    vm.runInContext(between(web, 'window.aplicarDescuentoCliente =', 'function calcularTotal()'), c.context);
+    vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 25 }, { activo: true, porcentaje: 10 })', c.context);
+    assert.match(c.element('hero-chips-descuento').innerHTML, /Delivery 25%/);
+    assert.match(c.element('hero-chips-descuento').innerHTML, /Retiro 10%/);
+    assert.equal(c.element('hero-descuentos').style.display, '');
+    vm.runInContext('window.aplicarDescuentoCliente({ activo: false, porcentaje: 25 }, { activo: false, porcentaje: 10 })', c.context);
+    assert.equal(c.element('hero-chips-descuento').innerHTML, '');
+    assert.equal(c.element('hero-descuentos').style.display, 'none');
+});
 test('web order with promotion but config unavailable shows alert and does not save or open WhatsApp', async () => {
     const c = cart({ percent: 20 });
     c.context.window.DESCUENTO_WEB_LISTO = false;
