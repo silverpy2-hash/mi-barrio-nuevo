@@ -1,6 +1,6 @@
 # Web pizza discount
 
-Both administrator TPVs expose **Config → Descuento web**. Choose 10%, 15%, 20%, 25%, or **Desactivar**. One shared setting in `config/local.descuentoWeb` updates the customer page without changing manual orders.
+Both administrator TPVs expose **Config → Descuento web** with two independent settings: **Delivery** (`config/local.descuentoWeb`) and **Retiro en el local** (`config/local.descuentoWebRetiro`). Each accepts 10%, 15%, 20%, 25%, or **Desactivar**, and updates the customer page without changing manual orders. QR-table orders use the Retiro discount.
 
 ## Amounts and receipts
 

@@ -12,7 +12,7 @@ Selecting Delivery displays the address and map and requests browser geolocation
 
 ## Discounts and saved orders
 
-Both web modalities use the same existing promotion exactly once: pizza price plus stuffed border only. Extras and delivery remain full price. With a 20% promotion, pizza/border 75,000 Gs + extras 23,000 Gs gives pickup 83,000 Gs; adding 5,000 Gs delivery gives 88,000 Gs.
+Each modality uses its own configured promotion exactly once: pizza price plus stuffed border only. Extras and the delivery fee remain full price. With 20% for delivery and 10% for pickup, pizza/border 75,000 Gs + extras 23,000 Gs gives pickup 90,500 Gs; adding 5,000 Gs delivery gives 88,000 Gs.
 
 The order stores its type, amount and percentage before WhatsApp/email are opened. If saving fails, no message is sent and the modality is never discarded to bypass permissions. Previously stored orders, manual orders and QR-table choices retain their existing workflows.
 

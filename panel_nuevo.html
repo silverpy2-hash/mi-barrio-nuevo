@@ -1963,6 +1963,7 @@
                 horarios: d.horarios || {},
                 mensaje: d.mensaje || '',
                 descuentoWeb: d.descuentoWeb || null,
+                descuentoWebRetiro: d.descuentoWebRetiro || null,
                 agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
                 tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
                 delivery: (d.delivery && Array.isArray(d.delivery.tramos))
@@ -4192,24 +4193,41 @@ let ddraft = null;
 
 // ===== Web promotion (independent from manual order discounts) =====
 let descuentoGuardando = false;
+function porcentajePromoWeb(promo) {
+    return promo && promo.activo === true && [10, 15, 20, 25].includes(promo.porcentaje) ? promo.porcentaje : 0;
+}
+function botonesDescuentoWeb(actual, tipo) {
+    const attr = tipo === 'retiro' ? 'data-descuento-web-retiro' : 'data-descuento-web';
+    return `<div class="flex flex-wrap gap-2">${[0, 10, 15, 20, 25].map(n => `<button type="button" ${attr}="${n}" aria-pressed="${n === actual}" ${descuentoGuardando ? 'disabled' : ''} class="${BTN} ${n === actual ? 'bg-green-700 text-white' : 'bg-neutral-100 text-neutral-900'}">${n ? n + '%' : 'Desactivar'}</button>`).join('')}</div>`;
+}
 function vistaDescuento() {
-    const promo = localCfg.descuentoWeb;
-    const actual = promo && promo.activo === true && [10, 15, 20, 25].includes(promo.porcentaje) ? promo.porcentaje : 0;
+    const delivery = porcentajePromoWeb(localCfg.descuentoWeb);
+    const retiro = porcentajePromoWeb(localCfg.descuentoWebRetiro);
     $('cfg-vista').innerHTML = `<section class="${CARD}">
         <h3 class="font-extrabold">Descuento para pedidos web</h3>
-        <p class="text-sm">Solo pizzas de todos los tamaños y variedades, incluido el borde relleno. No incluye delivery, papas, gaseosas ni otros extras. No modifica los pedidos manuales ni los pedidos ya recibidos.</p>
-        <p role="status" class="text-sm font-bold">${descuentoGuardando ? 'Guardando…' : actual ? 'Vigente: ' + actual + '%' : 'Sin descuento web activo'}</p>
-        <div class="flex flex-wrap gap-2">${[0, 10, 15, 20, 25].map(n => `<button type="button" data-descuento-web="${n}" aria-pressed="${n === actual}" ${descuentoGuardando ? 'disabled' : ''} class="${BTN} ${n === actual ? 'bg-green-700 text-white' : 'bg-neutral-100 text-neutral-900'}">${n ? n + '%' : 'Desactivar'}</button>`).join('')}</div>
-        <p class="text-xs text-neutral-500">Se aplica en la web al guardar. El cliente verá el descuento y el pedido conservará el porcentaje y el importe en el ticket y en WhatsApp.</p>
+        <p class="text-sm">Solo pizzas de todos los tamaños y variedades, incluido el borde relleno. No incluye papas, gaseosas ni otros extras. El costo de delivery tampoco recibe descuento. No modifica los pedidos manuales ni los pedidos ya recibidos.</p>
+        <div class="border-t border-neutral-200 pt-3 space-y-2">
+            <p class="text-sm font-bold">🛵 Delivery</p>
+            <p role="status" class="text-sm font-bold">${descuentoGuardando ? 'Guardando…' : delivery ? 'Vigente: ' + delivery + '%' : 'Sin descuento activo'}</p>
+            ${botonesDescuentoWeb(delivery, 'delivery')}
+        </div>
+        <div class="border-t border-neutral-200 pt-3 space-y-2">
+            <p class="text-sm font-bold">🛍️ Retiro en el local</p>
+            <p role="status" class="text-sm font-bold">${descuentoGuardando ? 'Guardando…' : retiro ? 'Vigente: ' + retiro + '%' : 'Sin descuento activo'}</p>
+            ${botonesDescuentoWeb(retiro, 'retiro')}
+        </div>
+        <p class="text-xs text-neutral-500">Se aplica en la web al guardar. El cliente verá el descuento de su modalidad y el pedido conservará el porcentaje y el importe en el ticket y en WhatsApp.</p>
     </section>`;
 }
-async function guardarDescuentoWeb(porcentaje) {
+async function guardarDescuentoWeb(porcentaje, tipo) {
     if (!adminActivo() || ![0, 10, 15, 20, 25].includes(porcentaje) || descuentoGuardando) return;
+    const campo = tipo === 'retiro' ? 'descuentoWebRetiro' : 'descuentoWeb';
+    const etiqueta = tipo === 'retiro' ? 'retiro' : 'delivery';
     descuentoGuardando = true;
     vistaDescuento();
     try {
-        await setDoc(doc(db, 'config', 'local'), { descuentoWeb: { activo: porcentaje > 0, porcentaje }, actualizado: serverTimestamp() }, { merge: true });
-        toast(porcentaje ? 'Descuento web activado: ' + porcentaje + '%' : 'Descuento web desactivado');
+        await setDoc(doc(db, 'config', 'local'), { [campo]: { activo: porcentaje > 0, porcentaje }, actualizado: serverTimestamp() }, { merge: true });
+        toast(porcentaje ? 'Descuento web ' + etiqueta + ' activado: ' + porcentaje + '%' : 'Descuento web ' + etiqueta + ' desactivado');
     } catch (e) {
         toast('No se pudo guardar el descuento web: ' + e.message);
     } finally {
@@ -4724,6 +4742,7 @@ $('cfg-vista').addEventListener('click', (e) => {
     if (!b) return;
     const d = b.dataset;
     if (d.descuentoWeb !== undefined) guardarDescuentoWeb(Number(d.descuentoWeb));
+    else if (d.descuentoWebRetiro !== undefined) guardarDescuentoWeb(Number(d.descuentoWebRetiro), 'retiro');
     else if (d.addSabor) {
         const v = $('add-' + d.addSabor).value.trim();
         if (!v) return;

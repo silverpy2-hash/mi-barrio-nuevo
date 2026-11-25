@@ -1276,11 +1276,25 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
 
         window.DESCUENTO_WEB = 0;
+        window.DESCUENTO_WEB_RETIRO = 0;
         window.DESCUENTO_WEB_LISTO = false;
-        window.aplicarDescuentoCliente = function (promocion) {
-            const porcentaje = promocion && promocion.activo === true && [10, 15, 20, 25].includes(promocion.porcentaje) ? promocion.porcentaje : 0;
-            window.DESCUENTO_WEB = porcentaje;
+        function normalizarPorcentajeDescuento(promocion) {
+            return promocion && promocion.activo === true && [10, 15, 20, 25].includes(promocion.porcentaje) ? promocion.porcentaje : 0;
+        }
+        // La mesa es local: usa el mismo descuento que Retiro.
+        function porcentajeDescuentoActual() {
+            if (window.MESA_ACTUAL) return window.DESCUENTO_WEB_RETIRO || 0;
+            if (window.MODALIDAD_PEDIDO === 'delivery') return window.DESCUENTO_WEB || 0;
+            if (window.MODALIDAD_PEDIDO === 'retiro') return window.DESCUENTO_WEB_RETIRO || 0;
+            return 0;
+        }
+        window.aplicarDescuentoCliente = function (promocionDelivery, promocionRetiro) {
+            window.DESCUENTO_WEB = normalizarPorcentajeDescuento(promocionDelivery);
+            window.DESCUENTO_WEB_RETIRO = normalizarPorcentajeDescuento(promocionRetiro);
             window.DESCUENTO_WEB_LISTO = true;
+            calcularTotal();
+        };
+        function actualizarAvisoDescuento(porcentaje) {
             let aviso = document.getElementById('aviso-descuento-web');
             if (!aviso) {
                 aviso = document.createElement('div');
@@ -1289,10 +1303,15 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 aviso.setAttribute('role', 'status');
                 document.querySelector('main').prepend(aviso);
             }
+            const modalidad = window.MESA_ACTUAL ? 'mesa' : window.MODALIDAD_PEDIDO;
+            const detalle = modalidad === 'delivery'
+                ? ' en delivery, sobre todas las pizzas y bordes rellenos. No incluye extras ni el costo de delivery.'
+                : modalidad === 'retiro'
+                    ? ' en retiro, sobre todas las pizzas y bordes rellenos. No incluye extras.'
+                    : ' en todas las pizzas y bordes rellenos. No incluye extras.';
             aviso.hidden = !porcentaje;
-            aviso.textContent = porcentaje ? porcentaje + '% de descuento en todas las pizzas y bordes rellenos al pedir por esta web. No incluye extras ni delivery.' : '';
-            calcularTotal();
-        };
+            aviso.textContent = porcentaje ? porcentaje + '% de descuento' + detalle : '';
+        }
 
         function calcularTotal() {
             const tamano = obtenerTamanoSeleccionado();
@@ -1332,13 +1351,14 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
 
             const envio = window.MESA_ACTUAL || window.MODALIDAD_PEDIDO !== 'delivery' ? 0 : deliveryCosto;
             const subtotalPizzas = precioBasePizza + (adicionales['borde-piz'] === 1 && saboresSeleccionados.length > 0 ? precioBorde(tamano) : 0) + pedido.reduce((a, p) => a + p.precio, 0);
-            const porcentajeDescuento = window.DESCUENTO_WEB || 0;
+            const porcentajeDescuento = porcentajeDescuentoActual();
             const descuento = Math.round(subtotalPizzas * porcentajeDescuento / 100);
             const totalGeneral = precioBasePizza + subtotalAdicionales + pedido.reduce((a, p) => a + p.precio, 0) + envio - descuento;
             document.getElementById('total-pantalla').innerText = totalGeneral.toLocaleString('es-PY') + " Gs";
             const detalle = document.getElementById('detalle-descuento-web');
             detalle.hidden = descuento <= 0;
             detalle.textContent = descuento > 0 ? 'Descuento ' + porcentajeDescuento + '%: -' + descuento.toLocaleString('es-PY') + ' Gs' : '';
+            actualizarAvisoDescuento(porcentajeDescuento);
             
             return { totalGeneral, precioBasePizza, subtotalAdicionales, descuento, porcentajeDescuento };
         }
@@ -1365,7 +1385,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const pendiente = leerIntentoWeb();
             if (pendiente) { await guardarIntentoWeb(pendiente); return; }
             if (!window.MESA_ACTUAL && !['retiro', 'delivery'].includes(window.MODALIDAD_PEDIDO)) { alert('Elegí Retiro en el local o Delivery antes de confirmar.'); return; }
-            if (window.DESCUENTO_WEB > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
+            if (porcentajeDescuentoActual() > 0 && !window.DESCUENTO_WEB_LISTO) { alert('Estamos verificando los precios y descuentos. Esperá unos segundos y volvé a intentar; si no carga, recargá la página.'); return; }
             if (window.LOCAL_CERRADO) { alert('⛔ Nos encontramos cerrados en este momento. No podemos tomar pedidos ahora.'); return; }
 
             const nombre = document.getElementById('nombre').value.trim();
@@ -1615,6 +1635,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 horarios: d.horarios || {},
                 mensaje: d.mensaje || '',
                 descuentoWeb: d.descuentoWeb || null,
+                descuentoWebRetiro: d.descuentoWebRetiro || null,
                 agotados: Array.isArray(d.agotados) ? d.agotados.map(String) : [],
                 tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
                 delivery: (d.delivery && Array.isArray(d.delivery.tramos))
@@ -1685,7 +1706,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         }
         pintarAvisoMesa();
         // Si no se puede leer el estado (sin internet, etc.) NO se frena la venta: queda abierto.
-        onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarDeliveryCliente) window.aplicarDeliveryCliente(cfgLocal); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); window.aplicarDescuentoCliente(cfgLocal ? cfgLocal.descuentoWeb : null); }, () => { window.DESCUENTO_WEB_LISTO = false; });
+        onSnapshot(doc(db, "config", "local"), (s) => { cfgLocal = s.exists() ? normLocal(s.data()) : null; pintarCartel(); aplicarAgotados(cfgLocal ? cfgLocal.agotados : []); if (window.aplicarDeliveryCliente) window.aplicarDeliveryCliente(cfgLocal); if (window.aplicarTemaCliente) window.aplicarTemaCliente(cfgLocal ? cfgLocal.tema : 'clasico'); window.aplicarDescuentoCliente(cfgLocal ? cfgLocal.descuentoWeb : null, cfgLocal ? cfgLocal.descuentoWebRetiro : null); }, () => { window.DESCUENTO_WEB_LISTO = false; });
 
         // Menú y precios cargados desde el panel (config/menu): se aplican al instante
         onSnapshot(doc(db, "config", "menu"), (s) => {

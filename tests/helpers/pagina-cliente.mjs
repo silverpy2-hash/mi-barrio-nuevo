@@ -27,7 +27,7 @@ export function page({ storage = new Map() } = {}) {
     const marker = { addTo() { return this; }, setLatLng(v) { markerCoords = Array.isArray(v) ? { lat: v[0], lng: v[1] } : v; return this; }, on(name, fn) { markerEvents[name] = fn; return this; }, getLatLng: () => markerCoords };
     const timers = new Map(); let timer = 0;
     const context = vm.createContext({
-        window: { MESA_ACTUAL: null, DESCUENTO_WEB: 20, DESCUENTO_WEB_LISTO: true,
+        window: { MESA_ACTUAL: null, DESCUENTO_WEB: 20, DESCUENTO_WEB_RETIRO: 20, DESCUENTO_WEB_LISTO: true,
             location: { assign: url => urls.push(url) },
             sessionStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
             guardarPedidoFirebase: async d => { sent.push(JSON.parse(JSON.stringify(d))); return { id: d.intentoId || 'fixture-id' }; },
@@ -45,6 +45,7 @@ export function page({ storage = new Map() } = {}) {
         PAGOS_TXT: { efectivo: 'Efectivo', transferencia: 'Transferencia' }, encodeURIComponent,
     });
     vm.runInContext(section('        let map;', '        // ===== Ingredientes'), context);
+    vm.runInContext(section('        function normalizarPorcentajeDescuento(', '        function calcularTotal()'), context);
     vm.runInContext(section('        function calcularTotal()', '        // Celular de Paraguay'), context);
     vm.runInContext(section('        function normalizarCelularPY(', '        // Botones de cantidad'), context);
     return { context, get, gps, sent, urls, opened, emails, alerts, events, marker, markerEvents, storage, timers, mapCount: () => mapCount,

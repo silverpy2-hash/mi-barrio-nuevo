@@ -13,14 +13,14 @@ function between(source, start, end) {
     assert.notEqual(b, -1, end);
     return source.slice(a, b);
 }
-function cart({ percent = 0, selected = true, category = 'clasico', size = 'grande', border = false, saved = [], mesa = false } = {}) {
+function cart({ percent = 0, retiroPercent = percent, selected = true, category = 'clasico', size = 'grande', border = false, saved = [], mesa = false, modalidad = 'delivery' } = {}) {
     const nodes = new Map();
     const element = id => {
         if (!nodes.has(id)) nodes.set(id, { innerText: '', textContent: '', hidden: true, style: {}, focus() {} });
         return nodes.get(id);
     };
     const context = vm.createContext({
-        window: { DESCUENTO_WEB: percent, DESCUENTO_WEB_LISTO: true, MESA_ACTUAL: mesa, MODALIDAD_PEDIDO: 'delivery' },
+        window: { DESCUENTO_WEB: percent, DESCUENTO_WEB_RETIRO: retiroPercent, DESCUENTO_WEB_LISTO: true, MESA_ACTUAL: mesa, MODALIDAD_PEDIDO: modalidad },
         deliveryPendiente: false,
         actualizarInterfaz() {}, actualizarBotonEnviar() {}, setTimeout: () => 0, clearTimeout() {}, confirm: () => true,
         document: { getElementById: element, querySelectorAll: () => selected ? [{ getAttribute: () => category }] : [] },
@@ -31,6 +31,7 @@ function cart({ percent = 0, selected = true, category = 'clasico', size = 'gran
         precioBorde: () => 15000,
         pedido: saved, deliveryCosto: 7000,
     });
+    vm.runInContext(between(web, 'function normalizarPorcentajeDescuento(', 'function calcularTotal()'), context);
     vm.runInContext(between(web, 'function calcularTotal()', '// Celular de Paraguay'), context);
     return { context, element, total: () => vm.runInContext('calcularTotal()', context) };
 }
@@ -55,16 +56,34 @@ test('off preserves previous amounts, saved-pizza-only cart discounts correctly,
     assert.equal(cart({ percent: 20, mesa: true }).total().totalGeneral, 79000);
     assert.equal(cart({ percent: 20, selected: false }).total().descuento, 0);
 });
+test('delivery and retiro use their own percentage, mesa uses retiro, unselected has no discount', () => {
+    const delivery = cart({ percent: 25, retiroPercent: 10, selected: false, saved: [{ precio: 100000 }], modalidad: 'delivery' }).total();
+    assert.equal(delivery.porcentajeDescuento, 25);
+    assert.equal(delivery.descuento, 25000);
+    const retiro = cart({ percent: 25, retiroPercent: 10, selected: false, saved: [{ precio: 100000 }], modalidad: 'retiro' }).total();
+    assert.equal(retiro.porcentajeDescuento, 10);
+    assert.equal(retiro.descuento, 10000);
+    const mesa = cart({ percent: 25, retiroPercent: 10, selected: false, saved: [{ precio: 100000 }], mesa: true }).total();
+    assert.equal(mesa.porcentajeDescuento, 10);
+    assert.equal(mesa.descuento, 10000);
+    const sinModalidad = cart({ percent: 25, retiroPercent: 10, selected: false, saved: [{ precio: 100000 }], modalidad: null }).total();
+    assert.equal(sinModalidad.porcentajeDescuento, 0);
+    assert.equal(sinModalidad.descuento, 0);
+});
 test('live promotion normalizes configuration, advertises it and recalculates immediately', () => {
     const c = cart();
     vm.runInContext(between(web, 'window.aplicarDescuentoCliente =', 'function calcularTotal()'), c.context);
-    vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 25 })', c.context);
+    vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 25 }, { activo: true, porcentaje: 10 })', c.context);
     assert.equal(c.total().totalGeneral, 83000);
     assert.equal(c.element('aviso-descuento-web').hidden, false);
-    vm.runInContext('window.aplicarDescuentoCliente({ activo: false, porcentaje: 25 })', c.context);
-    assert.equal(c.total().totalGeneral, 98000);
+    assert.match(c.element('aviso-descuento-web').textContent, /delivery/);
+    c.context.window.MODALIDAD_PEDIDO = 'retiro';
+    assert.equal(c.total().totalGeneral, 85000);
+    assert.match(c.element('aviso-descuento-web').textContent, /retiro/);
+    vm.runInContext('window.aplicarDescuentoCliente({ activo: false, porcentaje: 25 }, { activo: false, porcentaje: 10 })', c.context);
+    assert.equal(c.total().totalGeneral, 91000);
     assert.equal(c.element('aviso-descuento-web').hidden, true);
-    vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 99 })', c.context);
+    vm.runInContext('window.aplicarDescuentoCliente({ activo: true, porcentaje: 99 }, { activo: true, porcentaje: 99 })', c.context);
     assert.equal(c.total().descuento, 0);
 });
 test('web order with promotion but config unavailable shows alert and does not save or open WhatsApp', async () => {
@@ -146,9 +165,11 @@ test('legacy order still saves and sends when no promotion is known and config i
     assert.equal(calls.alerts.length, 1);
 });
 for (const path of panels) {
-    test(`${path}: promotion configuration is admin-only, merged, and receipt uses stored percentage`, async () => {
+    test(`${path}: promotion configuration is admin-only, split by modality, merged, and receipt uses stored percentage`, async () => {
         const source = read(path);
         assert.match(source, /\['descuento', 'Descuento web'\]/);
+        assert.match(source, /data-descuento-web-retiro/);
+        assert.match(source, /descuentoWebRetiro/);
         const calls = [];
         const ctx = vm.createContext({ adminActivo: () => true, doc: (...x) => x, db: {}, serverTimestamp: () => 'now',
             setDoc: async (...args) => calls.push(args), toast() {}, vistaDescuento() {} });
@@ -157,12 +178,15 @@ for (const path of panels) {
         await ctx.guardarDescuentoWeb(20);
         assert.equal(calls[0][1].descuentoWeb.porcentaje, 20);
         assert.equal(calls[0][2].merge, true);
+        await ctx.guardarDescuentoWeb(15, 'retiro');
+        assert.equal(calls[1][1].descuentoWebRetiro.porcentaje, 15);
+        assert.equal(calls[1][1].descuentoWeb, undefined);
         ctx.adminActivo = () => false;
         await ctx.guardarDescuentoWeb(25);
-        assert.equal(calls.length, 1);
+        assert.equal(calls.length, 2);
         ctx.adminActivo = () => true;
         await ctx.guardarDescuentoWeb(0);
-        assert.equal(calls[1][1].descuentoWeb.activo, false);
+        assert.equal(calls[2][1].descuentoWeb.activo, false);
         const ticket = between(source, 'function htmlTicket(', 'function imprimirTicket(');
         const ticketCtx = vm.createContext({ creadoMs: () => 0, gs: n => `${n} Gs`, esc: String,
             numeroCorto: () => '1', fechaCorta: () => 'today', NOMBRE_LOCAL: 'Mi Barrio', TIPOS: {}, PAGOS: {} });
