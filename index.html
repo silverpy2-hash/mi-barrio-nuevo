@@ -739,6 +739,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
         const LOCAL_LNG = -56.0124691;
         let deliveryKm = null;
         let deliveryCosto = 0;
+        window.DELIVERY_COBRAR = true;
+        function deliverySeCobra() { return window.DELIVERY_COBRAR !== false; }
         let deliveryFuera = false;
         let deliveryTimer = null;
 
@@ -763,13 +765,14 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             return null;
         }
         window.aplicarDeliveryCliente = function (cfg) {
+            window.DELIVERY_COBRAR = cfg ? cfg.deliveryCobrar !== false : true;
             if (cfg && Array.isArray(cfg.delivery) && cfg.delivery.length) {
                 TRAMOS_DELIVERY = cfg.delivery.slice().sort((a, b) => a.max - b.max);
             }
             if (esDeliveryWeb() && deliveryKm != null) {
                 const c = costoPorKm(deliveryKm);
-                deliveryCosto = c || 0;
                 deliveryFuera = (c === null);
+                deliveryCosto = (!deliverySeCobra() || c === null) ? 0 : c;
                 pintarDelivery();
                 calcularTotal();
                 actualizarBotonEnviar();
@@ -788,6 +791,11 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (deliveryKm == null) {
                 el.className = 'mt-2 text-xs font-semibold text-neutral-500';
                 el.textContent = '🛵 Calculando costo de delivery...';
+                return;
+            }
+            if (!deliverySeCobra()) {
+                el.className = 'mt-2 text-sm font-bold text-green-700';
+                el.textContent = '🛵 Delivery sin cargo (' + deliveryKm.toFixed(1) + ' km)';
                 return;
             }
             el.className = 'mt-2 text-sm font-bold text-green-700';
@@ -812,7 +820,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             if (km == null) km = haversineKm(LOCAL_LAT, LOCAL_LNG, lat, lng) * 1.3; // estimado de ruta por calles
             deliveryKm = km;
             const c = costoPorKm(km);
-            deliveryCosto = c || 0;
+            deliveryCosto = (!deliverySeCobra() || c === null) ? 0 : c;
             deliveryFuera = (c === null);
             deliveryPendiente = false;
             pintarDelivery();
@@ -821,7 +829,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             // Actualizar texto de confirmación de ubicación
             const textoConf = document.getElementById('texto-ubicacion-confirmada');
             if (textoConf && document.getElementById('ubicacion-recogida').value === '1') {
-                textoConf.textContent = 'Distancia: ' + km.toFixed(1) + ' km — Costo: ' + (deliveryCosto || 0).toLocaleString('es-PY') + ' Gs';
+                textoConf.textContent = 'Distancia: ' + km.toFixed(1) + ' km' + (deliverySeCobra() ? ' — Costo: ' + (deliveryCosto || 0).toLocaleString('es-PY') + ' Gs' : ' — Delivery sin cargo');
             }
         }
 
@@ -1645,7 +1653,8 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
                 delivery: (d.delivery && Array.isArray(d.delivery.tramos))
                     ? d.delivery.tramos.map(t => ({ max: Number(t.max), costo: Math.max(0, Number(t.costo) || 0) })).filter(t => isFinite(t.max) && t.max > 0).sort((a, b) => a.max - b.max)
-                    : []
+                    : [],
+                deliveryCobrar: !(d.delivery && d.delivery.cobrar === false),
             };
         }
         // Estado real ahora: el botón manual manda hasta el próximo cambio del horario

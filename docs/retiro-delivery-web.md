@@ -10,6 +10,10 @@ Requires name and phone only. No address or map is displayed. Shipping is zero, 
 
 Selecting Delivery displays the address and map and requests browser geolocation. **Actualizar mi ubicación** retries the request. If permission/GPS fails, choose the location manually on the map. Confirmation waits for the current shipping calculation; late GPS/route results cannot overwrite a newer location or a pickup choice. Browser location requires permission and normally HTTPS.
 
+## Charging the delivery fee
+
+The administrator can turn the fee on or off in **Configuración → 🛵 Delivery**. The setting is stored as `config/local.delivery.cobrar`; when it is missing, delivery is charged (backward compatible). With **Sin cobro**, the customer page and manual panel orders charge zero, while the configured distance tiers still act as the coverage limit: addresses beyond the last tier remain rejected. Turning it back to **Cobrando** restores the configured tier prices immediately.
+
 ## Discounts and saved orders
 
 Each modality uses its own configured promotion exactly once: pizza price plus stuffed border only. Extras and the delivery fee remain full price. With 20% for delivery and 10% for pickup, pizza/border 75,000 Gs + extras 23,000 Gs gives pickup 90,500 Gs; adding 5,000 Gs delivery gives 88,000 Gs.

@@ -1968,7 +1968,8 @@
                 tema: ['clasico', 'bonito', 'noche'].indexOf(d.tema) >= 0 ? d.tema : 'clasico',
                 delivery: (d.delivery && Array.isArray(d.delivery.tramos))
                     ? d.delivery.tramos.map(t => ({ max: Number(t.max) || 0, costo: Math.max(0, Number(t.costo) || 0) })).filter(t => t.max > 0)
-                    : []
+                    : [],
+                deliveryCobrar: !(d.delivery && d.delivery.cobrar === false)
             };
         }
         // Estado real ahora: el botón manual manda hasta el próximo cambio del horario
@@ -2721,7 +2722,8 @@
             nuevo.distanciaKm = km;
             const c = costoDeliveryPorKm(km);
             nuevo.deliveryFuera = (c === null);
-            if (!nuevo.envioManual) nuevo.envio = c || 0;
+            if (localCfg.deliveryCobrar === false) nuevo.envio = 0;
+            else if (!nuevo.envioManual) nuevo.envio = c || 0;
             pintarDeliveryNuevo();
             renderNuevoTotal();
         }
@@ -2732,6 +2734,21 @@
             if (nuevo.tipo !== 'delivery') { info.textContent = ''; return; }
             const tramos = tramosDelivery();
             const maxKm = tramos.length ? tramos[tramos.length - 1].max : 0;
+            if (localCfg.deliveryCobrar === false) {
+                nuevo.envio = 0;
+                if (nuevo.deliveryFuera && nuevo.distanciaKm != null) {
+                    info.className = 'text-sm font-bold text-red-600';
+                    info.textContent = '❌ Zona no cubierta (' + nuevo.distanciaKm.toFixed(1) + ' km). El delivery llega hasta ' + maxKm + ' km.';
+                } else if (nuevo.distanciaKm != null) {
+                    info.className = 'text-sm font-bold text-green-700';
+                    info.textContent = '🛵 Delivery sin cargo · ' + nuevo.distanciaKm.toFixed(1) + ' km (calculado por ruta)';
+                } else {
+                    info.className = 'text-xs text-neutral-500';
+                    info.textContent = 'Pegá el link de Google Maps del cliente (el largo, con @lat,lng). El delivery no se cobra.';
+                }
+                $('nuevo-envio').innerHTML = '';
+                return;
+            }
             if (nuevo.deliveryFuera && nuevo.distanciaKm != null) {
                 info.className = 'text-sm font-bold text-red-600';
                 info.textContent = '❌ Zona no cubierta (' + nuevo.distanciaKm.toFixed(1) + ' km). El delivery llega hasta ' + maxKm + ' km.';
@@ -2915,7 +2932,7 @@
                 const tramos = tramosDelivery();
                 const maxKm = tramos.length ? tramos[tramos.length - 1].max : 0;
                 if (n.deliveryFuera) { nuevoMsg('nuevo-error', '❌ Zona no cubierta (' + n.distanciaKm.toFixed(1) + ' km). El delivery llega hasta ' + maxKm + ' km.'); return; }
-                if (!(env > 0)) { nuevoMsg('nuevo-error', 'El delivery todavía no tiene costo. Pegá el link largo de Google Maps del cliente (con @lat,lng) o elegí un tramo a mano.'); return; }
+                if (localCfg.deliveryCobrar !== false && !(env > 0)) { nuevoMsg('nuevo-error', 'El delivery todavía no tiene costo. Pegá el link largo de Google Maps del cliente (con @lat,lng) o elegí un tramo a mano.'); return; }
             }
 
             const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
@@ -4538,12 +4555,34 @@ function vistaDelivery() {
     </div>`).join('');
     $('cfg-vista').innerHTML = `
         <div class="${CARD}">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="font-bold">💵 Cobrar delivery</div>
+                    <p class="text-xs text-neutral-500 mt-1">Con “Cobrando” se suman los tramos al pedido. Con “Sin cobro” el delivery no se cobra, pero los tramos siguen marcando hasta dónde llega.</p>
+                </div>
+                <button type="button" id="del-cobrar" class="shrink-0 text-sm font-bold px-4 py-2 rounded-xl border ${localCfg.deliveryCobrar ? 'bg-red-700 text-white border-red-700' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'}">${localCfg.deliveryCobrar ? 'Cobrando' : 'Sin cobro'}</button>
+            </div>
+        </div>
+        <div class="${CARD}">
             <div class="font-bold">🛵 Costo de delivery por distancia</div>
             <p class="text-xs text-neutral-500 mt-1">Cada tramo dice hasta qué distancia (km) se cobra ese precio. El último tramo es el límite: si el cliente está más lejos, la página avisa que no se cubre la zona y no lo deja pedir.</p>
             <div class="space-y-2 mt-3">${filas}</div>
             <button type="button" id="del-agregar" class="${BTN} bg-white border border-neutral-300 mt-3">＋ Agregar tramo</button>
         </div>
         <div class="flex gap-2 sticky bottom-3"><button type="button" id="del-guardar" class="flex-1 ${BTN} bg-red-700 hover:bg-red-800 text-white shadow-lg">💾 Guardar delivery</button></div>`;
+}
+async function guardarCobroDelivery(activo) {
+    const antes = localCfg.deliveryCobrar;
+    localCfg.deliveryCobrar = !!activo;
+    vistaDelivery();
+    try {
+        await setDoc(doc(db, 'config', 'local'), { delivery: { cobrar: !!activo }, actualizado: serverTimestamp() }, { merge: true });
+        toast(activo ? '✅ Delivery: cobrando' : '✅ Delivery sin cobro');
+    } catch (e) {
+        localCfg.deliveryCobrar = antes;
+        vistaDelivery();
+        toast('No se pudo guardar: ' + (e.code === 'permission-denied' ? 'falta publicar las reglas (reglas_firestore.txt).' : e.message));
+    }
 }
 async function guardarDelivery() {
     const tramos = (ddraft || []).map(t => ({ max: Number(t.max), costo: Math.max(0, Math.round(Number(t.costo) || 0)) }))
@@ -4567,6 +4606,7 @@ $('cfg-vista').addEventListener('click', (e) => {
     const d = b.dataset;
     if (b.id === 'del-agregar') { ddraft.push({ max: ddraft.length ? (Number(ddraft[ddraft.length - 1].max) || 0) + 1 : 1.9, costo: 0 }); vistaDelivery(); }
     else if (d.delQuitar !== undefined) { ddraft.splice(Number(d.delQuitar), 1); vistaDelivery(); }
+    else if (b.id === 'del-cobrar') guardarCobroDelivery(!localCfg.deliveryCobrar);
     else if (b.id === 'del-guardar') guardarDelivery();
 });
 

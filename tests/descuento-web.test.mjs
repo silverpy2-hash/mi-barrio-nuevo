@@ -216,3 +216,37 @@ test('rules allow bounded optional discount metadata without widening config acc
     assert.match(rules, /'descuento', 'porcentajeDescuento'/);
     assert.match(rules, /allow write: if esAdmin\(\);/);
 });
+for (const path of panels) {
+    test(`${path}: delivery charging toggle is merged, immediate and reversible`, async () => {
+        const source = read(path);
+        assert.match(source, /deliveryCobrar: !\(d\.delivery && d\.delivery\.cobrar === false\)/);
+        assert.match(source, /id="del-cobrar"/);
+        const calls = [];
+        const ctx = vm.createContext({ localCfg: { deliveryCobrar: true }, doc: (...x) => x, db: {}, serverTimestamp: () => 'now',
+            setDoc: async (...args) => calls.push(args), toast() {}, vistaDelivery() {} });
+        vm.runInContext(between(source, 'async function guardarCobroDelivery(', 'async function guardarDelivery('), ctx);
+        await ctx.guardarCobroDelivery(false);
+        assert.equal(calls[0][1].delivery.cobrar, false);
+        assert.equal(calls[0][2].merge, true);
+        assert.equal(ctx.localCfg.deliveryCobrar, false);
+        await ctx.guardarCobroDelivery(true);
+        assert.equal(calls[1][1].delivery.cobrar, true);
+        assert.equal(ctx.localCfg.deliveryCobrar, true);
+    });
+    test(`${path}: manual order delivery is zero when charging is off and keeps the zone limit`, () => {
+        const source = read(path);
+        const painted = [];
+        const ctx = vm.createContext({ localCfg: { deliveryCobrar: false },
+            nuevo: { distanciaKm: null, deliveryFuera: false, envio: 7000, envioManual: true },
+            costoDeliveryPorKm: () => 7000, pintarDeliveryNuevo() { painted.push('pintar'); }, renderNuevoTotal() { painted.push('total'); } });
+        vm.runInContext(between(source, 'function aplicarCostoDelivery(', 'function pintarDeliveryNuevo('), ctx);
+        ctx.aplicarCostoDelivery(2.5);
+        assert.equal(ctx.nuevo.envio, 0);
+        assert.equal(ctx.nuevo.distanciaKm, 2.5);
+        assert.deepEqual(painted, ['pintar', 'total']);
+        ctx.localCfg.deliveryCobrar = true;
+        ctx.nuevo.envioManual = false;
+        ctx.aplicarCostoDelivery(2.5);
+        assert.equal(ctx.nuevo.envio, 7000);
+    });
+}

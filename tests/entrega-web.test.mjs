@@ -190,6 +190,39 @@ for (const tipo of ['retiro', 'delivery']) {
         assert.match(p.urls[0], /^https:\/\/wa\.me\//);
     });
 }
+test('S4: disabling delivery charge keeps the coverage limit but charges zero', async () => {
+    const p = page();
+    p.context.window.DELIVERY_COBRAR = false;
+    p.run("seleccionarModalidad('delivery')");
+    p.gps[0].ok({ coords: { latitude: -25.46, longitude: -56.01 } });
+    await p.run('calcularDelivery()');
+    assert.equal(p.run('calcularTotal().totalGeneral'), 83000);
+    assert.match(p.get('delivery-info').textContent, /sin cargo/);
+    await p.run("enviarPedido('efectivo')");
+    assert.equal(p.sent[0].costoDelivery, 0);
+    assert.equal(p.sent[0].total, 83000);
+});
+test('S4: disabled delivery charge still rejects addresses outside the coverage limit', async () => {
+    const p = page();
+    p.context.window.DELIVERY_COBRAR = false;
+    p.setRoute(async () => ({ json: async () => ({ routes: [{ distance: 8000 }] }) }));
+    p.run("seleccionarModalidad('delivery')");
+    p.gps[0].ok({ coords: { latitude: -25.46, longitude: -56.01 } });
+    await p.run('calcularDelivery()');
+    assert.equal(p.get('btn-enviar').disabled, true);
+    assert.match(p.get('delivery-info').textContent, /Zona no cubierta/);
+});
+test('S4: applying config with deliveryCobrar false zeroes the cost immediately', async () => {
+    const p = page();
+    p.run("seleccionarModalidad('delivery')");
+    p.gps[0].ok({ coords: { latitude: -25.46, longitude: -56.01 } });
+    await p.run('calcularDelivery()');
+    assert.equal(p.run('calcularTotal().totalGeneral'), 88000);
+    p.run('window.aplicarDeliveryCliente({ deliveryCobrar: false, delivery: [{ max: 2, costo: 6000 }] })');
+    assert.equal(p.run('calcularTotal().totalGeneral'), 83000);
+    p.run('window.aplicarDeliveryCliente({ deliveryCobrar: true, delivery: [{ max: 2, costo: 6000 }] })');
+    assert.equal(p.run('calcularTotal().totalGeneral'), 89000);
+});
 test('S3: typed web writes never lose modality on permission failure; legacy writer is preserved', async () => {
     const attempts = [];
     const c = vm.createContext({ window: {}, db: {}, serverTimestamp: () => 'now', collection: () => 'pedidos',
