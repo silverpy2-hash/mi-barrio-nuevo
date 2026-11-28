@@ -522,6 +522,12 @@ async function callOpenAI({ model, message, draft, catalog, mesas }) {
 async function callAnthropic({ model, message, draft, catalog, mesas }) {
     const maxTokens = Math.max(200, Math.min(1200, Number(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS) || DEFAULT_MAX_OUTPUT_TOKENS));
     const schema = buildSchema(catalog);
+    // Anthropic's constrained decoder supports a subset of JSON Schema.
+    // Keep numeric/array bounds in the prompt AND validate the original schema
+    // below; omit only unsupported constraints from the wire schema.
+    const wireSchema = JSON.parse(JSON.stringify(schema, (key, value) => (
+        ['minimum', 'maximum', 'maxItems'].includes(key) ? undefined : value
+    )));
 
     const systemPrompt = SYSTEM_PROMPT + '\n\nEl esquema JSON requerido es:\n' + JSON.stringify(schema, null, 2) + '\n\nRespondé SOLO con el JSON válido que cumpla ese esquema.';
 
@@ -529,6 +535,7 @@ async function callAnthropic({ model, message, draft, catalog, mesas }) {
         model,
         max_tokens: maxTokens,
         system: systemPrompt,
+        output_config: { format: { type: 'json_schema', schema: wireSchema } },
         messages: [
             {
                 role: 'user',
@@ -563,8 +570,11 @@ async function callAnthropic({ model, message, draft, catalog, mesas }) {
     }
 
     if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        const error = new Error('Anthropic respondió ' + response.status + ': ' + text.slice(0, 300));
+        // Do not log upstream messages: validation errors can echo prompt data.
+        const detail = await response.json().catch(() => null);
+        const knownTypes = ['invalid_request_error', 'authentication_error', 'permission_error', 'not_found_error', 'rate_limit_error', 'api_error', 'overloaded_error'];
+        const errorType = knownTypes.includes(detail?.error?.type) ? detail.error.type : 'unknown_error';
+        const error = new Error('Anthropic HTTP ' + response.status + ': ' + errorType);
         error.status = response.status === 429 ? 429 : 502;
         error.publicMessage = response.status === 429
             ? 'La IA está recibiendo demasiadas consultas. Esperá unos segundos y probá de nuevo.'
@@ -604,6 +614,12 @@ async function callAnthropic({ model, message, draft, catalog, mesas }) {
     if (data?.stop_reason === 'max_tokens') {
         fail('max_tokens', 'La respuesta de la IA quedó truncada por el límite de tokens. Probá con un pedido más corto.');
     }
+    if (data?.stop_reason === 'refusal') {
+        fail('refusal', 'La IA rechazó la interpretación del pedido. Probá con otras palabras.');
+    }
+    if (!['end_turn', 'stop_sequence'].includes(data?.stop_reason)) {
+        fail('unexpected_stop_reason', 'La IA no terminó de generar el pedido. Probá de nuevo.');
+    }
     if (!content) {
         fail('no_text_blocks', 'La IA no devolvió texto para el pedido. Probá de nuevo.');
     }
@@ -628,6 +644,32 @@ async function callAnthropic({ model, message, draft, catalog, mesas }) {
         !pedido.extras.every(item => isPlainObject(item) && typeof item.id === 'string')
     )) {
         fail('invalid_order_shape', 'La IA devolvió una estructura de pedido inválida. Probá de nuevo.');
+    }
+    // Validate the ORIGINAL schema, including bounds unsupported by Anthropic.
+    // Return only a boolean: validation errors must not contain customer values.
+    function matchesSchema(value, rule) {
+        if (rule.anyOf) return rule.anyOf.some(option => matchesSchema(value, option));
+        const types = Array.isArray(rule.type) ? rule.type : [rule.type];
+        const type = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+        if (!types.some(t => t === type || (t === 'integer' && Number.isInteger(value)))) return false;
+        if (rule.enum && !rule.enum.includes(value)) return false;
+        if (typeof value === 'number' && (!Number.isFinite(value) ||
+            (rule.minimum !== undefined && value < rule.minimum) ||
+            (rule.maximum !== undefined && value > rule.maximum))) return false;
+        if (Array.isArray(value)) {
+            if (rule.minItems !== undefined && value.length < rule.minItems) return false;
+            if (rule.maxItems !== undefined && value.length > rule.maxItems) return false;
+            return value.every(item => matchesSchema(item, rule.items));
+        }
+        if (isPlainObject(value)) {
+            if ((rule.required || []).some(key => !Object.hasOwn(value, key))) return false;
+            return Object.keys(value).every(key => Object.hasOwn(rule.properties || {}, key)
+                ? matchesSchema(value[key], rule.properties[key]) : rule.additionalProperties !== false);
+        }
+        return true;
+    }
+    if (!matchesSchema(pedido, schema)) {
+        fail('schema_validation_failed', 'La IA devolvió datos de pedido inválidos. Probá de nuevo.');
     }
     return {
         modelo: model,
