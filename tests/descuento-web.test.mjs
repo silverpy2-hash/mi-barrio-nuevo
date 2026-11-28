@@ -233,7 +233,7 @@ for (const path of panels) {
         assert.equal(calls[1][1].delivery.cobrar, true);
         assert.equal(ctx.localCfg.deliveryCobrar, true);
     });
-    test(`${path}: manual order delivery is zero when charging is off and keeps the zone limit`, () => {
+    test(`${path}: manual order delivery keeps its fee when web charging is off`, () => {
         const source = read(path);
         const painted = [];
         const ctx = vm.createContext({ localCfg: { deliveryCobrar: false },
@@ -241,7 +241,7 @@ for (const path of panels) {
             costoDeliveryPorKm: () => 7000, pintarDeliveryNuevo() { painted.push('pintar'); }, renderNuevoTotal() { painted.push('total'); } });
         vm.runInContext(between(source, 'function aplicarCostoDelivery(', 'function pintarDeliveryNuevo('), ctx);
         ctx.aplicarCostoDelivery(2.5);
-        assert.equal(ctx.nuevo.envio, 0);
+        assert.equal(ctx.nuevo.envio, 7000);
         assert.equal(ctx.nuevo.distanciaKm, 2.5);
         assert.deepEqual(painted, ['pintar', 'total']);
         ctx.localCfg.deliveryCobrar = true;

@@ -2947,8 +2947,7 @@
             nuevo.distanciaKm = km;
             const c = costoDeliveryPorKm(km);
             nuevo.deliveryFuera = (c === null);
-            if (localCfg.deliveryCobrar === false) nuevo.envio = 0;
-            else if (!nuevo.envioManual) nuevo.envio = c || 0;
+            if (!nuevo.envioManual) nuevo.envio = c || 0;
             pintarDeliveryNuevo();
             renderNuevoTotal();
         }
@@ -2959,21 +2958,6 @@
             if (nuevo.tipo !== 'delivery') { info.textContent = ''; return; }
             const tramos = tramosDelivery();
             const maxKm = tramos.length ? tramos[tramos.length - 1].max : 0;
-            if (localCfg.deliveryCobrar === false) {
-                nuevo.envio = 0;
-                if (nuevo.deliveryFuera && nuevo.distanciaKm != null) {
-                    info.className = 'text-sm font-bold text-red-600';
-                    info.textContent = '❌ Zona no cubierta (' + nuevo.distanciaKm.toFixed(1) + ' km). El delivery llega hasta ' + maxKm + ' km.';
-                } else if (nuevo.distanciaKm != null) {
-                    info.className = 'text-sm font-bold text-green-700';
-                    info.textContent = '🛵 Delivery sin cargo · ' + nuevo.distanciaKm.toFixed(1) + ' km (calculado por ruta)';
-                } else {
-                    info.className = 'text-xs text-neutral-500';
-                    info.textContent = 'Pegá el link de Google Maps del cliente (el largo, con @lat,lng). El delivery no se cobra.';
-                }
-                $('nuevo-envio').innerHTML = '';
-                return;
-            }
             if (nuevo.deliveryFuera && nuevo.distanciaKm != null) {
                 info.className = 'text-sm font-bold text-red-600';
                 info.textContent = '❌ Zona no cubierta (' + nuevo.distanciaKm.toFixed(1) + ' km). El delivery llega hasta ' + maxKm + ' km.';
@@ -3157,7 +3141,7 @@
                 const tramos = tramosDelivery();
                 const maxKm = tramos.length ? tramos[tramos.length - 1].max : 0;
                 if (n.deliveryFuera) { nuevoMsg('nuevo-error', '❌ Zona no cubierta (' + n.distanciaKm.toFixed(1) + ' km). El delivery llega hasta ' + maxKm + ' km.'); return; }
-                if (localCfg.deliveryCobrar !== false && !(env > 0)) { nuevoMsg('nuevo-error', 'El delivery todavía no tiene costo. Pegá el link largo de Google Maps del cliente (con @lat,lng) o elegí un tramo a mano.'); return; }
+                if (!(env > 0)) { nuevoMsg('nuevo-error', 'El delivery todavía no tiene costo. Pegá el link largo de Google Maps del cliente (con @lat,lng) o elegí un tramo a mano.'); return; }
             }
 
             const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
@@ -4817,8 +4801,8 @@ function vistaDelivery() {
         <div class="${CARD}">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <div class="font-bold">💵 Cobrar delivery</div>
-                    <p class="text-xs text-neutral-500 mt-1">Con “Cobrando” se suman los tramos al pedido. Con “Sin cobro” el delivery no se cobra, pero los tramos siguen marcando hasta dónde llega.</p>
+                    <div class="font-bold">💵 Cobrar delivery en la página del cliente</div>
+                    <p class="text-xs text-neutral-500 mt-1">Solo para pedidos de la página: “Cobrando” aplica la tarifa y “Sin cobro” deja el envío gratis. En el TPV los pedidos manuales siempre cobran la tarifa por distancia. La cobertura no cambia.</p>
                 </div>
                 <button type="button" id="del-cobrar" class="shrink-0 text-sm font-bold px-4 py-2 rounded-xl border ${localCfg.deliveryCobrar ? 'bg-red-700 text-white border-red-700' : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'}">${localCfg.deliveryCobrar ? 'Cobrando' : 'Sin cobro'}</button>
             </div>

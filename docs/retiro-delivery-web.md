@@ -12,7 +12,7 @@ Selecting Delivery displays the address and map and requests browser geolocation
 
 ## Charging the delivery fee
 
-The administrator can turn the fee on or off in **Configuración → 🛵 Delivery**. The setting is stored as `config/local.delivery.cobrar`; when it is missing, delivery is charged (backward compatible). With **Sin cobro**, the customer page and manual panel orders charge zero, while the configured distance tiers still act as the coverage limit: addresses beyond the last tier remain rejected. Turning it back to **Cobrando** restores the configured tier prices immediately.
+The administrator can turn the customer-page fee on or off in **Configuración → 🛵 Delivery**. The setting is stored as `config/local.delivery.cobrar`; when it is missing, delivery is charged (backward compatible). With **Sin cobro**, only customer-page orders charge zero, while the configured distance tiers still act as the coverage limit: addresses beyond the last tier remain rejected. Turning it back to **Cobrando** restores the configured tier prices immediately. Manual orders in both TPV panels always retain the distance-tier fee, regardless of this switch.
 
 ## Discounts and saved orders
 
