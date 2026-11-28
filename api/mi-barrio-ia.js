@@ -528,7 +528,6 @@ async function callAnthropic({ model, message, draft, catalog, mesas }) {
     const body = {
         model,
         max_tokens: maxTokens,
-        temperature: 0,
         system: systemPrompt,
         messages: [
             {
