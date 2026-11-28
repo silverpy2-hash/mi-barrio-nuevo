@@ -89,19 +89,30 @@ export function buildCatalog(menu) {
     return { tamanos, sabores, extras };
 }
 
-export function buscarCliente(clientes, cliente, waNumero) {
+function normalizarCliente(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+
+export function buscarClientes(clientes, cliente, waNumero) {
     const list = Array.isArray(clientes) ? clientes : [];
-    const phone = cliente && cliente.celular ? waNumero(cliente.celular) : '';
-    if (phone && phone.length === 12) {
-        const byPhone = list.find((item) => String(item.id) === phone || waNumero(item.celular) === phone);
-        if (byPhone) return byPhone;
+    const query = normalizarCliente(cliente && (cliente.id || cliente.nombre));
+    const phoneText = String(cliente?.celular || (/^[+\d\s()-]+$/.test(query) ? query : ''));
+    const phone = phoneText ? waNumero(phoneText) : '';
+    const byId = query ? list.filter(item => normalizarCliente(item.id) === query) : [];
+    if (byId.length) return byId;
+    if (phoneText) {
+        const digits = phoneText.replace(/\D/g, '');
+        if (phone.length === 12) {
+            return list.filter(item => String(item.id) === phone || waNumero(item.celular) === phone);
+        }
+        return digits.length >= 4 ? list.filter(item => String(item.celular || item.id).replace(/\D/g, '').includes(digits)) : [];
     }
-    const name = String((cliente && cliente.nombre) || '').trim().toLowerCase();
-    if (name) {
-        const byName = list.find((item) => String(item.nombre || '').trim().toLowerCase() === name);
-        if (byName) return byName;
-    }
-    return null;
+    return query ? list.filter(item => normalizarCliente(item.nombre).includes(query)) : [];
+}
+
+export function buscarCliente(clientes, cliente, waNumero) {
+    const matches = buscarClientes(clientes, cliente, waNumero);
+    return matches.length === 1 ? matches[0] : null;
 }
 
 export function huellaPedido(draft) {
@@ -207,7 +218,7 @@ export function guardarUltimoPedido(storage, hash, now = Date.now()) {
     }
 }
 
-function rawFromDraft(draft) {
+function rawFromDraft(draft, paraProveedor = false) {
     if (!draft || draft.accion !== 'pedido') return null;
     const groups = new Map();
     for (const pizza of draft.pizzas || []) {
@@ -216,7 +227,7 @@ function rawFromDraft(draft) {
         if (current) current.cantidad += 1;
         else groups.set(key, { tamano: pizza.tamano, sabores: pizza.sabores.slice(), borde: !!pizza.borde, cantidad: 1 });
     }
-    return {
+    const raw = {
         accion: 'pedido',
         tipo: draft.tipo,
         mesa: draft.mesa,
@@ -239,6 +250,18 @@ function rawFromDraft(draft) {
         faltantes: draft.avisos || [],
         aclaracion: draft.aclaracion || '',
     };
+    if (!paraProveedor) {
+        raw.cliente = { ...(draft.clienteSolicitado || draft.cliente) };
+        raw.clienteSeleccionadoId = draft.clienteSeleccionadoId || null;
+        raw.envio = draft.envio;
+        raw.envioManual = draft.envioManual;
+    } else {
+        // Saved addresses are recovered locally again on the next instruction.
+        // Do not let Claude carry one customer's stored pin to a different one.
+        raw.cliente.mapa = draft.clienteSolicitado?.mapa || null;
+        raw.cliente.referencia = draft.clienteSolicitado?.referencia || null;
+    }
+    return raw;
 }
 
 // Turns the model's semantic draft into a validated, priced draft using the
@@ -282,7 +305,6 @@ export async function prepararBorrador({ raw, menu, tramos, mesas, clientes, hel
     if (rawPhone) {
         const phone = helpers.waNumero(rawPhone);
         if (phone.length === 12) cliente.celular = phone;
-        else errors.push('El celular no es válido. Ejemplo: 0981 123 456.');
     }
 
     const rawMap = text(rawClient.mapa, 500).trim();
@@ -295,9 +317,23 @@ export async function prepararBorrador({ raw, menu, tramos, mesas, clientes, hel
     }
 
     // Client memory is searched locally. The full customer database never leaves the browser.
-    const match = buscarCliente(clientesSafe, cliente, helpers.waNumero);
+    let coincidencias = buscarClientes(clientesSafe, rawClient, helpers.waNumero);
+    // Reuse the manual TPV's single-document lookup for phones/ids outside
+    // the recent customer cache. Never send search results to the provider.
+    if (!coincidencias.length && typeof helpers.buscarFichaCliente === 'function') {
+        try {
+            const ficha = await helpers.buscarFichaCliente(source.clienteSeleccionadoId
+                ? { ...rawClient, id: source.clienteSeleccionadoId } : rawClient);
+            if (ficha) coincidencias = [ficha];
+        } catch (e) {
+            errors.push('No se pudo consultar la ficha del cliente. Probá de nuevo.');
+        }
+    }
+    const match = coincidencias.find(item => item.id === source.clienteSeleccionadoId)
+        || (coincidencias.length === 1 ? coincidencias[0] : null);
+    if (coincidencias.length > 1 && !match) missing.push('seleccionar cliente');
     if (match) {
-        if (!cliente.nombre && match.nombre) cliente.nombre = text(String(match.nombre), 60).trim();
+        if (match.nombre) cliente.nombre = text(String(match.nombre), 60).trim();
         if (!cliente.celular && match.celular) {
             const phone = helpers.waNumero(match.celular);
             if (phone.length === 12) cliente.celular = phone;
@@ -312,6 +348,9 @@ export async function prepararBorrador({ raw, menu, tramos, mesas, clientes, hel
             if (link) cliente.mapa = link;
             else if (coords) cliente.mapa = helpers.linkDeCoords(coords);
         }
+    }
+    if (rawPhone && !cliente.celular && coincidencias.length <= 1) {
+        errors.push('El celular no es válido. Ejemplo: 0981 123 456.');
     }
 
     // ----- pizzas (expanded to individual units, exactly like the manual flow) -----
@@ -447,6 +486,12 @@ export async function prepararBorrador({ raw, menu, tramos, mesas, clientes, hel
     const nombreFinal = cliente.nombre || (tipo === 'retiro' ? 'Mostrador' : (tipo === 'local' && mesa ? 'Mesa ' + mesa : 'Cliente'));
     for (const item of (Array.isArray(source.faltantes) ? source.faltantes : [])) {
         const notice = text(item, 120).trim();
+        // Claude cannot see the local customer record. Drop requests for data
+        // that the TPV has since recovered, and don't demand payment at creation.
+        if ((cliente.celular && /celular|tel[eé]fono/i.test(notice)) ||
+            (cliente.mapa && /maps|coordenadas|ubicaci[oó]n|direcci[oó]n/i.test(notice)) ||
+            (cliente.nombre && /nombre.*cliente/i.test(notice)) ||
+            (entrada === 'nuevo' && /pago|cobro/i.test(notice))) continue;
         if (notice && !missing.includes(notice) && !notices.includes(notice)) notices.push(notice);
     }
 
@@ -458,6 +503,9 @@ export async function prepararBorrador({ raw, menu, tramos, mesas, clientes, hel
         tipo,
         mesa,
         cliente: { ...cliente, nombre: nombreFinal },
+        clienteSolicitado: { ...rawClient },
+        clienteSeleccionadoId: match?.id || null,
+        clientesCoincidentes: match ? [] : coincidencias,
         pizzas,
         extras,
         pago,
@@ -506,6 +554,7 @@ export function createMiBarrioIA(context = {}) {
         raw: null,
         loading: false,
         confirming: false,
+        revalidando: false,
         open: false,
         lastUsage: null,
         consumo: leerConsumo(storage),
@@ -654,6 +703,9 @@ export function createMiBarrioIA(context = {}) {
         const paymentButtons = ['efectivo', 'transferencia', 'pos'].map((payment) => (
             `<button type="button" data-mbia-pago="${payment}" class="mbia-chip ${draft.pago === payment ? 'is-on' : ''}">${esc(pagoLabel(payment))}</button>`
         )).join('');
+        const clientChoices = (draft.clientesCoincidentes || []).map((client, index) => (
+            `<button type="button" data-mbia-cliente="${index}" class="mbia-chip">${esc(client.nombre || client.id)} · ${esc(client.celular || client.id)}${client.direccion ? ' · ' + esc(client.direccion) : ''}</button>`
+        )).join('');
         const entryButtons = [['nuevo', '🔔 A cocina'], ['entregado', '✅ Ya entregado y cobrado']].map(([entry, label]) => (
             `<button type="button" data-mbia-entrada="${entry}" class="mbia-chip ${draft.entrada === entry ? 'is-on' : ''}">${label}</button>`
         )).join('');
@@ -668,7 +720,7 @@ export function createMiBarrioIA(context = {}) {
             `<div><span>Cliente</span><strong>${esc(draft.cliente.nombre)}${phone ? ' · ' + esc(phone) : ''}</strong></div>`,
             draft.cliente.referencia ? `<div><span>Referencia</span><strong>${esc(draft.cliente.referencia)}</strong></div>` : '',
             draft.cliente.notas ? `<div><span>Notas</span><strong>${esc(draft.cliente.notas)}</strong></div>` : '',
-            `<div><span>Pago</span><strong>${draft.pago ? esc(pagoLabel(draft.pago)) : 'Sin definir'} · ${draft.entrada === 'entregado' ? 'Ya cobrado' : 'A cocina'}</strong></div>`,
+            `<div><span>Pago</span><strong>${draft.pago ? esc(pagoLabel(draft.pago)) : 'Pendiente de cobro'} · ${draft.entrada === 'entregado' ? 'Ya cobrado' : 'A cocina'}</strong></div>`,
             '</div>',
         ].join('');
 
@@ -676,10 +728,18 @@ export function createMiBarrioIA(context = {}) {
             ${draft.aclaracion ? `<p class="mbia-aclaracion">“${esc(draft.aclaracion)}”</p>` : ''}
             ${issues ? `<ul class="mbia-issues">${issues}</ul>` : ''}
             ${summary}
+            <div class="mbia-fix">
+                <label class="mbia-fix-label" for="mbia-cliente-buscar">Buscar cliente registrado (nombre, teléfono o identificador)</label>
+                <div class="mbia-map-row">
+                    <input id="mbia-cliente-buscar" class="mbia-input mbia-input-compact" maxlength="60" value="${esc(draft.clienteSolicitado?.nombre || draft.clienteSolicitado?.celular || '')}" placeholder="Nombre, teléfono o identificador">
+                    <button type="button" data-mbia-buscar-cliente class="mbia-btn mbia-btn-small">Buscar</button>
+                </div>
+                ${clientChoices ? `<p>Elegí el cliente para completar sus datos:</p><div class="mbia-chips">${clientChoices}</div>` : ''}
+            </div>
             <div class="mbia-fix"><span class="mbia-fix-label">Tipo de pedido</span><div class="mbia-chips">${typeButtons}</div></div>
             ${mesaButtons}
             ${deliveryFix}
-            <div class="mbia-fix"><span class="mbia-fix-label">Pago</span><div class="mbia-chips">${paymentButtons}</div></div>
+            <div class="mbia-fix"><span class="mbia-fix-label">Pago</span><div class="mbia-chips">${paymentButtons}<button type="button" data-mbia-pendiente class="mbia-chip ${!draft.pago ? 'is-on' : ''}">Pendiente de cobro</button></div></div>
             <div class="mbia-fix"><span class="mbia-fix-label">Cómo entra</span><div class="mbia-chips">${entryButtons}</div></div>
             <ul class="mbia-items">${pizzaHtml}${extrasHtml}</ul>
             <div class="mbia-totals">
@@ -690,14 +750,14 @@ export function createMiBarrioIA(context = {}) {
             </div>
             ${maps}
             <div class="mbia-confirm-row">
-                <button type="button" data-mbia-confirmar class="mbia-btn mbia-btn-primary" ${draft.listo && !state.confirming ? '' : 'disabled'}>${state.confirming ? 'Guardando…' : '✅ Confirmar pedido · ' + gs(draft.total)}</button>
+                <button type="button" data-mbia-confirmar class="mbia-btn mbia-btn-primary" ${draft.listo && !state.confirming && !state.revalidando && !state.loading ? '' : 'disabled'}>${state.confirming ? 'Guardando…' : '✅ Confirmar pedido · ' + gs(draft.total)}</button>
                 <button type="button" data-mbia-editar class="mbia-btn mbia-btn-ghost">✏️ Editar en formulario</button>
                 <button type="button" data-mbia-descartar class="mbia-btn mbia-btn-ghost">🗑️ Descartar</button>
             </div>`;
     }
 
     async function revalidar(patch = {}) {
-        if (!state.draft || state.draft.accion !== 'pedido') return;
+        if (!state.draft || state.draft.accion !== 'pedido' || state.revalidando || state.confirming || state.loading) return;
         const base = rawFromDraft(state.draft);
         if (!base) return;
         if (patch.tipo) {
@@ -709,6 +769,12 @@ export function createMiBarrioIA(context = {}) {
             }
         }
         if (patch.mesa !== undefined) base.mesa = patch.mesa;
+        if (patch.clienteQuery !== undefined) {
+            base.cliente = { nombre: patch.clienteQuery, celular: null, mapa: null, referencia: null, notas: base.cliente.notas };
+            base.clienteSeleccionadoId = null;
+            base.envioManual = false;
+        }
+        if (patch.clienteId !== undefined) base.clienteSeleccionadoId = patch.clienteId;
         if (patch.pago !== undefined) base.pago = patch.pago;
         if (patch.entrada !== undefined) base.entrada = patch.entrada;
         if (patch.mapa !== undefined) base.cliente.mapa = patch.mapa;
@@ -716,6 +782,8 @@ export function createMiBarrioIA(context = {}) {
             base.envio = patch.envio;
             base.envioManual = true;
         }
+        state.revalidando = true;
+        renderPreview();
         try {
             const draft = await prepararBorrador({
                 raw: base,
@@ -734,11 +802,14 @@ export function createMiBarrioIA(context = {}) {
             renderPreview();
         } catch (e) {
             setStatus('No se pudo recalcular el pedido: ' + (e && e.message ? e.message : 'error'), 'error');
+        } finally {
+            state.revalidando = false;
+            renderPreview();
         }
     }
 
     async function interpretar() {
-        if (state.loading) return;
+        if (state.loading || state.revalidando || state.confirming) return;
         const message = input.value.trim();
         if (!message) {
             setStatus('Escribí o dictá un pedido.', 'error');
@@ -756,6 +827,7 @@ export function createMiBarrioIA(context = {}) {
         }
         state.loading = true;
         send.disabled = true;
+        renderPreview();
         setStatus('Interpretando el pedido…', 'loading');
         try {
             const token = await user.getIdToken();
@@ -764,7 +836,7 @@ export function createMiBarrioIA(context = {}) {
                 headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
                 body: JSON.stringify({
                     mensaje: message,
-                    borrador: state.draft && state.draft.accion === 'pedido' ? rawFromDraft(state.draft) : null,
+                    borrador: state.draft && state.draft.accion === 'pedido' ? rawFromDraft(state.draft, true) : null,
                     catalogo: buildCatalog(typeof context.menu === 'function' ? context.menu() : {}),
                     mesas: typeof context.mesas === 'function' ? context.mesas() : [],
                 }),
@@ -779,6 +851,11 @@ export function createMiBarrioIA(context = {}) {
             guardarConsumo(storage, state.consumo);
             renderUsage();
             const raw = data.pedido;
+            if (raw?.accion === 'pedido' && state.draft?.clienteSeleccionadoId &&
+                normalizarCliente(raw.cliente?.nombre) === normalizarCliente(state.draft.cliente.nombre) &&
+                (!raw.cliente?.celular || context.helpers.waNumero(raw.cliente.celular) === state.draft.cliente.celular)) {
+                raw.clienteSeleccionadoId = state.draft.clienteSeleccionadoId;
+            }
             if (raw && raw.accion === 'cancelar') {
                 state.draft = null;
                 state.raw = null;
@@ -813,11 +890,12 @@ export function createMiBarrioIA(context = {}) {
         } finally {
             state.loading = false;
             send.disabled = false;
+            renderPreview();
         }
     }
 
     async function confirmar() {
-        if (!state.draft || state.draft.accion !== 'pedido' || !state.draft.listo || state.confirming) return;
+        if (!state.draft || state.draft.accion !== 'pedido' || !state.draft.listo || state.confirming || state.loading || state.revalidando) return;
         const hash = huellaPedido(state.draft);
         const last = leerUltimoPedido(storage);
         if (last && last.h === hash && Date.now() - last.at < IA_DUPLICATE_WINDOW_MS) {
@@ -851,7 +929,7 @@ export function createMiBarrioIA(context = {}) {
     }
 
     function editar() {
-        if (!state.draft || state.draft.accion !== 'pedido') return;
+        if (!state.draft || state.draft.accion !== 'pedido' || state.loading || state.revalidando || state.confirming) return;
         const result = context.aplicarBorrador(state.draft);
         if (!result || !result.ok) {
             setStatus((result && result.error) || 'No se pudo abrir el formulario.', 'error');
@@ -872,6 +950,17 @@ export function createMiBarrioIA(context = {}) {
         const button = event.target && event.target.closest ? event.target.closest('button') : null;
         if (!button) return;
         const data = button.dataset || {};
+        if (state.revalidando || state.loading || state.confirming) return;
+        if ('mbiaBuscarCliente' in data) {
+            revalidar({ clienteQuery: $('mbia-cliente-buscar').value.trim() });
+            return;
+        }
+        if ('mbiaCliente' in data) {
+            const client = state.draft?.clientesCoincidentes?.[Number(data.mbiaCliente)];
+            if (client) revalidar({ clienteId: client.id });
+            return;
+        }
+        if ('mbiaPendiente' in data) { revalidar({ pago: null, entrada: 'nuevo' }); return; }
         if (data.mbiaTipo) { revalidar({ tipo: data.mbiaTipo }); return; }
         if (data.mbiaMesa) { revalidar({ mesa: Number(data.mbiaMesa) }); return; }
         if (data.mbiaPago) { revalidar({ pago: data.mbiaPago }); return; }
@@ -955,6 +1044,11 @@ export function createMiBarrioIA(context = {}) {
     send.addEventListener('click', interpretar);
     preview.addEventListener('click', onPreviewClick);
     preview.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && event.target?.id === 'mbia-cliente-buscar') {
+            event.preventDefault();
+            revalidar({ clienteQuery: event.target.value.trim() });
+            return;
+        }
         if (event.key === 'Enter' && event.target && event.target.id === 'mbia-mapa') {
             event.preventDefault();
             const mapInput = $('mbia-mapa');

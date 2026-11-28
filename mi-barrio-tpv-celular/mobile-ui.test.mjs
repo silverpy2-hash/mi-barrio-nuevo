@@ -1130,7 +1130,7 @@ test('mobile-ui.js is presentation only: no Firebase, network or business writes
 
 test('service worker bumps its own version and caches the new mobile assets', () => {
     const sw = read('sw.js');
-    assert.match(sw, /const VERSION = 'mi-barrio-tpv-celular-v5';/);
+    assert.match(sw, /const VERSION = 'mi-barrio-tpv-celular-v6';/);
     assert.ok(sw.includes("'./mobile.css'"));
     assert.ok(sw.includes("'./mobile-ui.js'"));
     assert.ok(sw.includes("'./ia-config.js'"));

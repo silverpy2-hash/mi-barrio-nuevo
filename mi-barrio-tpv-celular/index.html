@@ -5195,6 +5195,18 @@ $('cfg-vista').addEventListener('click', (e) => {
                         linkDeCoords,
                         ubicacionCliente,
                         celLocal,
+                        // Same single-record lookup as the manual phone search;
+                        // recent name matches stay in clientesMem on this device.
+                        buscarFichaCliente: async (cliente) => {
+                            if (!auth.currentUser || !isAdminUid(auth.currentUser.uid)) return null;
+                            const dato = String(cliente.celular || cliente.id || cliente.nombre || '').trim();
+                            if (!dato) return null;
+                            const celular = waNumero(dato);
+                            const id = /^[+\d\s()-]+$/.test(dato) && celular.length === 12 ? celular : dato;
+                            if (id.includes('/') || id.length > 128) return null;
+                            const ficha = await getDoc(doc(db, 'clientes', id));
+                            return ficha.exists() ? { ...ficha.data(), id: ficha.id } : null;
+                        },
                         calcularDelivery: calcularDeliveryParaIA,
                     },
                 });
