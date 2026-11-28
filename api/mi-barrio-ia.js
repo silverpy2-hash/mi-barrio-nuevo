@@ -573,33 +573,61 @@ async function callAnthropic({ model, message, draft, catalog, mesas }) {
     }
 
     const data = await response.json().catch(() => null);
-    if (!data || !Array.isArray(data.content) || !data.content[0]) {
-        const error = new Error('Anthropic devolvió una respuesta vacía.');
+    const blocks = data && Array.isArray(data.content) ? data.content : [];
+    // Claude can return thinking or other blocks BEFORE the final text.
+    // Never read/log those blocks; only text blocks contain the requested JSON.
+    const content = blocks
+        .filter(block => block && block.type === 'text' && typeof block.text === 'string')
+        .map(block => block.text)
+        .join('\n')
+        .trim();
+    function fail(reason, publicMessage) {
+        // Temporary diagnostics: metadata only, never prompt, text, or parser
+        // error.message (which can include fragments of the customer's JSON).
+        console.warn(JSON.stringify({
+            event: 'mi_barrio_ia_anthropic_response_error',
+            reason,
+            stopReason: ['end_turn', 'max_tokens', 'stop_sequence', 'tool_use', 'pause_turn', 'refusal'].includes(data?.stop_reason)
+                ? data.stop_reason : 'unknown',
+            blockTypes: blocks.map(block => ['text', 'thinking', 'redacted_thinking', 'tool_use'].includes(block?.type) ? block.type : 'other'),
+            textChars: content.length,
+            maxTokens,
+            tokensEntrada: Number(data?.usage?.input_tokens) || 0,
+            tokensSalida: Number(data?.usage?.output_tokens) || 0,
+        }));
+        const error = new Error('Anthropic response: ' + reason);
         error.status = 502;
-        error.publicMessage = 'La IA devolvió una respuesta vacía. Probá de nuevo.';
+        error.publicMessage = publicMessage;
         throw error;
     }
-    if (data.stop_reason === 'max_tokens') {
-        const error = new Error('La respuesta de Anthropic quedó truncada.');
-        error.status = 502;
-        error.publicMessage = 'El pedido era demasiado largo para la IA. Dividilo en dos o escribí menos ítems.';
-        throw error;
+    // Never try to save a partially generated order, even if it parses as JSON.
+    if (data?.stop_reason === 'max_tokens') {
+        fail('max_tokens', 'La respuesta de la IA quedó truncada por el límite de tokens. Probá con un pedido más corto.');
     }
-    const content = data.content[0].text;
-    if (typeof content !== 'string' || !content.trim()) {
-        const error = new Error('Anthropic no devolvió contenido JSON.');
-        error.status = 502;
-        error.publicMessage = 'La IA no devolvió un pedido. Probá de nuevo.';
-        throw error;
+    if (!content) {
+        fail('no_text_blocks', 'La IA no devolvió texto para el pedido. Probá de nuevo.');
     }
+    // Accept a complete Markdown JSON fence, not arbitrary prose or partial JSON.
+    const fenced = /^```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```$/i.exec(content);
     let pedido;
     try {
-        pedido = JSON.parse(content);
+        pedido = JSON.parse(fenced ? fenced[1].trim() : content);
     } catch (e) {
-        const error = new Error('Anthropic devolvió JSON inválido.');
-        error.status = 502;
-        error.publicMessage = 'La IA devolvió un formato inválido. Probá de nuevo.';
-        throw error;
+        fail('invalid_json', 'La IA devolvió un formato inválido. Probá de nuevo.');
+    }
+    // Keep the same flat semantic draft that ia.js expects; monetary validation
+    // and pricing remain exclusively in the existing TPV helpers.
+    if (!isPlainObject(pedido) || !['pedido', 'cancelar', 'no_entendido'].includes(pedido.accion)) {
+        fail('invalid_action', 'La IA devolvió una estructura de pedido inválida. Probá de nuevo.');
+    }
+    if (pedido.accion === 'pedido' && (
+        !['retiro', 'local', 'delivery'].includes(pedido.tipo) ||
+        !isPlainObject(pedido.cliente) || !isPlainObject(pedido.descuento) ||
+        !Array.isArray(pedido.pizzas) || !Array.isArray(pedido.extras) ||
+        !pedido.pizzas.every(item => isPlainObject(item) && typeof item.tamano === 'string' && Array.isArray(item.sabores)) ||
+        !pedido.extras.every(item => isPlainObject(item) && typeof item.id === 'string')
+    )) {
+        fail('invalid_order_shape', 'La IA devolvió una estructura de pedido inválida. Probá de nuevo.');
     }
     return {
         modelo: model,
