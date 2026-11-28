@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TPV - Mi Barrio</title>
+    <link rel="stylesheet" href="comercial/panel.css">
+    <script src="comercial/motor.js"></script>
+    <script src="comercial/panel.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <meta name="robots" content="noindex, nofollow">
 
@@ -1267,6 +1270,8 @@
                         <label for="nuevo-descuento" class="text-sm font-semibold">Descuento (Gs)</label>
                         <input id="nuevo-descuento" type="number" inputmode="numeric" min="0" placeholder="0" class="w-32 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm text-right">
                     </div>
+                    <label class="block text-xs">Motivo del descuento<input id="nuevo-motivo" maxlength="100" placeholder="Promoción / cortesía / ajuste" class="w-full border rounded-lg p-2"></label>
+                    <label class="block text-xs">Canal del pedido<select id="nuevo-canal" class="w-full border rounded-lg p-2"><option value="tpv">TPV / mostrador</option><option value="whatsapp">WhatsApp</option></select></label>
                     <div id="nuevo-total"></div>
                 </div>
 
@@ -1283,10 +1288,12 @@
                     <h2 class="font-extrabold">📊 Caja y cierres</h2>
                     <button id="caja-cerrar-modal" type="button" class="text-xs bg-white/20 hover:bg-white/30 font-bold px-3 py-1.5 rounded-lg">✖ Volver</button>
                 </div>
-                <div class="px-4 pb-3 flex gap-2">
+                <div class="px-4 pb-3 flex flex-wrap gap-2">
                     <button type="button" data-tab="hoy" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Caja actual</button>
                     <button type="button" data-tab="historial" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Historial de cierres</button>
                     <button type="button" data-tab="clientes" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Clientes</button>
+                    <button type="button" data-tab="estadisticas" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Estadísticas</button>
+                    <button type="button" data-tab="costos" class="caja-tab text-xs font-bold px-3 py-1.5 rounded-full">Costos e insumos</button>
                 </div>
             </div>
             <div id="caja-contenido" class="px-4 py-5 space-y-4"></div>
@@ -1376,7 +1383,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-        import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer, documentId, startAfter } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+        import { commercialStore } from './comercial/firebase.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBczdHiqe4fO6XThYRQky-WBlwgdhWDYCI",
@@ -1444,6 +1452,7 @@
         let cancelarSolicitudesAdmin = null;
         const solicitudesEnProceso = new Set();
         const adminActivo = () => panelAbierto && !esDelivery && !esCamarero;
+        let comercial = null, comercialDB = null;
 
         // ===== Utilidades =====
         function esc(t) {
@@ -1877,10 +1886,11 @@
                 actualizarAvisoSonido();
                 mantenerPantalla();
                 escucharPedidos();
-                if (!esDelivery && !esCamarero) { escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); escucharMesas(); pintarAutoprint(); escucharSolicitudesAdmin(); }
+                if (!esDelivery && !esCamarero) { comercial?.start(); escucharGastos(); escucharClientes(); escucharFondo(); cargarUltimos(); escucharMenu(); escucharLocal(); escucharMesas(); pintarAutoprint(); escucharSolicitudesAdmin(); }
                 if (esCamarero) { escucharMenu(); escucharMesas(); escucharMisSolicitudes(); pintarResumenMesas(); }
             } else {
                 panelAbierto = false;
+                comercial?.reset();
                 usuarioUid = null;
                 esDelivery = false;
                 esCamarero = false;
@@ -2257,6 +2267,7 @@
                 render();
                 refrescarCaja();
                 if (!esCamarero) { procesarColaComandas(); procesarColaTickets(); }
+                if (adminActivo()) comercial?.captureLive();
             }, (error) => {
                 mostrarError(error.code === 'permission-denied'
                     ? 'Este usuario no tiene permiso para ver los pedidos.'
@@ -2646,6 +2657,12 @@
                 ['coca-15l', 'Coca Cola 1.5LT', 17000]
             ]
         };
+        comercialDB = commercialStore({ db, collection, doc, query, orderBy, documentId, startAfter, limit, getDocs, onSnapshot, runTransaction, serverTimestamp }, {
+            admin: adminActivo, orders: () => pedidos, menu: () => MENU,
+            uid: () => auth.currentUser?.uid || '', email: () => auth.currentUser?.email || '',
+            error: mostrarError, toast: mostrarToast
+        });
+        comercial = window.MBComercialUI.create(comercialDB);
         const GRUPOS_SABOR = [['gourmet', '⭐ Gourmet', 'text-amber-700 bg-amber-50'], ['especial', '✨ Especiales', 'text-blue-700 bg-blue-50'], ['clasico', '🍃 Clásicos', 'text-green-700 bg-green-50']];
 
         let propios = new Set();   // pedidos cargados desde este panel (no suenan como "nuevo")
@@ -2868,7 +2885,8 @@
         }
 
         function nuevoLimpiar() {
-            ['nuevo-nombre', 'nuevo-celular', 'nuevo-direccion', 'nuevo-referencia', 'nuevo-notas', 'nuevo-descuento'].forEach(id => { $(id).value = ''; });
+            ['nuevo-nombre', 'nuevo-celular', 'nuevo-direccion', 'nuevo-referencia', 'nuevo-notas', 'nuevo-descuento', 'nuevo-motivo'].forEach(id => { $(id).value = ''; });
+            $('nuevo-canal').value = 'tpv';
             camposAutoCliente = {};
             consultaCliente++;
             nuevo.sabores = []; nuevo.borde = false; nuevo.pizzas = []; nuevo.extras = {}; nuevo.pago = ''; nuevo.envio = 0; nuevo.agregarA = null;
@@ -2892,7 +2910,7 @@
             nuevoMsg('nuevo-ok', ''); nuevoMsg('nuevo-error', '');
             const n = nuevo;
             if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
-            const extras = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
+            const extras = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]], precioUnitario: Number(x[2]) }));
             if (!n.pizzas.length && !extras.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
             const ubicacion = n.tipo === 'delivery' ? $('nuevo-direccion').value.trim() : '';
             const direccion = n.tipo === 'delivery' ? $('nuevo-referencia').value.trim() : '';
@@ -2912,6 +2930,9 @@
             const nombre = $('nuevo-nombre').value.trim() || (n.tipo === 'retiro' ? 'Mostrador' : (n.tipo === 'local' ? 'Mesa ' + n.mesa : 'Cliente'));
             const notas = $('nuevo-notas').value.trim();
             const { sub, desc, env, total } = nuevoTotales();
+            if (desc > sub) { nuevoMsg('nuevo-error', 'El descuento no puede superar los productos del pedido.'); return; }
+            if (desc > 0 && !$('nuevo-motivo').value.trim()) { nuevoMsg('nuevo-error', 'Indicá el motivo del descuento.'); return; }
+            if (n.entrada === 'entregado' && !n.pago) { nuevoMsg('nuevo-error', 'Elegí el medio de pago antes de guardar como cobrado.'); return; }
             if (n.tipo === 'delivery') {
                 const tramos = tramosDelivery();
                 const maxKm = tramos.length ? tramos[tramos.length - 1].max : 0;
@@ -2919,7 +2940,7 @@
                 if (!(env > 0)) { nuevoMsg('nuevo-error', 'El delivery todavía no tiene costo. Pegá el link largo de Google Maps del cliente (con @lat,lng) o elegí un tramo a mano.'); return; }
             }
 
-            const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
+            const pizzas = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, categoria: z.categoria || nuevoCat(z.sabores), sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
 
             // El camarero NO escribe en pedidos: manda la propuesta sin precios a la cola
             // y el TPV administrador la valida contra MENU antes de crear el pedido.
@@ -2950,6 +2971,8 @@
                 tipo: n.tipo,
                 mesa: n.tipo === 'local' ? n.mesa : null,
                 origen: 'panel',
+                canalComercial: $('nuevo-canal')?.value || 'tpv',
+                motivoDescuento: $('nuevo-motivo')?.value.trim() || null,
                 pago: n.pago || null,
                 pagado: !!(n.pago && n.entrada === 'entregado'),
                 descuento: desc,
@@ -2962,6 +2985,7 @@
                 mensaje: lineas.join('\n')
             };
             if (n.entrada === 'entregado') datos.estadoActualizado = serverTimestamp();
+            if (datos.pagado) datos.cobradoEn = serverTimestamp();
 
             const ref = doc(collection(db, 'pedidos'));
             propios.add(ref.id);
@@ -2971,10 +2995,12 @@
             try {
                 await runTransaction(db, async (tx) => {
                     const c = await tx.get(refContador());
+                    const economic = await comercialDB.prepareNew(tx, ref.id, datos);
                     datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
                     await recordarCliente(tx, datos, Date.now());
                     tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
                     tx.set(ref, datos);
+                    comercialDB.writeNew(tx, ref.id, economic);
                 });
                 nuevoLimpiar();
                 renderNuevo();
@@ -2983,7 +3009,7 @@
             } catch (e) {
                 propios.delete(ref.id);
                 nuevoMsg('nuevo-error', e.code === 'permission-denied'
-                    ? 'Firebase no dejó guardar el pedido: falta publicar las reglas nuevas (reglas_firestore.txt) o no entraste como administrador.'
+                    ? 'Firebase no dejó guardar el pedido: publicá las reglas de tpv-push-backend/firestore.rules.proposed.txt (incluyen economía privada) y entrá como administrador.'
                     : 'No se pudo guardar el pedido: ' + e.message);
             } finally {
                 nuevo.guardando = false;
@@ -3029,7 +3055,7 @@
             else if ('nBorde' in d) { nuevo.borde = !nuevo.borde; }
             else if ('nAddpizza' in d) {
                 if (!nuevo.sabores.length) return;
-                nuevo.pizzas.push({ tamano: nuevo.tamano, sabores: nuevo.sabores.slice(), borde: nuevo.borde, precio: nuevoPrecio(nuevo.tamano, nuevo.sabores, nuevo.borde) });
+                nuevo.pizzas.push({ tamano: nuevo.tamano, categoria: nuevoCat(nuevo.sabores), sabores: nuevo.sabores.slice(), borde: nuevo.borde, precio: nuevoPrecio(nuevo.tamano, nuevo.sabores, nuevo.borde) });
                 nuevo.sabores = []; nuevo.borde = false;
             }
             else if (d.nDelpizza !== undefined) { nuevo.pizzas.splice(Number(d.nDelpizza), 1); }
@@ -3051,9 +3077,9 @@
         let cierres = [];
 
         function resumenActual() {
-            const entregados = pedidos.filter(p => estadoDe(p) === 'entregado');
+            const entregados = pedidos.filter(p => estadoDe(p) === 'entregado' && p.pagado === true && !p.cierreId);
             const cancelados = pedidos.filter(p => estadoDe(p) === 'cancelado');
-            const enCurso = pedidos.filter(p => ACTIVOS.includes(estadoDe(p)));
+            const enCurso = pedidos.filter(p => ACTIVOS.includes(estadoDe(p)) || estadoDe(p) === 'entregado' && p.pagado !== true);
             const total = entregados.reduce((a, p) => a + Number(p.total || 0), 0);
             const porTamano = {};
             let pizzas = 0;
@@ -3065,13 +3091,13 @@
                 porTamano[k].monto += Number(z.precio || 0);
             }));
             const porPago = { efectivo: 0, transferencia: 0, pos: 0, sinDefinir: 0 };
-            entregados.forEach(p => { porPago[PAGOS[p.pago] ? p.pago : 'sinDefinir'] += Number(p.total || 0); });
+            pedidos.filter(p => p.pagado === true && !p.cierreId).forEach(p => { porPago[PAGOS[p.pago] ? p.pago : 'sinDefinir'] += Number(p.total || 0); });
             const porTipo = { delivery: { n: 0, monto: 0 }, retiro: { n: 0, monto: 0 }, local: { n: 0, monto: 0 } };
             entregados.forEach(p => {
                 const k = (p.tipo === 'retiro' || p.tipo === 'local') ? p.tipo : 'delivery';
                 porTipo[k].n++; porTipo[k].monto += Number(p.total || 0);
             });
-            const totalGastos = gastos.reduce((a, g) => a + Number(g.monto || 0), 0);
+            const totalGastos = gastos.filter(g => g.medio !== 'no-monetario').reduce((a, g) => a + Number(g.monto || 0), 0);
             const sab = {}, hs = {};
             entregados.forEach(p => {
                 (p.pizzas || []).forEach(z => (z.sabores || []).forEach(x => { sab[x] = (sab[x] || 0) + 1; }));
@@ -3080,25 +3106,34 @@
             const topSabores = Object.entries(sab).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([nombre, cantidad]) => ({ nombre, cantidad }));
             const pico = Object.entries(hs).sort((a, b) => b[1] - a[1])[0];
             const horaPico = pico ? { hora: Number(pico[0]), pedidos: pico[1] } : null;
-            return { entregados, cancelados, enCurso, total, pizzas, porTamano: Object.values(porTamano), porPago, porTipo, totalGastos, topSabores, horaPico, porHora: hs };
+            const M = window.MBComercial;
+            const registros = pedidos.map(p => M.view(p, comercial?.saved(p.id), comercial?.config(), MENU));
+            const caja = M.cash(registros, gastos, fondo);
+            const financiero = M.report(registros, gastos, {}, comercial?.config());
+            const incluidos = M.report(registros.filter(s => entregados.some(p => p.id === s.pedidoId)), [], {}, comercial?.config());
+            pizzas = incluidos.pizzas;
+            Object.keys(porTamano).forEach(k => delete porTamano[k]);
+            incluidos.productos.forEach(x => porTamano[x.nombre] = { nombre: x.nombre, cantidad: x.cantidad, monto: x.neto });
+            return { entregados, cancelados, enCurso, total, pizzas, porTamano: Object.values(porTamano), porPago, porTipo, totalGastos, topSabores, horaPico, porHora: hs, caja, financiero };
         }
 
         function bloqueResumen(r) {
             const filas = r.porTamano.map(t => `<div class="flex justify-between text-sm"><span>${esc(t.cantidad)} × ${esc(t.nombre)}</span><span class="font-semibold">${gs(t.monto)}</span></div>`).join('');
             return `
                 <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
-                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Total vendido (pedidos entregados)</div>
+                    <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Ventas entregadas y cobradas incluidas en cierre</div>
                     <div class="text-3xl font-black text-red-700">${gs(r.total)}</div>
                     <div class="grid grid-cols-3 gap-2 text-center">
                         <div class="bg-green-50 rounded-xl py-2"><div class="text-lg font-black text-green-700">${r.entregados.length}</div><div class="text-[11px] text-neutral-600">Entregados</div></div>
                         <div class="bg-neutral-50 rounded-xl py-2"><div class="text-lg font-black">${r.entregados.length ? gs(Math.round(r.total / r.entregados.length)) : '-'}</div><div class="text-[11px] text-neutral-600">Ticket promedio</div></div>
                         <div class="bg-red-50 rounded-xl py-2"><div class="text-lg font-black text-red-700">${r.cancelados.length}</div><div class="text-[11px] text-neutral-600">Cancelados</div></div>
                     </div>
-                    ${filas ? `<div class="border-t pt-2 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Pizzas vendidas: ${r.pizzas}</div>${filas}</div>` : ''}
+                    ${filas ? `<div class="border-t pt-2 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Productos netos · Pizzas elaboradas (incluye regalos): ${r.pizzas}</div>${filas}<p class="text-xs text-neutral-500">Importes después de descuentos; el delivery se suma aparte en el total. Ver conciliación en Estadísticas.</p></div>` : ''}
                 </div>`;
         }
 
         let gastos = [];
+        let gastoGuardando = false;
         let cancelarGastos = null;
 
         function escucharGastos() {
@@ -3129,13 +3164,13 @@
                     <div class="border-t pt-2 mt-2 space-y-1">
                         ${fo > 0 ? `<div class="flex justify-between text-sm"><span>🏦 Fondo inicial</span><span class="font-semibold">+ ${gs(fo)}</span></div>` : ''}<div class="flex justify-between text-sm"><span>Gastos</span><span class="font-semibold text-red-700">− ${gs(tg)}</span></div>
                         <div class="flex justify-between text-sm"><span>💵 Efectivo esperado en caja</span><span class="font-bold">${gs((fo || 0) + (pp.efectivo || 0) - tg)}</span></div>
-                        <div class="flex justify-between text-sm"><span>Ganancia (ventas − gastos)</span><span class="font-bold">${gs(total - tg)}</span></div>
+                         <div class="flex justify-between text-sm"><span>Ventas − egresos (no ganancia neta)</span><span class="font-bold">${gs(total - tg)}</span></div>
                     </div>
                 </div>`;
         }
 
         function bloqueGastos() {
-            const lista = gastos.map(g => `<div class="flex items-center justify-between gap-2 text-sm border-b border-neutral-100 py-1"><span>${esc(g.concepto)}</span><span class="flex items-center gap-2"><span class="font-semibold">${gs(g.monto)}</span><button type="button" data-gasto-del="${esc(g.id)}" class="text-xs text-red-600 font-bold">✖</button></span></div>`).join('');
+            const lista = gastos.map(g => `<div class="flex items-center justify-between gap-2 text-sm border-b border-neutral-100 py-1"><span>${esc(g.concepto)}<small class="block text-neutral-500">${esc(g.clase || 'Sin clasificar')} · ${esc(g.medio || 'Medio desconocido')}</small></span><span class="flex items-center gap-2"><span class="font-semibold">${gs(g.monto)}</span><button type="button" data-gasto-edit="${esc(g.id)}" class="text-xs font-bold">Editar</button><button type="button" data-gasto-del="${esc(g.id)}" class="text-xs text-red-600 font-bold">✖</button></span></div>`).join('');
             return `
                 <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
                     <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Gastos del día</div>
@@ -3144,20 +3179,26 @@
                         <input id="gasto-monto" type="number" inputmode="numeric" min="1" placeholder="Gs" class="w-28 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm">
                         <button type="button" data-gasto-add class="bg-neutral-800 text-white text-sm font-bold px-3 rounded-xl">+</button>
                     </div>
+                    <div class="flex flex-wrap gap-2 text-sm">
+                        <select id="gasto-clase" class="border rounded-lg p-2"><option value="variable">Operativo variable</option><option value="fijo">Fijo (luz/salario/alquiler)</option><option value="compra">Compra de mercadería</option><option value="reparto">Reparto no asignado a un pedido</option><option value="pago-reparto">Pago de reparto ya imputado (solo caja)</option></select>
+                        <select id="gasto-medio" class="border rounded-lg p-2"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="pos">POS</option></select>
+                    </div>
                     ${lista || '<p class="text-xs text-neutral-500">Sin gastos anotados.</p>'}
                 </div>`;
         }
 
         async function agregarGasto() {
+            if (gastoGuardando || !adminActivo()) return;
             const concepto = $('gasto-concepto').value.trim();
             const monto = Math.round(Number($('gasto-monto').value));
-            if (!concepto || !(monto > 0)) { mostrarError('Escribí el concepto y un monto mayor a 0.'); return; }
+            if (!concepto || !Number.isSafeInteger(monto) || !(monto > 0)) { mostrarError('Escribí el concepto y un monto entero mayor a 0.'); return; }
+            gastoGuardando = true;
             try {
                 $('gasto-concepto').value = ''; $('gasto-monto').value = '';
-                await addDoc(collection(db, 'gastos'), { concepto: concepto, monto: monto, creado: serverTimestamp(), cierreId: null });
+                await addDoc(collection(db, 'gastos'), { concepto, monto, clase: $('gasto-clase').value, medio: $('gasto-medio').value, corte: comercial?.config().corte ?? 5, jornada: window.MBComercial.day(Date.now(), comercial?.config().corte ?? 5), creado: serverTimestamp(), cierreId: null });
             } catch (e) {
                 mostrarError('No se pudo guardar el gasto: ' + e.message);
-            }
+            } finally { gastoGuardando = false; }
         }
 
         function resumenPagosTicket(c) {
@@ -3169,7 +3210,7 @@
   <div>POS<div class="r">${gs(pp.pos)}</div></div>
   ${pp.sinDefinir > 0 ? `<div>Sin definir<div class="r">${gs(pp.sinDefinir)}</div></div>` : ''}
   <hr>${gl}<div>GASTOS<div class="r">- ${gs(c.totalGastos)}</div></div>
-  ${c.fondo ? `<div>FONDO INICIAL<div class="r">${gs(c.fondo)}</div></div>` : ''}<div>EFECTIVO EN CAJA<div class="r">${gs((c.fondo || 0) + (pp.efectivo || 0) - (c.totalGastos || 0))}</div></div>
+  ${c.fondo ? `<div>FONDO INICIAL<div class="r">${gs(c.fondo)}</div></div>` : ''}<div>EFECTIVO EN CAJA<div class="r">${gs(c.efectivoEsperado ?? ((c.fondo || 0) + (pp.efectivo || 0) - (c.totalGastos || 0)))}</div></div>
   <hr>`;
         }
 
@@ -3177,19 +3218,27 @@
             const foco = document.activeElement && document.activeElement.id;
             const vc = $('gasto-concepto') ? $('gasto-concepto').value : '';
             const vm = $('gasto-monto') ? $('gasto-monto').value : '';
+            const claseGasto = $('gasto-clase')?.value, medioGasto = $('gasto-medio')?.value;
             const vf = $('caja-fondo') ? $('caja-fondo').value : null;
             document.querySelectorAll('.caja-tab').forEach(b => {
                 b.className = 'caja-tab text-xs font-bold px-3 py-1.5 rounded-full ' + (b.dataset.tab === tabCaja ? 'bg-white text-neutral-900' : 'bg-white/20 text-white');
             });
             const cont = $('caja-contenido');
+            if (tabCaja === 'estadisticas' || tabCaja === 'costos') { comercial.activate(tabCaja, cont); return; }
+            comercial.deactivate();
+            cont.classList.remove('mb-comercial');
             if (tabCaja === 'hoy') {
                 const r = resumenActual();
                 const hayAlgo = r.entregados.length + r.cancelados.length + gastos.length > 0;
-                cont.innerHTML = bloqueFondo() + bloqueResumen(r) + bloqueTipos(r.porTipo) + bloquePagos(r.porPago, r.totalGastos, r.total, fondo) + bloqueGastos() + bloqueComparar(r) + bloqueHoras(r) + bloqueExtra(r) + bloqueArqueo(r) +
+                if (r.caja.gastosSinMedio) mostrarError('Arqueo provisional: hay gastos sin medio de pago. Usá Editar en los gastos antes de cerrar; no se supone que fueron en efectivo.');
+                cont.innerHTML = bloqueFondo() + bloqueResumen(r) + bloqueTipos(r.porTipo) + bloquePagos(r.porPago, r.caja.gastosEfectivo + r.caja.reembolsosEfectivo, r.total, fondo) + bloqueGastos() + bloqueComparar(r) + bloqueHoras(r) + bloqueExtra(r) + bloqueArqueo(r) +
+                    `<div class="bg-white border rounded-xl p-4 text-sm">Ventas entregadas (incluye pendientes): <b>${gs(r.financiero.netas)}</b> · Cobrado: <b>${gs(r.financiero.cobrado)}</b> · Pendiente: <b>${gs(r.financiero.pendiente)}</b><br>Compras: ${gs(r.financiero.compras)} · Costo producción conocido: ${gs(r.financiero.costoProduccion)} · <b>Ganancia neta no confirmada</b> hasta completar costos y gastos. Ver Estadísticas.<br>Solo egresos en efectivo afectan el arqueo. Pedidos pendientes de cobro quedan abiertos.</div>` +
                     (r.enCurso.length ? `<p class="text-sm text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">⚠️ Hay ${r.enCurso.length} pedido(s) en curso. No entran en este cierre: quedan en el panel para el próximo.</p>` : '') +
-                    `<button type="button" id="btn-cerrar-caja" ${hayAlgo ? '' : 'disabled'} class="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-3 rounded-xl transition">🔒 Cerrar caja y limpiar panel</button>
+                     `<label class="block text-sm bg-white border rounded-xl p-3"><input id="caja-gastos-completos" type="checkbox"> Confirmo que registré todos los gastos operativos de esta jornada. No confirma recetas ni costos faltantes.</label><button type="button" id="btn-cerrar-caja" ${hayAlgo ? '' : 'disabled'} class="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-3 rounded-xl transition">🔒 Cerrar caja y limpiar panel</button>
                      <p class="text-xs text-neutral-500 text-center">Se guarda el reporte en el historial y los pedidos entregados y cancelados salen del panel.</p>`;
                 if ($('gasto-concepto')) { $('gasto-concepto').value = vc; $('gasto-monto').value = vm; }
+                if (claseGasto && $('gasto-clase')) $('gasto-clase').value = claseGasto;
+                if (medioGasto && $('gasto-medio')) $('gasto-medio').value = medioGasto;
                 if (vf !== null && $('caja-fondo')) $('caja-fondo').value = vf;
                 if (foco && $(foco) && (foco === 'gasto-concepto' || foco === 'gasto-monto' || foco === 'caja-contado' || foco === 'caja-fondo')) $(foco).focus();
             } else {
@@ -3209,7 +3258,8 @@
                         <div class="mt-3 space-y-2">
                             <div class="text-xs text-neutral-500">Cerrado ${esc(fechaCorta(c.cerradoMs))} por ${esc(c.cerradoPor)} · Cancelados: ${esc(c.cantidadCancelados)} · Pizzas: ${esc(c.pizzas)}</div>
                             ${(c.porTamano || []).map(t => `<div class="flex justify-between text-sm"><span>${esc(t.cantidad)} × ${esc(t.nombre)}</span><span>${gs(t.monto)}</span></div>`).join('')}
-                            ${c.porTipo ? bloqueTipos(c.porTipo) : ''}${c.porPago ? bloquePagos(c.porPago, c.totalGastos || 0, c.total, c.fondo || 0) : ''}${bloqueHoras(c)}${bloqueExtra(c)}${difHtml(c)}
+                            ${c.porTipo ? bloqueTipos(c.porTipo) : ''}${c.porPago ? bloquePagos(c.porPago, c.finanzas ? c.finanzas.gastosEfectivo + c.finanzas.reembolsosEfectivo : c.totalGastos || 0, c.total, c.fondo || 0) : ''}${bloqueHoras(c)}${bloqueExtra(c)}${difHtml(c)}
+                            ${c.finanzas ? `<div class="text-sm border rounded-lg p-3">Bruto: ${gs(c.finanzas.brutas)} · Descuentos: ${gs(c.finanzas.descuentos)} · Delivery: ${gs(c.finanzas.delivery)}<br>Costo producción conocido: ${gs(c.finanzas.costoProduccion)} · Reparto: ${gs(c.finanzas.costoReparto)} · Compras: ${gs(c.finanzas.compras)}<br>Ganancia neta: ${c.finanzas.gananciaNeta == null ? 'No confirmada (faltan costos o gastos)' : gs(c.finanzas.gananciaNeta)} · Jornada ${esc(c.jornada)} · ${esc(c.zonaHoraria)}</div>` : '<p class="text-xs text-amber-700">Cierre histórico: sin costos de producción verificables; ventas menos gastos no es ganancia neta.</p>'}
                             <div class="border-t pt-2">${filas}</div>
                             <button type="button" data-imprimir-cierre="${esc(c.id)}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-3 py-2 rounded-xl">🖨️ Imprimir reporte</button>
                         </div>
@@ -3234,61 +3284,23 @@
         }
 
         async function cerrarCaja() {
-            if (esDelivery) return;
+            if (!adminActivo()) return;
             const r = resumenActual();
+            if (gastoGuardando || nuevo.guardando) { mostrarError('Esperá a que termine de guardarse la operación en curso antes de cerrar.'); return; }
             const aArchivar = [...r.entregados, ...r.cancelados];
             if (!aArchivar.length && !gastos.length) return;
-            if (aArchivar.length + gastos.length > 450) { mostrarError('Son demasiados pedidos para un solo cierre.'); return; }
+            if (r.enCurso.some(p => p.pagado === true)) { mostrarError('Hay anticipos cobrados en pedidos en curso. Completá o cancelá esos pedidos antes de cerrar para no contar el efectivo en dos cajas.'); return; }
+            if (aArchivar.length * 2 + gastos.length + 2 > 440) { mostrarError('Son demasiados pedidos para un cierre seguro (aproximadamente 200).'); return; }
             if (!confirm('¿Cerrar la caja?\n\nTotal: ' + gs(r.total) + '\nEntregados: ' + r.entregados.length + ' · Cancelados: ' + r.cancelados.length +
                 '\nGastos: ' + gs(r.totalGastos) + '\n\nSe guarda el reporte y estos pedidos salen del panel.')) return;
             const btn = $('btn-cerrar-caja');
             if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
             try {
-                const restante = r.enCurso.reduce((m, p) => Math.max(m, Number(p.numero || 0)), 0);
-                const esperado = efectivoEsperado(r);
                 const contado = contadoTmp === '' ? null : Math.round(Number(contadoTmp));
-                const cs = await getDoc(refContador());
-                const nroCierre = ((cs.exists() && cs.data().cierres) || 0) + 1;
-                const ms = aArchivar.map(creadoMs);
-                const ref = doc(collection(db, 'cierres'));
-                const batch = writeBatch(db);
-                batch.set(ref, {
-                    cerrado: serverTimestamp(),
-                    cerradoPor: (auth.currentUser && auth.currentUser.email) || '',
-                    fecha: new Date().toLocaleDateString('es-PY', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }),
-                    desde: ms.length ? Math.min(...ms) : Date.now(),
-                    hasta: ms.length ? Math.max(...ms) : Date.now(),
-                    total: r.total,
-                    porPago: r.porPago,
-                    porTipo: r.porTipo,
-                    totalGastos: r.totalGastos,
-                    gastos: gastos.map(g => ({ concepto: String(g.concepto || ''), monto: Number(g.monto || 0) })),
-                    efectivoEsperado: esperado,
-                    fondo: fondo,
-                    ganancia: r.total - r.totalGastos,
-                    nro: nroCierre,
-                    efectivoContado: contado,
-                    diferencia: contado === null ? null : contado - esperado,
-                    topSabores: r.topSabores,
-                    horaPico: r.horaPico,
-                    porHora: r.porHora,
-                    cantidadEntregados: r.entregados.length,
-                    cantidadCancelados: r.cancelados.length,
-                    pizzas: r.pizzas,
-                    porTamano: r.porTamano,
-                    pedidos: aArchivar.map(p => ({
-                        n: numeroCorto(p), numero: Number(p.numero || 0),
-                        hora: creadoMs(p),
-                        nombre: String((p.cliente && p.cliente.nombre) || ''),
-                        total: Number(p.total || 0),
-                        estado: estadoDe(p)
-                    }))
-                });
-                batch.set(refContador(), { ultimo: restante, cierres: nroCierre, fondo: 0 }, { merge: true });
-                aArchivar.forEach(p => batch.update(doc(db, 'pedidos', p.id), { estado: 'archivado', cierreId: ref.id, estadoActualizado: serverTimestamp() }));
-                gastos.forEach(g => batch.update(doc(db, 'gastos', g.id), { cierreId: ref.id }));
-                await batch.commit();
-                cargarUltimos(); contadoTmp = ''; mostrarToast('🔒 Caja cerrada · el próximo pedido será #' + (restante + 1)); tabCaja = 'historial';
+                if (contado !== null && (!Number.isSafeInteger(contado) || contado < 0)) throw Error('Efectivo contado inválido.');
+                const result = await comercialDB.close({ ids: aArchivar.map(p => p.id), expenseIds: gastos.map(g => g.id), counted: contado, opening: fondo, expectedOrders: aArchivar, certified: $('caja-gastos-completos')?.checked === true });
+                result.records.forEach(s => comercial.cacheSaved(s));
+                cargarUltimos(); contadoTmp = ''; mostrarToast('🔒 Caja cerrada con detalle económico permanente. La numeración continúa sin reiniciarse.'); tabCaja = 'historial';
                 await cargarCierres();
             } catch (e) {
                 mostrarError('No se pudo cerrar la caja: ' + e.message);
@@ -3346,6 +3358,16 @@
             if (e.target.closest('[data-cli-nuevo]')) { abrirCliente(null); return; }
             if (e.target.closest('#btn-cerrar-caja')) { cerrarCaja(); return; }
             if (e.target.closest('[data-gasto-add]')) { agregarGasto(); return; }
+            const ge = e.target.closest('[data-gasto-edit]');
+            if (ge && adminActivo()) {
+                const g = gastos.find(x => x.id === ge.dataset.gastoEdit); if (!g) return;
+                if (g.movimientoId) { mostrarError('Movimiento de inventario inmutable: registrá un ajuste, no reescribas su costo.'); return; }
+                const clase = prompt('Clase: fijo, variable, compra, reparto o pago-reparto (pago de un costo ya imputado).', g.clase || 'variable');
+                if (clase === null) return;
+                const medio = prompt('Medio real: efectivo, transferencia o pos.', g.medio || ''); if (medio === null) return;
+                if (!['fijo', 'variable', 'compra', 'reparto', 'pago-reparto'].includes(clase) || !['efectivo', 'transferencia', 'pos'].includes(medio)) { mostrarError('Clase o medio inválido.'); return; }
+                updateDoc(doc(db, 'gastos', g.id), { clase, medio }).catch(err => mostrarError('No se pudo clasificar: ' + err.message)); return;
+            }
             const gd = e.target.closest('[data-gasto-del]');
             if (gd) {
                 if (confirm('¿Borrar este gasto?')) deleteDoc(doc(db, 'gastos', gd.dataset.gastoDel)).catch(err => mostrarError('No se pudo borrar: ' + err.message));
@@ -3496,13 +3518,13 @@
                 <div class="text-xs font-semibold uppercase tracking-wider text-neutral-500">🧮 Arqueo de caja (opcional)</div>
                 <div class="flex items-center justify-between gap-3"><label for="caja-contado" class="text-sm font-semibold">Efectivo contado (Gs)</label>
                 <input id="caja-contado" type="number" inputmode="numeric" min="0" value="${esc(contadoTmp)}" placeholder="0" class="w-36 bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2 text-sm text-right"></div>
-                <div id="caja-dif" class="text-sm font-bold">${textoDif(contadoTmp, efectivoEsperado(r))}</div></div>`;
+                <div id="caja-dif" class="text-sm font-bold">${r.caja?.gastosSinMedio ? 'Arqueo provisional: completá los medios de los gastos antiguos con Editar.' : textoDif(contadoTmp, efectivoEsperado(r))}</div></div>`;
         }
         $('modal-caja').addEventListener('input', (e) => {
             if (e.target.id !== 'caja-contado') return;
             contadoTmp = e.target.value;
             const r = resumenActual();
-            $('caja-dif').textContent = textoDif(contadoTmp, efectivoEsperado(r));
+            $('caja-dif').textContent = r.caja?.gastosSinMedio ? 'Arqueo pendiente: hay gastos sin medio registrado.' : textoDif(contadoTmp, efectivoEsperado(r));
         });
         function bloqueExtra(c) {
             if (!(c.topSabores || []).length) return '';
@@ -3531,17 +3553,18 @@
             const rg = [[7, '7 días'], [30, '30 días'], [0, 'Todo']].map(([v, t]) => `<button type="button" data-rango="${v}" class="text-xs font-bold px-3 py-1.5 rounded-full ${rangoHist === v ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700'}">${t}</button>`).join('');
             return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3">
                 <div class="flex items-center justify-between gap-2"><div class="flex gap-2">${rg}</div><button type="button" data-csv class="text-xs bg-green-100 hover:bg-green-200 text-green-800 font-bold px-3 py-1.5 rounded-xl">⬇️ CSV</button></div>
-                <div class="grid grid-cols-3 gap-2 text-center">${caja('Ventas', gs(ventas), 'text-red-700')}${caja('Gastos', gs(gast))}${caja('Ganancia', gs(ventas - gast), 'text-green-700')}${caja('Pedidos', ped)}${caja('Promedio por cierre', l.length ? gs(Math.round(ventas / l.length)) : '-')}${caja('Mejor día', mejor ? gs(mejor.total) : '-')}</div>
+                <div class="grid grid-cols-3 gap-2 text-center">${caja('Ventas', gs(ventas), 'text-red-700')}${caja('Gastos', gs(gast))}${caja('Ventas − egresos (no ganancia)', gs(ventas - gast))}${caja('Pedidos', ped)}${caja('Promedio por cierre', l.length ? gs(Math.round(ventas / l.length)) : '-')}${caja('Mejor día', mejor ? gs(mejor.total) : '-')}</div>
                 <div class="text-xs text-neutral-500 text-center">${l.length} cierre(s) en este período</div></div>`;
         }
         function descargarCSV() {
-            const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-            const filas = cierresFiltrados().map(c => { const p = c.porPago || {}; return [c.nro || '', c.fecha, c.cantidadEntregados, c.cantidadCancelados, c.total, c.totalGastos || 0, c.total - (c.totalGastos || 0), p.efectivo || 0, p.transferencia || 0, p.pos || 0, c.efectivoContado ?? '', c.diferencia ?? ''].map(q).join(';'); });
-            const csv = ['Cierre;Fecha;Entregados;Cancelados;Ventas;Gastos;Ganancia;Efectivo;Transferencia;POS;Contado;Diferencia', ...filas].join('\n');
+            const filas = cierresFiltrados().map(c => { const p = c.porPago || {}; return { cierreId: c.id, numero: c.nro, fecha: c.fecha, jornada: c.jornada, entregados: c.cantidadEntregados, cancelados: c.cantidadCancelados, ventasNetas: c.total, gastosPagados: c.totalGastos || 0, ventasMenosEgresosNoGananciaNeta: c.total - (c.totalGastos || 0), efectivo: p.efectivo || 0, transferencia: p.transferencia || 0, pos: p.pos || 0, contado: c.efectivoContado, diferencia: c.diferencia, finanzas: c.finanzas || null }; });
+            const csv = window.MBComercial.csv(filas, Object.keys(filas[0] || { cierreId: '' }));
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            a.href = url;
             a.download = 'cierres-mi-barrio.csv';
             a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
         
@@ -3553,7 +3576,7 @@
                 refrescarCaja();
             }, () => {});
         }
-        const efectivoEsperado = (r) => fondo + r.porPago.efectivo - r.totalGastos;
+        const efectivoEsperado = (r) => r.caja ? r.caja.esperado : fondo + r.porPago.efectivo - r.totalGastos;
         function bloqueFondo() {
             return `<div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2">
                 <div class="text-sm font-bold">🏦 Fondo inicial (cambio con el que abrís)</div>
@@ -3633,13 +3656,20 @@
             const vuelto = efec ? rec - total : 0;
             const upd = { pago: cobro.metodo, pagado: true, cobradoEn: serverTimestamp(), recibido: efec ? rec : null, vuelto: efec ? vuelto : null,
                           estado: 'entregado', estadoActualizado: serverTimestamp() };
-            const impresoAca = cobro.imprimir ? imprimirTicket({ ...p, pago: upd.pago, pagado: true, recibido: upd.recibido, vuelto: upd.vuelto }) : false;
-            // Si este equipo ya imprimió (o no se quiere ticket), se reclama el cobro para que otra pantalla no lo repita.
-            if (!cobro.imprimir || (impresoAca && autoImprimir && !esDelivery)) upd.ticketImpreso = true;
+            const imprimirDespues = cobro.imprimir;
             cobro.guardando = true;
             $('cobro-confirmar').disabled = true;
             try {
-                await updateDoc(doc(db, 'pedidos', p.id), upd);
+                await runTransaction(db, async tx => {
+                    const ref = doc(db, 'pedidos', p.id), current = await tx.get(ref);
+                    if (!current.exists() || current.data().pagado || current.data().cierreId || ['cancelado', 'archivado'].includes(current.data().estado)) throw Error('El pedido ya fue cobrado, cerrado o cancelado en otra terminal.');
+                    if (Number(current.data().total) !== total) throw Error('El total cambió en otra terminal. Revisá el importe antes de cobrar.');
+                    tx.update(ref, upd);
+                });
+                const impresoAca = imprimirDespues ? imprimirTicket({ ...p, pago: upd.pago, pagado: true, recibido: upd.recibido, vuelto: upd.vuelto }) : false;
+                if (!imprimirDespues || (impresoAca && autoImprimir && !esDelivery)) {
+                    try { await updateDoc(doc(db, 'pedidos', p.id), { ticketImpreso: true }); } catch (e) { console.warn('Cobro guardado; no se pudo marcar el ticket:', e.message); }
+                }
                 cerrarCobro();
                 mostrarToast('✅ Cobrado ' + numeroCorto(p) + ' · ' + gs(total) + (vuelto ? ' · vuelto ' + gs(vuelto) : ''));
             } catch (e) {
@@ -3770,7 +3800,7 @@
             if (p.estado === 'entregado' || p.pagado) { nuevoMsg('nuevo-error', 'El pedido ' + numeroCorto(p) + ' ya fue cobrado/entregado: no se puede agregar más productos. Creá un nuevo pedido.'); return; }
             nuevoMsg('nuevo-ok', ''); nuevoMsg('nuevo-error', '');
             if (n.sabores.length) { nuevoMsg('nuevo-error', 'Tenés sabores elegidos sin agregar. Tocá "＋ Agregar pizza" o desmarcalos.'); return; }
-            const extrasN = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]] }));
+            const extrasN = MENU.extras.filter(x => (n.extras[x[0]] || 0) > 0).map(x => ({ item: x[1], cantidad: n.extras[x[0]], precioUnitario: Number(x[2]) }));
             if (!n.pizzas.length && !extrasN.length) { nuevoMsg('nuevo-error', 'Agregá al menos una pizza o un extra.'); return; }
 
             // Igual que al crear: el camarero propone items y el TPV recalcula los precios.
@@ -3783,14 +3813,14 @@
                 });
             }
 
-            const pizzasN = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
+            const pizzasN = n.pizzas.map(z => ({ tamano: z.tamano, nombre: MENU.tamanos[z.tamano].nombre, categoria: z.categoria || nuevoCat(z.sabores), sabores: z.sabores, borde: !!z.borde, precio: z.precio }));
             const suma = pizzasN.reduce((a, z) => a + z.precio, 0) + MENU.extras.reduce((a, x) => a + (n.extras[x[0]] || 0) * x[2], 0);
             const extras = (p.extras || []).map(x => ({ ...x }));
             extrasN.forEach(x => { const f = extras.find(y => y.item === x.item); if (f) f.cantidad = Number(f.cantidad) + x.cantidad; else extras.push({ ...x }); });
             imprimirComanda({ ...p, pizzas: pizzasN, extras: extrasN }, 'AGREGADO');
             n.guardando = true; $('nuevo-guardar').disabled = true;
             try {
-                await updateDoc(doc(db, 'pedidos', p.id), { pizzas: [...(p.pizzas || []), ...pizzasN], extras: extras, total: Number(p.total || 0) + suma });
+                await comercialDB.append(p.id, pizzasN, extrasN, suma);
                 nuevoLimpiar(); renderNuevo();
                 $('modal-nuevo').classList.add('hidden');
                 mostrarToast('➕ Agregado a ' + numeroCorto(p) + ' · total ' + gs(Number(p.total || 0) + suma));
@@ -3916,6 +3946,7 @@
                 if (z.sabores.some(sb => !todos.includes(sb))) return null;
                 pizzas.push({
                     tamano: z.tamano,
+                    categoria: nuevoCat(z.sabores),
                     nombre: t.nombre,
                     sabores: z.sabores.slice(),
                     borde: !!z.borde,
@@ -3928,7 +3959,7 @@
                 const x = MENU.extras.find(y => y[0] === e.id);
                 const cant = Number(e.cantidad);
                 if (!x || !isFinite(cant) || cant <= 0 || cant > 20) return null;
-                extras.push({ item: x[1], cantidad: cant });
+                extras.push({ item: x[1], cantidad: cant, precioUnitario: Number(x[2]) });
                 montoExtras += cant * Number(x[2] || 0);
             }
             if (!pizzas.length && !extras.length) return null;
@@ -3970,6 +4001,7 @@
                         tipo: 'local',
                         mesa: mesa,
                         origen: 'panel',
+                        canalComercial: 'tpv',
                         pago: null,
                         pagado: false,
                         descuento: 0,
@@ -3985,10 +4017,12 @@
                     propios.add(ref.id);
                     await runTransaction(db, async (tx) => {
                         const c = await tx.get(refContador());
+                        const economic = await comercialDB.prepareNew(tx, ref.id, datos);
                         datos.numero = ((c.exists() && c.data().ultimo) || 0) + 1;
                         await recordarCliente(tx, datos, Date.now());
                         tx.set(refContador(), { ultimo: datos.numero }, { merge: true });
                         tx.set(ref, datos);
+                        comercialDB.writeNew(tx, ref.id, economic);
                     });
                     await updateDoc(refSol, {
                         estado: 'confirmada', pedidoId: ref.id, total: items.total, revisado: serverTimestamp()
@@ -4009,9 +4043,7 @@
                         if (f) f.cantidad = Number(f.cantidad) + x.cantidad; else extras.push({ ...x });
                     });
                     const totalN = Number(p.total || 0) + items.total;
-                    await updateDoc(refP, {
-                        pizzas: [...(p.pizzas || []), ...items.pizzas], extras: extras, total: totalN
-                    });
+                    await comercialDB.append(sol.pedidoId, items.pizzas, items.extras, items.total);
                     try { imprimirComanda({ ...p, pizzas: items.pizzas, extras: items.extras }, 'AGREGADO'); }
                     catch (e) { console.warn('[TPV] No se pudo imprimir la comanda del agregado:', e.message); }
                     await updateDoc(refSol, {
@@ -4408,7 +4440,7 @@ async function vistaReportes() {
     const barra = (a, v, max, b) => `<div class="flex items-center gap-2 text-xs"><span class="w-24 shrink-0 truncate text-neutral-600">${a}</span><div class="flex-1 bg-neutral-100 rounded"><div class="bg-red-600 rounded h-4" style="width:${Math.round(v / max * 100)}%"></div></div><span class="w-24 shrink-0 text-right font-semibold">${b}</span></div>`;
     $('cfg-vista').innerHTML = `
         <div class="flex items-center justify-between gap-2 flex-wrap"><div class="flex gap-2">${rg}</div><button type="button" id="rep-csv" class="text-xs bg-green-100 hover:bg-green-200 text-green-800 font-bold px-3 py-1.5 rounded-xl">⬇️ CSV</button></div>
-        <div class="${CARD}"><div class="grid grid-cols-3 gap-2">${caja('Ventas', gs(ventas), 'text-red-700')}${caja('Gastos', gs(gastos))}${caja('Ganancia', gs(ventas - gastos), 'text-green-700')}${caja('Pedidos', ped)}${caja('Ticket promedio', ped ? gs(Math.round(ventas / ped)) : '-')}${caja('Cancelados', S(c => c.cantidadCancelados))}</div><div class="text-xs text-neutral-500 text-center">${l.length} cierre(s) en el período</div></div>
+        <div class="${CARD}"><div class="grid grid-cols-3 gap-2">${caja('Ventas', gs(ventas), 'text-red-700')}${caja('Gastos', gs(gastos))}${caja('Ventas − egresos (no ganancia)', gs(ventas - gastos))}${caja('Pedidos', ped)}${caja('Ticket promedio', ped ? gs(Math.round(ventas / ped)) : '-')}${caja('Cancelados', S(c => c.cantidadCancelados))}</div><div class="text-xs text-neutral-500 text-center">${l.length} cierre(s) en el período · Reporte de cierres; detalle económico en Caja → Estadísticas.</div></div>
         <div class="${CARD}"><div class="${LBL}">Ventas por cierre</div>${dias.map(c => barra(esc(String(c.fecha || '').replace(/^[^,]*,\s*/, '')), Number(c.total || 0), maxD, gs(c.total))).join('')}</div>
         <div class="${CARD}"><div class="${LBL}">Promedio por día de la semana</div>${semFilas.map(([d, v]) => barra(esc(d), v, maxSem, gs(v))).join('')}</div>
         <div class="grid sm:grid-cols-2 gap-4">
@@ -4418,10 +4450,9 @@ async function vistaReportes() {
         ${top.length ? `<div class="${CARD}"><div class="${LBL}">Sabores más pedidos (suma de los top de cada cierre)</div>${top.map(([n, v], i) => fila((i + 1) + '. ' + esc(n), v)).join('')}</div>` : ''}`;
 }
 function csvReporte() {
-    const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const l = cierres.filter(c => !rango || c.ms >= Date.now() - rango * 86400000);
-    const filas = l.map(c => { const p = c.porPago || {}; return [c.nro || '', c.fecha, c.cantidadEntregados, c.cantidadCancelados, c.total, c.totalGastos || 0, (c.total || 0) - (c.totalGastos || 0), p.efectivo || 0, p.transferencia || 0, p.pos || 0, c.fondo || 0, c.efectivoContado ?? '', c.diferencia ?? ''].map(q).join(';'); });
-    descargar('reporte-mi-barrio.csv', '\ufeff' + ['Cierre;Fecha;Entregados;Cancelados;Ventas;Gastos;Ganancia;Efectivo;Transferencia;POS;Fondo;Contado;Diferencia', ...filas].join('\n'), 'text/csv;charset=utf-8');
+    const filas = l.map(c => ({ numero: c.nro, fecha: c.fecha, ventas: c.total, gastosPagados: c.totalGastos, ventasMenosEgresosNoGanancia: c.total - (c.totalGastos || 0), pagos: c.porPago, fondo: c.fondo, contado: c.efectivoContado, diferencia: c.diferencia, finanzas: c.finanzas || null }));
+    descargar('reporte-mi-barrio.csv', window.MBComercial.csv(filas, Object.keys(filas[0] || { numero: '' })), 'text/csv;charset=utf-8');
 }
 function descargar(nombre, texto, tipo) {
     const a = document.createElement('a');
@@ -4430,14 +4461,13 @@ function descargar(nombre, texto, tipo) {
 }
 
 // ===== 4. Datos: respaldo y borrado =====
-const COLS = [['pedidos', '🍕 Pedidos'], ['cierres', '🔒 Cierres de caja'], ['gastos', '🧾 Gastos'], ['clientes', '👥 Clientes']];
+const COLS = [['pedidos', '🍕 Pedidos'], ['cierres', '🔒 Cierres de caja'], ['gastos', '🧾 Gastos'], ['clientes', '👥 Clientes'], ['comercial_pedidos', 'Economía permanente'], ['comercial_config', 'Versiones de costos'], ['comercial_stock', 'Movimientos de insumos']];
 async function vistaDatos() {
     $('cfg-vista').innerHTML = `
         <div class="${CARD}"><div class="${LBL}">Lo que hay guardado</div><div id="d-conteo" class="space-y-1 text-sm">Contando...</div></div>
         <div class="${CARD}"><div class="${LBL}">Respaldo</div><p class="text-sm text-neutral-600">Descarga todo (pedidos, cierres, gastos, clientes y menú) en un archivo. Conviene hacerlo antes de borrar.</p><button type="button" id="d-backup" class="${BTN} bg-neutral-800 text-white">⬇️ Descargar respaldo</button></div>
         <div class="${CARD} border-red-200"><div class="${LBL} text-red-700">Zona de borrado</div><p class="text-sm text-neutral-600">No se puede deshacer. Te va a pedir que escribas BORRAR.</p>
-            <button type="button" data-borrar="cierres" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar historial de cierres</button>
-            <button type="button" data-borrar="ventas" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar toda la base de ventas (pedidos, gastos, cierres) y reiniciar numeración</button>
+            <p class="text-sm">🔒 Pedidos y cierres históricos protegidos: el borrado comercial está deshabilitado.</p>
             <button type="button" data-borrar="clientes" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar la memoria de clientes</button></div>`;
     const filas = [];
     for (const [c, t] of COLS) {
@@ -4466,6 +4496,7 @@ async function vaciar(nombre) {
     return n;
 }
 async function borrar(que) {
+    if (que !== 'clientes') { toast('El historial comercial es permanente y no se puede borrar desde el TPV.'); return; }
     const plan = { cierres: [['cierres'], 'el historial de cierres de caja'], ventas: [['pedidos', 'gastos', 'cierres'], 'TODOS los pedidos, gastos y cierres (la numeración vuelve a 0)'], clientes: [['clientes'], 'la memoria de clientes'] }[que];
     if (prompt('⚠️ Vas a borrar ' + plan[1] + '.\nNo se puede deshacer.\n\nEscribí BORRAR para confirmar:') !== 'BORRAR') return;
     toast('Borrando...');

@@ -1166,7 +1166,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const tamano = obtenerTamanoSeleccionado();
             const { precioBasePizza } = calcularTotal();
             const borde = adicionales['borde-piz'] === 1;
-            pedido.push({ tamano, sabores, borde, precio: precioBasePizza + (borde ? precioBorde(tamano) : 0) });
+            pedido.push({ tamano, sabores, borde, categoria: ['gourmet', 'especial', 'clasico'].find(c => Array.from(document.querySelectorAll('input[name="sabor"]:checked')).some(cb => cb.getAttribute('data-cat') === c)) || null, precio: precioBasePizza + (borde ? precioBorde(tamano) : 0) });
 
             document.querySelectorAll('input[name="sabor"]').forEach(cb => cb.checked = false);
             actualizarInterfaz();
@@ -1465,7 +1465,7 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
             const pizzasEnvio = pedido.slice();
             if (saboresChecked.length > 0) {
                 const b = adicionales['borde-piz'] === 1;
-                pizzasEnvio.push({ tamano, sabores: listaSabores, borde: b, precio: precioBasePizza + (b ? precioBorde(tamano) : 0) });
+                pizzasEnvio.push({ tamano, sabores: listaSabores, borde: b, categoria: ['gourmet', 'especial', 'clasico'].find(c => Array.from(document.querySelectorAll('input[name="sabor"]:checked')).some(cb => cb.getAttribute('data-cat') === c)) || null, precio: precioBasePizza + (b ? precioBorde(tamano) : 0) });
             }
             pizzasEnvio.forEach((p, i) => {
                 mensaje += `🍕 *Pizza ${i + 1}* – ${nombresTamano[p.tamano] || p.tamano}\n`;
@@ -1493,8 +1493,10 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 : 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
             const datos = {
                 cliente: { nombre, direccion, celular, lat: entrega ? Number(lat) : null, lng: entrega ? Number(lng) : null, mapa: enlaceGoogleMaps },
-                pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio })),
-                extras: Object.keys(nombresExtras).filter(k => (adicionales[k] || 0) > 0).map(k => ({ item: nombresExtras[k], cantidad: adicionales[k] })),
+                pizzas: pizzasEnvio.map(p => ({ tamano: p.tamano, nombre: nombresTamano[p.tamano] || p.tamano, sabores: p.sabores, borde: !!p.borde, precio: p.precio, categoria: p.categoria || null })),
+                extras: Object.keys(nombresExtras).filter(k => (adicionales[k] || 0) > 0).map(k => ({ item: nombresExtras[k], cantidad: adicionales[k], precioUnitario: preciosAdicionales[k] })),
+                origen: window.MESA_ACTUAL ? 'qr' : 'web',
+                ...(window.MESA_ACTUAL ? { mesa: Number(window.MESA_ACTUAL) } : {}),
                 total: totalGeneral,
                 ...(!window.MESA_ACTUAL ? { tipo: entrega ? 'delivery' : 'retiro' } : {}),
                 ...(descuento > 0 ? { descuento, porcentajeDescuento } : {}),
@@ -1740,6 +1742,9 @@ html[data-nuevo] #modal-pago button.bg-blue-600 { border-radius: 16px; }
                 total: datos.total,
                 mensaje: datos.mensaje
             };
+            // Accounting metadata only; does not change checkout prices, promotions or UI.
+            if (datos.origen === 'web' || datos.origen === 'qr') base.origen = datos.origen;
+            if (datos.origen === 'qr' && Number.isInteger(datos.mesa) && datos.mesa > 0) base.mesa = datos.mesa;
             if (datos.tipo === 'retiro' || datos.tipo === 'delivery') base.tipo = datos.tipo;
             const conPago = (datos.pago === 'efectivo' || datos.pago === 'transferencia');
             const extra = {};

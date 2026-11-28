@@ -1,0 +1,25 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba aislada de Caja — sin Firebase</title>
+<link rel="stylesheet" href="../../comercial/panel.css"><script src="../../comercial/motor.js"></script><script src="../../comercial/panel.js"></script>
+<style>body{margin:0;background:#f4f7fb;font-family:system-ui}header{padding:12px;background:#172033;color:white}#modal-caja>div{margin:auto}nav{display:flex;gap:8px;padding:12px}nav button{padding:12px}#caja-contenido{padding:12px}</style>
+<header>Mi Barrio · demostración aislada con datos ficticios, sin conexión a Firebase</header>
+<div id="modal-caja"><div><nav><button id="stats">Estadísticas</button><button id="costs">Costos e insumos</button></nav><div id="caja-contenido"></div></div></div>
+<script>
+const M = window.MBComercial, time = Date.now();
+const menu = { tamanos: { mediano: { nombre: 'Mediana', precios: { clasico: 30000 } } }, sabores: { clasico: ['Muzza'] } };
+let cfg = M.defaults(); cfg.desde = time - 86400000; cfg.revision = 'demo';
+const p = { id: 'demo-pedido', estado: 'entregado', creado: time, cobradoEn: time, tipo: 'retiro', origen: 'web', pagado: true, pago: 'transferencia', total: 24000, descuento: 6000, porcentajeDescuento: 20, pizzas: [{ tamano: 'mediano', nombre: 'Mediana', categoria: 'clasico', sabores: ['Muzza'], precio: 30000 }], extras: [], cliente: { celular: '595000000000' } };
+const collections = { pedidos: [p], comercial_pedidos: [M.freeze(p, cfg, menu)], cierres: [], gastos: [], comercial_stock: [] };
+const errors = [];
+const app = window.demo = window.MBComercialUI.create({ admin: () => true, orders: () => [], menu: () => menu,
+    error: message => { errors.push(message); document.body.dataset.error = message; }, toast: message => document.body.dataset.toast = message,
+    watchConfig: next => { next(cfg); return () => {}; },
+    page: async name => ({ rows: collections[name], more: false, cursor: null }),
+    saveConfig: async data => { cfg = { ...structuredClone(data), revision: 'demo-saved', desde: Date.now() }; return cfg; }
+});
+app.start();
+const show = name => app.activate(name, document.getElementById('caja-contenido'));
+document.getElementById('stats').onclick = () => show('estadisticas');
+document.getElementById('costs').onclick = () => show('costos');
+show('estadisticas');
+</script></html>

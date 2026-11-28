@@ -81,9 +81,12 @@ service cloud.firestore {
     match /pedidos/{id} {
       // Cualquier cliente puede CREAR un pedido
       allow create: if request.resource.data.keys().hasOnly(
-                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm', 'descuento', 'porcentajeDescuento', 'tipo'])
+                          ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm', 'descuento', 'porcentajeDescuento', 'tipo', 'origen', 'mesa'])
                     && descuentoWebValido()
                     && tipoWebValido()
+                    && (!('origen' in request.resource.data) || request.resource.data.origen in ['web', 'qr'])
+                    && (!('mesa' in request.resource.data) || (request.resource.data.origen == 'qr'
+                        && request.resource.data.mesa is int && request.resource.data.mesa > 0))
                     && (!('pago' in request.resource.data) || request.resource.data.pago in ['efectivo', 'transferencia'])
                     && request.resource.data.estado == 'nuevo'
                     && request.resource.data.creado == request.time
@@ -115,24 +118,47 @@ service cloud.firestore {
       // MODIFICAR: solo el administrador. El estado solo puede avanzar o cancelarse (no hay vuelta atrás).
       // 'archivado' lo usa el cierre de caja (desde entregado o cancelado).
       allow update: if esAdmin()
+                    && resource.data.get('cierreId', null) == null
                     && (request.resource.data.estado == resource.data.estado
                         || estadoPermitido(resource.data.estado, request.resource.data.estado));
       // PROPOSED (S4, NOT APPLIED): administrator paid-order handoff. See esAdminCobroHandoff().
       allow update: if esAdminCobroHandoff();
 
       // BORRAR: solo el administrador.
-      allow delete: if esAdmin();
+      allow delete: if esAdmin() && resource.data.get('cierreId', null) == null
+                    && resource.data.estado != 'archivado';
     }
 
     // Nueva colección para guardar los reportes de los cierres de caja históricos
     match /cierres/{id} {
-      // Solo el administrador principal puede ver o crear los cierres de caja
-      allow read, write: if esAdmin();
+      // Cierres permanentes: ni siquiera una pantalla vieja puede sobrescribirlos/borrarlos.
+      allow read, create: if esAdmin();
+      allow update, delete: if false;
     }
 
     // Gastos del día (se anotan en la caja y se archivan al cerrar)
     match /gastos/{id} {
-      allow read, write: if esAdmin();
+      allow read, create: if esAdmin();
+      allow update: if esAdmin() && resource.data.get('cierreId', null) == null
+                    && (resource.data.get('movimientoId', null) == null
+                        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cierreId']));
+      allow delete: if esAdmin() && resource.data.get('cierreId', null) == null
+                    && resource.data.get('movimientoId', null) == null;
+    }
+
+    // Costos, recetas y consumo nunca son públicos ni accesibles a repartidores/camareros.
+    match /comercial_pedidos/{id} {
+      allow read, create: if esAdmin();
+      allow update: if esAdmin() && resource.data.get('cierreId', null) == null;
+      allow delete: if false;
+    }
+    match /comercial_config/{id} {
+      allow read, create: if esAdmin();
+      allow update, delete: if false;
+    }
+    match /comercial_stock/{id} {
+      allow read, create: if esAdmin();
+      allow update, delete: if false;
     }
 
     // Estado del local (abierto/cerrado, horarios y mensaje): lo lee cualquiera (la página de pedidos); solo el administrador lo escribe.

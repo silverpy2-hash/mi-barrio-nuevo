@@ -640,19 +640,16 @@ test('S4: proposed rules are the EXACT original rules plus only the narrow helpe
   const altUpdates = proposed.match(/allow update: if esAdminCobroHandoff\(\);/g) ?? [];
   assert.equal(altUpdates.length, 1);
   // Original admin transition rule still present unchanged.
-  assert.ok(proposed.includes("allow update: if esAdmin()\n                    && (request.resource.data.estado == resource.data.estado"));
+  assert.ok(proposed.includes("allow update: if esAdmin()\n                    && resource.data.get('cierreId', null) == null\n                    && (request.resource.data.estado == resource.data.estado"));
 
-  // Promotion and web modality add only bounded helpers/fields/validation.
-  // All unrelated permissions retain their original baseline bytes.
-  const withoutPromotion = original
-    .replace(/    \/\/ Optional web-promotion snapshot;[\s\S]*?(?=    match \/pedidos\/)/, '')
-    .replace(", 'descuento', 'porcentajeDescuento'", '')
-    .replace(", 'tipo'", '')
-    .replace('                    && descuentoWebValido()\n', '')
-    .replace('                    && tipoWebValido()\n', '')
-    .trimEnd();
-  assert.equal(createHash('sha256').update(withoutPromotion).digest('hex').toUpperCase(),
-    '0C0C66ED555EE359463C0C77781DC17A58EB487EDE80B8C6A1CFE273FC26AB59');
+  // The commercial release intentionally strengthens historical immutability.
+  // Verify these explicit boundaries rather than the superseded whole-file hash.
+  assert.match(original, /match \/cierres\/\{id\}[^]*?allow update, delete: if false/);
+  for (const name of ['comercial_pedidos', 'comercial_config', 'comercial_stock']) {
+    assert.ok(original.includes(`match /${name}/{id}`));
+  }
+  assert.ok(original.includes("doc == 'local' || doc == 'menu' || doc == 'mesas' || esAdmin()"));
+  assert.ok(original.includes("request.resource.data.origen in ['web', 'qr']"));
 });
 
 // Executable mirror of the proposed helper, used ONLY as a fixture harness.

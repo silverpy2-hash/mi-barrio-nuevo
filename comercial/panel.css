@@ -1,0 +1,32 @@
+/* Scoped to Caja commercial tabs. Existing four TPV themes remain untouched. */
+#modal-caja:has(.mb-comercial) > div { max-width: 1200px; }
+.mb-comercial { color: #172033; font-size: 14px; }
+.mb-comercial .mb-card { background: white; border: 1px solid #dde3ec; border-radius: 16px; padding: 16px; margin: 12px 0; }
+.mb-comercial h3, .mb-comercial summary { font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+.mb-comercial summary { cursor: pointer; }
+.mb-comercial p { color: #536179; font-size: 12px; margin: 10px 0; line-height: 1.55; }
+.mb-comercial .mb-notice { padding: 12px; background: #fff8e6; border: 1px solid #e7cd91; border-radius: 12px; }
+.mb-comercial .mb-error { padding: 12px; background: #fff1f2; color: #9f1239; }
+.mb-comercial .mb-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.mb-comercial .mb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
+.mb-comercial .mb-field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; }
+.mb-comercial input:not([type=checkbox]), .mb-comercial select, .mb-comercial textarea { width: 100%; min-height: 40px; padding: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; color: #172033; font: inherit; }
+.mb-comercial input[type=checkbox] { width: 18px; height: 18px; vertical-align: middle; }
+.mb-comercial .mb-row select { width: auto; }
+.mb-comercial button { border: 1px solid #b9c7db; border-radius: 9px; padding: 9px 12px; font-size: 12px; font-weight: 700; background: #edf2f8; color: #26354b; min-height: 40px; }
+.mb-comercial button[type=submit] { background: #26354b; color: white; }
+.mb-comercial button:disabled { opacity: .45; cursor: not-allowed; }
+.mb-comercial button:hover:not(:disabled) { filter: brightness(.94); }
+.mb-comercial .mb-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; }
+.mb-comercial .mb-metrics > div { display: flex; flex-direction: column; padding: 12px; background: #f4f7fb; border-radius: 10px; min-width: 0; }
+.mb-comercial .mb-metrics span { font-size: 11px; color: #536179; }
+.mb-comercial .mb-metrics strong { font-size: 19px; margin-top: 6px; overflow-wrap: anywhere; }
+.mb-comercial .mb-scroll { overflow-x: auto; max-width: 100%; }
+.mb-comercial table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.mb-comercial th, .mb-comercial td { text-align: left; padding: 10px; border-bottom: 1px solid #e2e8f0; min-width: 100px; }
+.mb-comercial th { background: #f4f7fb; white-space: nowrap; }
+.mb-comercial td input { min-width: 110px; }
+.mb-comercial td select { min-width: 155px; }
+.mb-comercial .mb-bar { position: relative; display: flex; justify-content: space-between; gap: 10px; padding: 10px; margin: 4px 0; font-size: 12px; isolation: isolate; }
+.mb-comercial .mb-bar i { position: absolute; left: 0; top: 0; height: 100%; z-index: -1; background: #e1edf9; border-radius: 6px; }
+@media (max-width: 600px) { .mb-comercial .mb-card { padding: 12px; } .mb-comercial .mb-metrics { grid-template-columns: 1fr 1fr; } .mb-comercial .mb-metrics strong { font-size: 16px; } }

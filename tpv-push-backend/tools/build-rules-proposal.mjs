@@ -10,7 +10,7 @@ const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 const originalPath = repoRoot + 'reglas_firestore (2).txt';
 const proposedPath = fileURLToPath(new URL('../firestore.rules.proposed.txt', import.meta.url));
 
-const original = readFileSync(originalPath, 'utf8');
+const original = readFileSync(originalPath, 'utf8').replace(/\r\n/g, '\n');
 
 const eol = original.includes('\r\n') ? '\r\n' : '\n';
 const withEol = (text) => text.replaceAll('\n', eol);
@@ -46,6 +46,7 @@ const anchorCamarero = withEol(
   '        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.activo == true;\n    }\n');
 const adminUpdate = withEol(
   '      allow update: if esAdmin()\n'
+  + '                    && resource.data.get(\'cierreId\', null) == null\n'
   + '                    && (request.resource.data.estado == resource.data.estado\n'
   + '                        || estadoPermitido(resource.data.estado, request.resource.data.estado));\n');
 const altUpdate = withEol(
