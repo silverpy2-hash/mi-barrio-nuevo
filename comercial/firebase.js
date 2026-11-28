@@ -132,7 +132,10 @@ export function commercialStore(api, context) {
                     if (p.estado === 'entregado' && p.pagado !== true) throw Error('No se archivan ventas pendientes de cobro.');
                     if (p.pagado === true && !['efectivo', 'transferencia', 'pos'].includes(p.pago)) throw Error('Completá el medio de pago de los pedidos cobrados antes de cerrar.');
                     const shown = expectedOrders.find(x => x.id === p.id);
-                    if (!shown || M.signature(shown) !== M.signature(p) || shown.pagado !== p.pagado || shown.pago !== p.pago || shown.estado !== p.estado) throw Error('Un pedido cambió mientras cerrabas. Revisá los nuevos importes.');
+                    // Compare financial values, not JSON map ordering or optional-field representation.
+                    // The close and its economic snapshots are built from this fresh transaction read.
+                    if (!shown || ['total', 'descuento', 'costoDelivery'].some(k => Number(shown[k] || 0) !== Number(p[k] || 0))) throw Error('El importe de un pedido cambió. Volvé a abrir Caja para revisar el total actualizado.');
+                    if ((shown.pagado === true) !== (p.pagado === true) || (shown.pago || null) !== (p.pago || null) || shown.estado !== p.estado) throw Error('El estado o medio de pago cambió en otra terminal. Volvé a abrir Caja para actualizarlo.');
                     return p;
                 });
                 const saved = docs.slice(ids.length, ids.length * 2);
@@ -147,7 +150,6 @@ export function commercialStore(api, context) {
                     if (!s.exists() || s.data().cierreId) throw Error('Un gasto fue borrado o ya está cerrado.');
                     const loss = s.data().clase === 'merma' && s.data().medio === 'no-monetario' && s.data().movimientoId;
                     if (!Number.isSafeInteger(s.data().monto) || s.data().monto < 0 || !loss && s.data().monto === 0) throw Error('Gasto con importe inválido.');
-                    if (!loss && (!['efectivo', 'transferencia', 'pos'].includes(s.data().medio) || !['fijo', 'variable', 'compra', 'reparto', 'pago-reparto'].includes(s.data().clase))) throw Error('Clasificá el tipo y medio de los gastos antiguos antes de cerrar (botón Editar del gasto).');
                     return { ...s.data(), id: expenseIds[i] };
                 });
                 const r = M.report(records, expenses, {}, cfg), cash = M.cash(records, expenses, fund);
@@ -161,7 +163,7 @@ export function commercialStore(api, context) {
                     jornada: M.day(now, cfg.corte), corte: cfg.corte, zonaHoraria: M.TZ, nro, fondo: fund,
                     desde: Math.min(now, ...records.map(s => s.creadoMs || now)), hasta: Math.max(now, ...records.map(s => s.creadoMs || now)),
                     total: r.netas, porPago: cash.pagos, porTipo: byMode, totalGastos: expenses.filter(g => g.medio !== 'no-monetario').reduce((n, g) => n + M.money(g.monto), 0),
-                    gastos: expenses.map(g => ({ id: g.id, concepto: g.concepto, monto: g.monto, clase: g.clase || 'sin-clasificar', medio: g.medio || 'efectivo', jornada: g.jornada || null })),
+                    gastos: expenses.map(g => ({ id: g.id, concepto: g.concepto, monto: g.monto, clase: g.clase || 'sin-clasificar', medio: g.medio || 'sin-definir', jornada: g.jornada || null })),
                     efectivoEsperado: cash.esperado, efectivoContado: counted, diferencia: counted === null ? null : counted - cash.esperado,
                     cantidadEntregados: r.ventas, cantidadCancelados: r.cancelados, pizzas: r.pizzas, porTamano: Object.values(sizeGroups),
                     topSabores: Object.entries(r.sabores).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([nombre, cantidad]) => ({ nombre, cantidad })),

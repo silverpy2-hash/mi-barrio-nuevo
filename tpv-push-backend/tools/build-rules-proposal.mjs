@@ -28,6 +28,7 @@ const helper = withEol(`
       let prev = resource.data;
       let next = request.resource.data;
       return esAdmin()
+        && !mantenimientoActivo('ventas')
         && prev.estado in ['nuevo', 'preparacion', 'en_camino', 'entregado']
         && next.estado == 'en_camino'
         && prev.get('pagado', false) == false
@@ -46,6 +47,7 @@ const anchorCamarero = withEol(
   '        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.activo == true;\n    }\n');
 const adminUpdate = withEol(
   '      allow update: if esAdmin()\n'
+  + '                    && !mantenimientoActivo(\'ventas\')\n'
   + '                    && resource.data.get(\'cierreId\', null) == null\n'
   + '                    && (request.resource.data.estado == resource.data.estado\n'
   + '                        || estadoPermitido(resource.data.estado, request.resource.data.estado));\n');

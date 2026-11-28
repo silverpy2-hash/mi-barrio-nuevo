@@ -1383,8 +1383,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-        import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer, documentId, startAfter } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, writeBatch, getDocs, addDoc, deleteDoc, where, setDoc, getDoc, runTransaction, increment, getCountFromServer, documentId, startAfter, getDocsFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
         import { commercialStore } from './comercial/firebase.js';
+        import { createDataMaintenance } from './comercial/datos.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBczdHiqe4fO6XThYRQky-WBlwgdhWDYCI",
@@ -3234,7 +3235,7 @@
                 cont.innerHTML = bloqueFondo() + bloqueResumen(r) + bloqueTipos(r.porTipo) + bloquePagos(r.porPago, r.caja.gastosEfectivo + r.caja.reembolsosEfectivo, r.total, fondo) + bloqueGastos() + bloqueComparar(r) + bloqueHoras(r) + bloqueExtra(r) + bloqueArqueo(r) +
                     `<div class="bg-white border rounded-xl p-4 text-sm">Ventas entregadas (incluye pendientes): <b>${gs(r.financiero.netas)}</b> · Cobrado: <b>${gs(r.financiero.cobrado)}</b> · Pendiente: <b>${gs(r.financiero.pendiente)}</b><br>Compras: ${gs(r.financiero.compras)} · Costo producción conocido: ${gs(r.financiero.costoProduccion)} · <b>Ganancia neta no confirmada</b> hasta completar costos y gastos. Ver Estadísticas.<br>Solo egresos en efectivo afectan el arqueo. Pedidos pendientes de cobro quedan abiertos.</div>` +
                     (r.enCurso.length ? `<p class="text-sm text-amber-900 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">⚠️ Hay ${r.enCurso.length} pedido(s) en curso. No entran en este cierre: quedan en el panel para el próximo.</p>` : '') +
-                     `<label class="block text-sm bg-white border rounded-xl p-3"><input id="caja-gastos-completos" type="checkbox"> Confirmo que registré todos los gastos operativos de esta jornada. No confirma recetas ni costos faltantes.</label><button type="button" id="btn-cerrar-caja" ${hayAlgo ? '' : 'disabled'} class="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-3 rounded-xl transition">🔒 Cerrar caja y limpiar panel</button>
+                     `<button type="button" id="btn-cerrar-caja" ${hayAlgo ? '' : 'disabled'} class="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-3 rounded-xl transition">🔒 Cerrar caja y limpiar panel</button>
                      <p class="text-xs text-neutral-500 text-center">Se guarda el reporte en el historial y los pedidos entregados y cancelados salen del panel.</p>`;
                 if ($('gasto-concepto')) { $('gasto-concepto').value = vc; $('gasto-monto').value = vm; }
                 if (claseGasto && $('gasto-clase')) $('gasto-clase').value = claseGasto;
@@ -3298,7 +3299,7 @@
             try {
                 const contado = contadoTmp === '' ? null : Math.round(Number(contadoTmp));
                 if (contado !== null && (!Number.isSafeInteger(contado) || contado < 0)) throw Error('Efectivo contado inválido.');
-                const result = await comercialDB.close({ ids: aArchivar.map(p => p.id), expenseIds: gastos.map(g => g.id), counted: contado, opening: fondo, expectedOrders: aArchivar, certified: $('caja-gastos-completos')?.checked === true });
+                const result = await comercialDB.close({ ids: aArchivar.map(p => p.id), expenseIds: gastos.map(g => g.id), counted: contado, opening: fondo, expectedOrders: aArchivar });
                 result.records.forEach(s => comercial.cacheSaved(s));
                 cargarUltimos(); contadoTmp = ''; mostrarToast('🔒 Caja cerrada con detalle económico permanente. La numeración continúa sin reiniciarse.'); tabCaja = 'historial';
                 await cargarCierres();
@@ -4461,53 +4462,14 @@ function descargar(nombre, texto, tipo) {
 }
 
 // ===== 4. Datos: respaldo y borrado =====
-const COLS = [['pedidos', '🍕 Pedidos'], ['cierres', '🔒 Cierres de caja'], ['gastos', '🧾 Gastos'], ['clientes', '👥 Clientes'], ['comercial_pedidos', 'Economía permanente'], ['comercial_config', 'Versiones de costos'], ['comercial_stock', 'Movimientos de insumos']];
-async function vistaDatos() {
-    $('cfg-vista').innerHTML = `
-        <div class="${CARD}"><div class="${LBL}">Lo que hay guardado</div><div id="d-conteo" class="space-y-1 text-sm">Contando...</div></div>
-        <div class="${CARD}"><div class="${LBL}">Respaldo</div><p class="text-sm text-neutral-600">Descarga todo (pedidos, cierres, gastos, clientes y menú) en un archivo. Conviene hacerlo antes de borrar.</p><button type="button" id="d-backup" class="${BTN} bg-neutral-800 text-white">⬇️ Descargar respaldo</button></div>
-        <div class="${CARD} border-red-200"><div class="${LBL} text-red-700">Zona de borrado</div><p class="text-sm text-neutral-600">No se puede deshacer. Te va a pedir que escribas BORRAR.</p>
-            <p class="text-sm">🔒 Pedidos y cierres históricos protegidos: el borrado comercial está deshabilitado.</p>
-            <button type="button" data-borrar="clientes" class="w-full ${BTN} bg-red-100 text-red-700 text-left">🗑️ Borrar la memoria de clientes</button></div>`;
-    const filas = [];
-    for (const [c, t] of COLS) {
-        try { filas.push(`<div class="flex justify-between"><span>${t}</span><span class="font-semibold">${(await getCountFromServer(collection(db, c))).data().count}</span></div>`); }
-        catch (e) { filas.push(`<div class="flex justify-between"><span>${t}</span><span class="text-neutral-400">?</span></div>`); }
-    }
-    if ($('d-conteo')) $('d-conteo').innerHTML = filas.join('');
-}
-async function respaldo() {
-    toast('Preparando respaldo...');
-    try {
-        const out = { generado: new Date().toISOString() };
-        for (const [c] of COLS) out[c] = (await getDocs(collection(db, c))).docs.map(d => ({ id: d.id, ...d.data() }));
-        out.menu = clone(draft);
-        descargar('respaldo-mi-barrio-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(out), 'application/json');
-        toast('✅ Respaldo descargado');
-    } catch (e) { toast('No se pudo hacer el respaldo: ' + e.message); }
-}
-async function vaciar(nombre) {
-    let n = 0;
-    for (;;) {
-        const s = await getDocs(query(collection(db, nombre), limit(400)));
-        if (s.empty) break;
-        const b = writeBatch(db); s.docs.forEach(d => b.delete(d.ref)); await b.commit(); n += s.size;
-    }
-    return n;
-}
-async function borrar(que) {
-    if (que !== 'clientes') { toast('El historial comercial es permanente y no se puede borrar desde el TPV.'); return; }
-    const plan = { cierres: [['cierres'], 'el historial de cierres de caja'], ventas: [['pedidos', 'gastos', 'cierres'], 'TODOS los pedidos, gastos y cierres (la numeración vuelve a 0)'], clientes: [['clientes'], 'la memoria de clientes'] }[que];
-    if (prompt('⚠️ Vas a borrar ' + plan[1] + '.\nNo se puede deshacer.\n\nEscribí BORRAR para confirmar:') !== 'BORRAR') return;
-    toast('Borrando...');
-    try {
-        let total = 0;
-        for (const c of plan[0]) total += await vaciar(c);
-        if (que === 'ventas') await setDoc(doc(db, 'config', 'contador'), { ultimo: 0, cierres: 0, fondo: 0 }, { merge: true });
-        if (que !== 'clientes') cierres = null; cargarUltimos();
-        toast('🗑️ Listo: ' + total + ' registros borrados'); vistaDatos();
-    } catch (e) { toast('No se pudo borrar todo: ' + e.message); }
-}
+const gestorDatos = createDataMaintenance(
+    { db, collection, doc, query, orderBy, documentId, startAfter, limit, getDocsFromServer, getCountFromServer, writeBatch, runTransaction, serverTimestamp },
+    { uid: () => auth.currentUser?.uid, notify: toast, download: descargar,
+      prompt: text => window.prompt(text), confirm: text => window.confirm(text), reload: () => window.location.reload() }
+);
+function vistaDatos() { return gestorDatos.render($('cfg-vista'), { CARD, LBL, BTN, esc, current: () => tab === 'datos' }); }
+function respaldo() { return gestorDatos.backup(); }
+function borrar(que) { return gestorDatos.erase(que); }
 
 // ===== 5. Horario del local (abierto / cerrado) =====
 const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];

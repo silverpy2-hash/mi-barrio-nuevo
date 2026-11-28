@@ -7,6 +7,37 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == 'e8czOfuF82VqPwNUZjMpOSMHUQo2';
     }
 
+    // Autorización privada y temporal para Configuración → Datos, nunca para otros roles.
+    function mantenimientoVigente(m) {
+      return m.get('activo', false) == true && m.inicio is timestamp
+        && m.inicio <= request.time && m.inicio + duration.value(10, 'm') > request.time;
+    }
+    function mantenimientoEnCurso() {
+      return exists(/databases/$(database)/documents/config/mantenimiento)
+        && mantenimientoVigente(get(/databases/$(database)/documents/config/mantenimiento).data);
+    }
+    function mantenimientoActivo(accion) {
+      return mantenimientoEnCurso()
+        && get(/databases/$(database)/documents/config/mantenimiento).data.accion == accion;
+    }
+    function puedeBorrarDatos(accion) {
+      return esAdmin() && mantenimientoActivo(accion);
+    }
+    function autorizacionMantenimientoValida() {
+      let m = request.resource.data;
+      return m.keys().hasOnly(['activo', 'accion', 'token', 'confirmacion', 'usuario', 'inicio', 'resultado', 'finalizado'])
+        && m.usuario == request.auth.uid && m.activo is bool
+        && m.token is string && m.token.matches('^[A-Za-z0-9_-]{10,80}$')
+        && ((m.accion == 'cierres' && m.confirmacion == 'BORRAR CIERRES')
+          || (m.accion == 'ventas' && m.confirmacion == 'REINICIAR BASE COMERCIAL')
+          || (m.accion == 'clientes' && m.confirmacion == 'BORRAR MEMORIA DE CLIENTES'))
+        && (m.activo
+          ? (m.inicio == request.time && (!mantenimientoEnCurso()
+              || (m.token == resource.data.token && m.accion == resource.data.accion)))
+          : (m.token == resource.data.token && m.accion == resource.data.accion
+              && m.inicio == resource.data.inicio && m.finalizado == request.time));
+    }
+
     // Función para identificar si el usuario autenticado es un Delivery
     function esDelivery() {
       return request.auth != null && request.auth.token.email.matches('.*delivery.*');
@@ -34,6 +65,7 @@ service cloud.firestore {
       let prev = resource.data;
       let next = request.resource.data;
       return esAdmin()
+        && !mantenimientoActivo('ventas')
         && prev.estado in ['nuevo', 'preparacion', 'en_camino', 'entregado']
         && next.estado == 'en_camino'
         && prev.get('pagado', false) == false
@@ -82,6 +114,7 @@ service cloud.firestore {
       // Cualquier cliente puede CREAR un pedido
       allow create: if request.resource.data.keys().hasOnly(
                           ['local', 'estado', 'creado', 'cliente', 'pizzas', 'extras', 'total', 'mensaje', 'pago', 'costoDelivery', 'distanciaKm', 'descuento', 'porcentajeDescuento', 'tipo', 'origen', 'mesa'])
+                    && !mantenimientoActivo('ventas')
                     && descuentoWebValido()
                     && tipoWebValido()
                     && (!('origen' in request.resource.data) || request.resource.data.origen in ['web', 'qr'])
@@ -100,6 +133,7 @@ service cloud.firestore {
 
       // El Administrador también puede CARGAR pedidos desde el panel (retiro, local, teléfono)
       allow create: if esAdmin()
+                    && !mantenimientoActivo('ventas')
                     && request.resource.data.estado in ['nuevo', 'preparacion', 'entregado']
                     && request.resource.data.creado == request.time
                     && request.resource.data.total is number
@@ -118,6 +152,7 @@ service cloud.firestore {
       // MODIFICAR: solo el administrador. El estado solo puede avanzar o cancelarse (no hay vuelta atrás).
       // 'archivado' lo usa el cierre de caja (desde entregado o cancelado).
       allow update: if esAdmin()
+                    && !mantenimientoActivo('ventas')
                     && resource.data.get('cierreId', null) == null
                     && (request.resource.data.estado == resource.data.estado
                         || estadoPermitido(resource.data.estado, request.resource.data.estado));
@@ -125,40 +160,46 @@ service cloud.firestore {
       allow update: if esAdminCobroHandoff();
 
       // BORRAR: solo el administrador.
-      allow delete: if esAdmin() && resource.data.get('cierreId', null) == null
-                    && resource.data.estado != 'archivado';
+      allow delete: if puedeBorrarDatos('ventas') || (esAdmin()
+                    && resource.data.get('cierreId', null) == null && resource.data.estado != 'archivado');
     }
 
     // Nueva colección para guardar los reportes de los cierres de caja históricos
     match /cierres/{id} {
-      // Cierres permanentes: ni siquiera una pantalla vieja puede sobrescribirlos/borrarlos.
-      allow read, create: if esAdmin();
-      allow update, delete: if false;
+      // Sin reescrituras. Borrado exclusivo del administrador con autorización temporal.
+      allow read: if esAdmin();
+      allow create: if esAdmin() && !mantenimientoActivo('ventas') && !mantenimientoActivo('cierres');
+      allow update: if false;
+      allow delete: if puedeBorrarDatos('cierres') || puedeBorrarDatos('ventas');
     }
 
     // Gastos del día (se anotan en la caja y se archivan al cerrar)
     match /gastos/{id} {
-      allow read, create: if esAdmin();
-      allow update: if esAdmin() && resource.data.get('cierreId', null) == null
+      allow read: if esAdmin();
+      allow create: if esAdmin() && !mantenimientoActivo('ventas');
+      allow update: if esAdmin() && !mantenimientoActivo('ventas') && resource.data.get('cierreId', null) == null
                     && (resource.data.get('movimientoId', null) == null
                         || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cierreId']));
-      allow delete: if esAdmin() && resource.data.get('cierreId', null) == null
-                    && resource.data.get('movimientoId', null) == null;
+      allow delete: if puedeBorrarDatos('ventas') || (esAdmin() && resource.data.get('cierreId', null) == null
+                    && resource.data.get('movimientoId', null) == null);
     }
 
     // Costos, recetas y consumo nunca son públicos ni accesibles a repartidores/camareros.
     match /comercial_pedidos/{id} {
-      allow read, create: if esAdmin();
-      allow update: if esAdmin() && resource.data.get('cierreId', null) == null;
-      allow delete: if false;
+      allow read: if esAdmin();
+      allow create: if esAdmin() && !mantenimientoActivo('ventas');
+      allow update: if esAdmin() && !mantenimientoActivo('ventas') && resource.data.get('cierreId', null) == null;
+      allow delete: if puedeBorrarDatos('ventas');
     }
     match /comercial_config/{id} {
       allow read, create: if esAdmin();
       allow update, delete: if false;
     }
     match /comercial_stock/{id} {
-      allow read, create: if esAdmin();
-      allow update, delete: if false;
+      allow read: if esAdmin();
+      allow create: if esAdmin() && !mantenimientoActivo('ventas');
+      allow update: if false;
+      allow delete: if puedeBorrarDatos('ventas');
     }
 
     // Estado del local (abierto/cerrado, horarios y mensaje): lo lee cualquiera (la página de pedidos); solo el administrador lo escribe.
@@ -166,12 +207,16 @@ service cloud.firestore {
     match /config/{doc} {
       // 'mesas' también es lectura pública: el TPV necesita listarlas y el camarero usarlas.
       allow read: if doc == 'local' || doc == 'menu' || doc == 'mesas' || esAdmin();
-      allow write: if esAdmin();
+      allow write: if esAdmin()
+        && (doc != 'mantenimiento' || autorizacionMantenimientoValida())
+        && (doc != 'contador' || !mantenimientoActivo('ventas')
+          || (request.resource.data.ultimo == 0 && request.resource.data.cierres == 0 && request.resource.data.fondo == 0));
     }
 
     // Memoria de clientes frecuentes (solo administrador)
     match /clientes/{id} {
-      allow read, write: if esAdmin();
+      allow read, delete: if esAdmin();
+      allow create, update: if esAdmin() && !mantenimientoActivo('clientes') && !mantenimientoActivo('ventas');
     }
 
     // Perfil de usuarios: cada usuario lee su propio documento; solo el admin lo escribe.
@@ -186,7 +231,7 @@ service cloud.firestore {
       // El camarero ve solo lo que él envió; el administrador ve toda la cola.
       allow read: if esAdmin() || (esCamarero() && resource.data.solicitadoPor == request.auth.uid);
 
-      allow create: if esCamarero()
+      allow create: if esCamarero() && !mantenimientoActivo('ventas')
                     && request.resource.data.keys().hasOnly([
                          'local', 'estado', 'tipo', 'mesa', 'operacion', 'pedidoId',
                          'pizzas', 'extras', 'cliente', 'notas',
@@ -207,7 +252,7 @@ service cloud.firestore {
                     && request.resource.data.creado == request.time;
 
       // Solo el TPV administrador confirma o rechaza (nunca el camarero).
-      allow update: if esAdmin();
+      allow update: if esAdmin() && !mantenimientoActivo('ventas');
       allow delete: if esAdmin();
     }
 

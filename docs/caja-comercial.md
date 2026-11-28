@@ -20,7 +20,11 @@
 
 ## Qué se conserva
 
-`config/comercial` es privado. `comercial_config` conserva versiones inmutables; `comercial_pedidos/{pedidoId}` conserva precios, descuentos, líneas, categorías, recetas, precios de insumos, costos conocidos y jornada. Al cierre queda bloqueado junto con `cierres`. `comercial_stock` es un registro de movimientos sin borrado. Las reglas impiden reescribir/borrar cierres y economía cerrada; el TPV deshabilita el borrado masivo comercial.
+`config/comercial` es privado. `comercial_config` conserva versiones inmutables; `comercial_pedidos/{pedidoId}` conserva precios, descuentos, líneas, categorías, recetas, precios de insumos, costos conocidos y jornada. Al cierre queda bloqueado junto con `cierres`. No se permite reescribir el historial. El borrado administrativo explícito tiene las excepciones acotadas siguientes.
+
+En **Configuración → Datos**, ambos TPV ofrecen tres operaciones separadas: **BORRAR CIERRES** elimina solo los cierres, sin desarchivar ni desvincular pedidos; **REINICIAR BASE COMERCIAL** elimina las seis colecciones operativas y reinicia los contadores, conservando íntegros clientes, configuraciones y versiones de costos; **BORRAR MEMORIA DE CLIENTES** elimina únicamente la memoria de clientes, no sus pedidos históricos. Cada operación muestra cantidades verificadas en el servidor y exige su frase exacta, un respaldo completo de Firebase y confirmación de que el archivo se guardó.
+
+Requiere actualizar las reglas propuestas. La autorización privada `config/mantenimiento` es exclusiva del administrador, por operación y con caducidad de diez minutos sin actividad. Durante el reinicio se bloquean las escrituras que podrían recrear datos. Cerrá otras terminales antes de operar; al terminar se recarga esta terminal para descartar estadísticas en memoria. Los borrados grandes se hacen por lotes: si hay un fallo parcial se informa, no se restaura automáticamente y se puede reintentar la misma opción conservando el respaldo. Los contadores se reinician solamente al final del reinicio completo.
 
 Los pedidos nuevos del TPV guardan economía en la misma transacción. Web/QR guardan únicamente metadatos adicionales (origen, categoría y precio de extras): no cambian precios, promociones ni interfaz. El administrador captura sus costos al recibirlos. Si no hay una versión de costos comprobable anterior al pedido, no se inventa un costo histórico; se señala el faltante. El cliente sigue sin autoridad de servidor sobre precios, como antes: esto no introduce un backend de validación de ventas.
 

@@ -640,11 +640,11 @@ test('S4: proposed rules are the EXACT original rules plus only the narrow helpe
   const altUpdates = proposed.match(/allow update: if esAdminCobroHandoff\(\);/g) ?? [];
   assert.equal(altUpdates.length, 1);
   // Original admin transition rule still present unchanged.
-  assert.ok(proposed.includes("allow update: if esAdmin()\n                    && resource.data.get('cierreId', null) == null\n                    && (request.resource.data.estado == resource.data.estado"));
+  assert.ok(proposed.includes("allow update: if esAdmin()\n                    && !mantenimientoActivo('ventas')\n                    && resource.data.get('cierreId', null) == null\n                    && (request.resource.data.estado == resource.data.estado"));
 
   // The commercial release intentionally strengthens historical immutability.
   // Verify these explicit boundaries rather than the superseded whole-file hash.
-  assert.match(original, /match \/cierres\/\{id\}[^]*?allow update, delete: if false/);
+  assert.match(original, /match \/cierres\/\{id\}[^]*?allow update: if false;[^]*?allow delete: if puedeBorrarDatos\('cierres'\) \|\| puedeBorrarDatos\('ventas'\)/);
   for (const name of ['comercial_pedidos', 'comercial_config', 'comercial_stock']) {
     assert.ok(original.includes(`match /${name}/{id}`));
   }

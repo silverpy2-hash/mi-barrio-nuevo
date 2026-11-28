@@ -39,6 +39,47 @@ function store(initial = {}, authorized = true) {
 }
 function initial() { return { 'pedidos/p1': order(), 'config/contador': { ultimo: 42, cierres: 0, fondo: 10000 } }; }
 const closeArgs = () => ({ ids: ['p1'], expenseIds: [], counted: 40000, opening: 10000, expectedOrders: [order()] });
+test('close regression: identical pizza maps in a different key order must not produce the old changed-order error', async () => {
+    const shown = order(), actual = order();
+    actual.pizzas = actual.pizzas.map(z => Object.fromEntries(Object.entries(z).reverse()));
+    assert.deepEqual(actual, shown); // Same business data; only object key ordering differs.
+    assert.notEqual(M.signature(actual), M.signature(shown));
+    // Published 1de9eda rejected this valid pair through this exact signature condition.
+    assert.throws(() => {
+        if (M.signature(shown) !== M.signature(actual)) throw Error('Un pedido cambió mientras cerrabas. Revisá los nuevos importes.');
+    }, /Un pedido cambió mientras cerrabas/);
+    const data = initial(); data['pedidos/p1'] = actual;
+    const { adapter, docs } = store(data);
+    const result = await adapter.close({ ...closeArgs(), expectedOrders: [shown] });
+    assert.equal(result.close.total, 30000);
+    assert.equal(docs.get('pedidos/p1').cierreId, result.id);
+});
+test('close regression: missing versus explicit unpaid optional fields do not block cancelled orders', async () => {
+    const actual = order('p1', { estado: 'cancelado' }); delete actual.pagado; delete actual.pago;
+    const shown = { ...actual, pagado: false, pago: null };
+    const data = initial(); data['pedidos/p1'] = actual;
+    const { adapter } = store(data);
+    const result = await adapter.close({ ...closeArgs(), expectedOrders: [shown] });
+    assert.equal(result.close.total, 0); assert.equal(result.close.cantidadCancelados, 1);
+});
+test('close regression: pending recipes, costs and expense classification permit closing but never confirm net profit', async () => {
+    const data = initial(); data['gastos/g1'] = { monto: 5000, concepto: 'Gasto antiguo', cierreId: null, creado: now };
+    const { adapter, docs } = store(data);
+    const result = await adapter.close({ ...closeArgs(), expenseIds: ['g1'] });
+    assert.equal(result.close.finanzas.gananciaNeta, null);
+    assert.equal(result.close.finanzas.gastosCompletos, false);
+    assert.equal(result.close.gastos[0].clase, 'sin-clasificar');
+    assert.equal(result.close.gastos[0].medio, 'sin-definir');
+    assert.equal(docs.get('gastos/g1').cierreId, result.id);
+});
+test('close regression: the certification checkbox and mandatory certification argument are absent in both TPVs', () => {
+    for (const path of ['panel_nuevo.html', 'mi-barrio-tpv-celular/index.html']) {
+        const html = readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+        assert.doesNotMatch(html, /caja-gastos-completos|Confirmo que registré todos los gastos operativos/);
+        const call = html.match(/comercialDB\.close\(\{[^]*?\}\)/)?.[0];
+        assert.ok(call); assert.doesNotMatch(call, /certified/);
+    }
+});
 test('atomic close stores immutable economics, links orders and keeps numbering monotonic', async () => {
     const { adapter, docs } = store(initial());
     const result = await adapter.close(closeArgs());
@@ -123,7 +164,7 @@ test('private economics and immutable records have narrow rules in both proposal
             const block = rules.slice(rules.indexOf(`match /${name}/`), rules.indexOf('}', rules.indexOf(`match /${name}/`) + name.length + 10) + 200);
             assert.match(block, /esAdmin\(\)/); assert.doesNotMatch(block, /esDelivery\(\)|esCamarero\(\)|if true/);
         }
-        assert.match(rules, /match \/cierres\/\{id\}[^]*?allow update, delete: if false/);
+        assert.match(rules, /match \/cierres\/\{id\}[^]*?allow update: if false;[^]*?allow delete: if puedeBorrarDatos\('cierres'\) \|\| puedeBorrarDatos\('ventas'\)/);
         assert.match(rules, /resource.data.get\('cierreId', null\) == null/);
     }
 });
