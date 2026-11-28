@@ -24,6 +24,16 @@ Pedidos en vivo, alta manual y venta rápida, cocina, cobro con vuelto, cierres 
 | Impresión automática | Desactivada: los snapshots nunca imprimen en el celular. La impresión explícita (🖨️ Ticket / Comanda) sigue disponible. |
 | Camarero/delivery en esta app | No. El rol camarero y el modo repartidor viven en sus propias apps. |
 
+## Mi Barrio IA (asistente de pedidos)
+
+Botón flotante **🤖 Mi Barrio IA**: crea pedidos desde texto, dictado o capturas de WhatsApp y muestra el pedido completo con el total antes de confirmar. Reutiliza `guardarNuevo()` y las mismas funciones de precio/delivery; no toca caja, estadísticas, inventario ni impresión.
+
+Soporta **OpenAI** y **Anthropic (Claude)**; se elige con `IA_PROVIDER` en Vercel.
+- OpenAI: requiere `OPENAI_API_KEY` (default `gpt-4o-mini`).
+- Anthropic: requiere `ANTHROPIC_API_KEY` (default `claude-3-5-haiku-20241022`).
+
+Comunes: `FIREBASE_WEB_API_KEY`, `TPV_ADMIN_UID`. Si falta o falla, el alta manual sigue igual. Detalle: `docs/mi-barrio-ia.md`.
+
 ## Navegación y diseño móvil
 
 La capa visual nueva vive en `mobile.css` y se carga **al final** de la app. Solo actúa cuando el controlador agrega `body.tpv-mobile-ui` y, después de montar la interfaz, `.tpv-mobile-ready`; si el JavaScript falla, queda la barra de herramientas original operativa. En escritorio (≥ 900 px) no se aplica: el panel clásico sigue igual, sin navegación fija ni bloqueo de scroll.
@@ -71,6 +81,7 @@ La instalable Android/iOS se derivará de esta misma carpeta (p. ej. contenedor 
 ```
 node --test mi-barrio-tpv-celular/test.mjs
 node --test mi-barrio-tpv-celular/mobile-styles.test.mjs
+node --test tests/mi-barrio-ia.test.mjs
 ```
 
 La primera suite cubre: compuerta de admin, plan de cobro transaccional (`en_camino` para todo tipo; cancelado/archivado/ya cobrado = sin escritura), parser del service worker contra envelopes FCM anidados (tests VM), orquestación de push en orden (revoca-servidor → token-navegador → signOut; logout aborta ante fallo), config/permiso/estados UI de push, registro y revocación, y huellas SHA256 de `panel_nuevo.html` (`940A51D4…`), `index.html` (`9E9A2D29…`) y reglas. Cero llamadas de red en los tests.
@@ -87,7 +98,7 @@ La prueba visual en navegador queda pendiente hasta integrar ambas unidades. Est
 
 ## Archivos
 
-`index.html` (app completa) · `mobile.css` (capa visual móvil, se carga última) · `push-helpers.js` (lógica testeable) · `push-config.js` (settings públicas, disabled) · `sw.js` · `manifest.json` · `icon*.svg|png` (regenerar: `node mi-barrio-tpv-celular/tools/generate-icons.mjs`) · `test.mjs` · `mobile-styles.test.mjs` (contrato de estilos) · `tools/` (generador y vista previa de iconos).
+`index.html` (app completa) · `ia.js` / `ia-config.js` (asistente IA) · `mobile.css` (capa visual móvil, se carga última) · `push-helpers.js` (lógica testeable) · `push-config.js` (settings públicas, disabled) · `sw.js` · `manifest.json` · `icon*.svg|png` (regenerar: `node mi-barrio-tpv-celular/tools/generate-icons.mjs`) · `test.mjs` · `mobile-styles.test.mjs` (contrato de estilos) · `tools/` (generador y vista previa de iconos).
 
 ## Límites honestos
 

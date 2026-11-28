@@ -975,3 +975,437 @@ body.tpv-mobile-ui #tpv-tools-grid .tpv-tool .tpv-icon {
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   Mi Barrio IA — asistente de pedidos del TPV Celular.
+   Todo el bloque está acotado a body.tpv-mobile-ui y a los ids mbia-* para no
+   alterar el panel de escritorio ni las pantallas existentes.
+   ========================================================================== */
+
+body.tpv-mobile-ui #mbia-fab {
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--tpv-nav-h) + 16px + env(safe-area-inset-bottom));
+  z-index: 38;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 999px;
+  background: var(--tpv-burgundy);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  box-shadow: 0 14px 30px -12px rgba(36, 28, 26, .55);
+  cursor: pointer;
+}
+
+body.tpv-mobile-ui #mbia-fab:active {
+  background: var(--tpv-burgundy-deep);
+}
+
+body.tpv-mobile-ui #mbia-fab .mbia-fab-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+body.tpv-mobile-ui #mbia-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(36, 28, 26, .58);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+body.tpv-mobile-ui #mbia-modal.hidden {
+  display: none !important;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100dvh - 20px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--tpv-ivory);
+  box-shadow: 0 24px 60px -30px rgba(36, 28, 26, .65);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--tpv-burgundy);
+  color: #ffffff;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-head p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  opacity: .85;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-close {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .14);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-body {
+  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tpv-ink-soft);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-label,
+body.tpv-mobile-ui #mbia-modal .mbia-fix-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tpv-ink-soft);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-input {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--tpv-line-strong);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--tpv-ink);
+  font-size: 16px !important;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-input-compact {
+  min-height: 44px;
+  resize: none;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-btn-primary {
+  flex: 1 1 auto;
+  background: var(--tpv-burgundy);
+  color: #ffffff;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-btn-primary:active {
+  background: var(--tpv-burgundy-deep);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-btn-ghost {
+  background: #ffffff;
+  border-color: var(--tpv-line-strong);
+  color: var(--tpv-ink);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-btn-small {
+  min-height: 44px;
+  padding: 0 12px;
+  background: var(--tpv-ink);
+  color: #ffffff;
+  font-size: 12px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-status {
+  min-height: 18px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--tpv-ink-soft);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-status[data-tone="ok"] { color: var(--tpv-green); }
+body.tpv-mobile-ui #mbia-modal .mbia-status[data-tone="warn"] { color: var(--tpv-gold); }
+body.tpv-mobile-ui #mbia-modal .mbia-status[data-tone="error"] { color: var(--tpv-danger); }
+body.tpv-mobile-ui #mbia-modal .mbia-status[data-tone="loading"] { color: var(--tpv-blue); }
+
+body.tpv-mobile-ui #mbia-modal .mbia-preview {
+  margin-top: 10px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-empty {
+  padding: 12px;
+  border: 1px dashed var(--tpv-line-strong);
+  border-radius: 12px;
+  background: #ffffff;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--tpv-ink-soft);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-empty p {
+  margin: 0 0 6px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-empty p:last-child {
+  margin-bottom: 0;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-examples {
+  font-size: 12px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-aclaracion {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--tpv-gold);
+  border-radius: 8px;
+  background: var(--tpv-gold-soft);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-issues {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-issues li {
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-issues .is-error {
+  background: #fbe9e7;
+  color: var(--tpv-danger);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-issues .is-missing {
+  background: #fdf3df;
+  color: #7a5a13;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-issues .is-notice {
+  background: #eef3f7;
+  color: var(--tpv-blue);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-summary {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--tpv-line);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-summary span {
+  color: var(--tpv-ink-soft);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-summary strong {
+  text-align: right;
+  font-weight: 800;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-fix {
+  margin-bottom: 10px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-chip {
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--tpv-line-strong);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--tpv-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-chip.is-on {
+  border-color: var(--tpv-burgundy);
+  background: var(--tpv-burgundy);
+  color: #ffffff;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-map-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-map-row .mbia-input {
+  flex: 1 1 auto;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-items {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--tpv-line);
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 12.5px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-item-name {
+  font-weight: 700;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-item-price {
+  flex: 0 0 auto;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-totals {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--tpv-line);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-totals .is-discount {
+  color: var(--tpv-danger);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-totals .mbia-total {
+  padding-top: 6px;
+  border-top: 1px solid var(--tpv-line);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-totals .mbia-total strong {
+  color: var(--tpv-burgundy);
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-map {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #eef3f7;
+  color: var(--tpv-blue);
+  font-size: 12.5px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-confirm-row {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-confirm-row .mbia-btn-primary {
+  width: 100%;
+}
+
+body.tpv-mobile-ui #mbia-modal .mbia-usage {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--tpv-ink-soft);
+}
+
+@media (min-width: 900px) {
+  body.tpv-mobile-ui #mbia-fab {
+    bottom: 24px;
+  }
+
+  body.tpv-mobile-ui #mbia-modal {
+    align-items: center;
+  }
+}

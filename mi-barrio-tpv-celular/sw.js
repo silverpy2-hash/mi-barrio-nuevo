@@ -11,7 +11,7 @@
 // the tag is validated against /^[A-Za-z0-9._-]{1,80}$/ (derived from orderId otherwise),
 // and clicks/icons stay inside this app's scope.
 // A stable per-order tag bounds visual duplication. This is NOT an exactly-once guarantee.
-const VERSION = 'mi-barrio-tpv-celular-v4';
+const VERSION = 'mi-barrio-tpv-celular-v5';
 const CACHE_PREFIX = 'mi-barrio-tpv-celular-';
 const SHELL = [
     './',
@@ -21,6 +21,8 @@ const SHELL = [
     './push-helpers.js',
     './mobile.css',
     './mobile-ui.js',
+    './ia-config.js',
+    './ia.js',
     './icon.svg',
     './icon-maskable.svg',
     './icon-192.png',
